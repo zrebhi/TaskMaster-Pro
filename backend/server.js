@@ -2,6 +2,7 @@ const express = require('express');
 const dotenv = require('dotenv');
 const cors = require('cors');
 const sequelize = require('./config/database'); // Import the database configuration
+const authRoutes = require('./routes/auth'); // Import authentication routes
 
 // Load environment variables from .env file
 dotenv.config();
@@ -21,15 +22,8 @@ const corsOptions = {
 app.use(cors(corsOptions));
 
 
-// Basic route for testing
-app.get('/', (req, res) => {
-  res.send('TaskMaster Pro Backend is running!');
-});
-
-// Example of a simple API route (will be replaced by actual auth/project/task routes)
-app.get('/api/hello', (req, res) => {
-  res.json({ message: 'Hello from the backend API!' });
-});
+// Mount authentication routes
+app.use('/api/auth', authRoutes);
 
 
 // Start the server
