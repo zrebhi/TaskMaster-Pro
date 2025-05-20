@@ -6,7 +6,7 @@ const RegisterForm = () => {
     username: '',
     email: '',
     password: '',
-    confirmPassword: '', // Optional: for client-side confirm password check
+    confirmPassword: '',
   });
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
@@ -21,13 +21,21 @@ const RegisterForm = () => {
     setError('');
     setSuccessMessage('');
 
-    if (password !== confirmPassword && confirmPassword) { // Basic client-side check
+    // Basic client-side validation
+    if (password !== confirmPassword && confirmPassword) {
       setError('Passwords do not match.');
       return;
     }
-    if (password.length < 6) { // Basic client-side validation
+    if (password.length < 6) {
         setError('Password must be at least 6 characters long.');
         return;
+    }
+
+    // Basic username validation (no special characters except underscore and hyphen)
+    const usernameRegex = /^[a-zA-Z0-9_-]+$/;
+    if (!usernameRegex.test(username)) {
+      setError('Username can only contain letters, numbers, underscores, and hyphens.');
+      return;
     }
 
     try {
