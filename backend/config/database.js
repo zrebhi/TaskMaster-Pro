@@ -1,43 +1,59 @@
-const { Sequelize } = require('sequelize');
-require('dotenv').config({ path: '../.env' }); // Load environment variables from backend/.env
+const { Sequelize } = require("sequelize");
+const env = process.env.NODE_ENV || "development";
+const configFromFile = require("./config")[env];
 
-const env = process.env.NODE_ENV || 'development';
-const config = require('./config')[env]; // Load configuration from config.js
-
-// Ensure required environment variables are set
-if (!config.database || !config.username || !config.host || !config.dialect) {
-  console.error('FATAL ERROR: Database configuration environment variables are not set.');
-  console.error('Please ensure DB_NAME, DB_USER, DB_HOST, and DB_PASSWORD are set in your backend/.env file.');
-  process.exit(1);
+// Validate that configFromFile was loaded and contains necessary properties
+if (
+  !configFromFile ||
+  !configFromFile.database ||
+  !configFromFile.username ||
+  !configFromFile.host ||
+  !configFromFile.dialect
+) {
+  console.error(
+    `FATAL ERROR: Database configuration is missing or incomplete for environment: '${env}'.`
+  );
+  console.error(
+    "Please ensure your ./config/config.js file is correctly set up and references necessary environment variables (like DB_NAME, DB_USER, DB_PASSWORD, DB_HOST) which should be defined in your .env file (loaded at application startup)."
+  );
+  // Log specific missing parts for easier debugging
+  if (!configFromFile) {
+    console.error(
+      `- No configuration found for environment: '${env}' in ./config/config.js`
+    );
+  } else {
+    if (!configFromFile.database) console.error("- config.database is missing");
+    if (!configFromFile.username) console.error("- config.username is missing");
+    // Do not log password value or presence directly for security. Check it internally if needed.
+    if (!configFromFile.host) console.error("- config.host is missing");
+    if (!configFromFile.dialect) console.error("- config.dialect is missing");
+  }
+  process.exit(1); // Critical error, cannot proceed
 }
 
-
-const sequelize = new Sequelize(config.database, config.username, config.password, {
-  host: config.host,
-  port: config.port, 
-  dialect: config.dialect,
-  logging: config.logging,
-  dialectOptions: config.dialectOptions, // Include dialect options (like SSL)
-  pool: { // Optional: Connection pool settings
-    max: 5,
-    min: 0,
-    acquire: 30000,
-    idle: 10000
+const sequelize = new Sequelize(
+  configFromFile.database,
+  configFromFile.username,
+  configFromFile.password, // Password can be undefined if not set in .env for some DBs (e.g. local SQLite)
+  {
+    host: configFromFile.host,
+    port: configFromFile.port, // Optional, Sequelize uses default if not provided
+    dialect: configFromFile.dialect,
+    // More robust logging: handle boolean true, a custom function, or false/undefined
+    logging:
+      configFromFile.logging === true
+        ? console.log
+        : typeof configFromFile.logging === "function"
+        ? configFromFile.logging
+        : false,
+    dialectOptions: configFromFile.dialectOptions || {}, // Ensure dialectOptions is an object even if not in config
+    pool: {
+      max: configFromFile.pool?.max || 5,
+      min: configFromFile.pool?.min || 0,
+      acquire: configFromFile.pool?.acquire || 30000,
+      idle: configFromFile.pool?.idle || 10000,
+    },
   }
-});
-
-// Test the database connection (optional but recommended)
-async function testConnection() {
-  try {
-    await sequelize.authenticate();
-    console.log('Database connection has been established successfully.');
-  } catch (error) {
-    console.error('Unable to connect to the database:', error);
-    // Depending on severity, you might want to exit the process here in production
-    // process.exit(1);
-  }
-}
-
-testConnection();
+);
 
 module.exports = sequelize;

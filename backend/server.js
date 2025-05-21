@@ -26,7 +26,11 @@ app.use(cors(corsOptions));
 app.use('/api/auth', authRoutes);
 
 
-// Start the server
-app.listen(port, () => {
-  console.log(`Server running on port ${port} in ${process.env.NODE_ENV || 'development'} mode`);
-});
+// Only start server if this file is run directly (not when imported for tests)
+if (require.main === module) {
+  app.listen(port, () => {
+    console.log(`Server running on port ${port} in ${process.env.NODE_ENV || 'development'} mode`);
+  });
+}
+
+module.exports = app; // Export the app for testing

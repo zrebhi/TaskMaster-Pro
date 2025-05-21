@@ -1,4 +1,3 @@
-// backend/config/config.js
 require("dotenv").config(); // Load environment variables from .env
 
 module.exports = {
