@@ -1,6 +1,6 @@
 export default {
   testEnvironment: "jsdom", // Use jsdom for React components
-  setupFilesAfterEnv: ["@testing-library/jest-dom"], // Adds jest-dom's custom matchers
+  setupFilesAfterEnv: ["@testing-library/jest-dom", "./jest.setup.js"], // Adds jest-dom's custom matchers and polyfills
   moduleNameMapper: {
     // Handle CSS imports (if you import CSS in your components)
     "\\.(css|less|scss|sass)$": "identity-obj-proxy",

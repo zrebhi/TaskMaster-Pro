@@ -217,7 +217,7 @@ describe("Authentication Routes - /api/auth", () => {
       });
 
       expect(response.statusCode).toBe(401);
-      expect(response.body).toHaveProperty("message", "User not found.");
+      expect(response.body).toHaveProperty("message", "Invalid credentials.");
       expect(User.findOne).toHaveBeenCalledTimes(1);
       expect(User.findOne).toHaveBeenCalledWith({
         where: { email: "nonexistent@example.com" },
@@ -243,7 +243,7 @@ describe("Authentication Routes - /api/auth", () => {
       });
 
       expect(response.statusCode).toBe(401);
-      expect(response.body).toHaveProperty("message", "Invalid password.");
+      expect(response.body).toHaveProperty("message", "Invalid credentials.");
       expect(User.findOne).toHaveBeenCalledTimes(1);
       expect(User.findOne).toHaveBeenCalledWith({
         where: { email: "test@example.com" },
