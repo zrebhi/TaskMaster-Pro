@@ -22,5 +22,5 @@ out/
 *.DS_Store
 Thumbs.db
 
-# Resources
-.Resources/
+
+.*/

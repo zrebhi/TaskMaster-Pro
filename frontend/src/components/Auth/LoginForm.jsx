@@ -1,7 +1,8 @@
 import React, { useState, useContext } from "react";
 import axios from "axios";
-import { useNavigate } from "react-router-dom"; // For redirection after login
+import { useNavigate } from "react-router-dom";
 import AuthContext from "../../context/AuthContext.jsx";
+import toast from 'react-hot-toast';
 
 const LoginForm = () => {
   const [formData, setFormData] = useState({
@@ -9,6 +10,7 @@ const LoginForm = () => {
     password: "",
   });
   const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const auth = useContext(AuthContext);
 
@@ -20,6 +22,7 @@ const LoginForm = () => {
   const onSubmit = async (e) => {
     e.preventDefault();
     setError("");
+    setIsLoading(true);
 
     try {
       // Determine if the identifier is likely an email or username
@@ -36,8 +39,9 @@ const LoginForm = () => {
       // Axios throws for non-2xx, so no need for !response.ok check here
 
       // Login successful, store the token and user data
-      localStorage.setItem("token", data.token); // Store token in localStorage (or sessionStorage/HttpOnly cookie)
-      localStorage.setItem("user", JSON.stringify(data.user));
+      // Ideally, store tokens as HttpOnly cookies set by the server
+      sessionStorage.setItem("token", data.token);
+      sessionStorage.setItem("user", JSON.stringify(data.user));
 
       // Update auth state for Context
       if (auth && auth.login) {
@@ -46,7 +50,7 @@ const LoginForm = () => {
 
       // Redirect to dashboard
       navigate("/dashboard");
-      alert("Login successful! Token: " + data.token);
+      toast.success("Login successful!");
     } catch (err) {
       // Axios errors have a response property with status and data
       setError(
@@ -55,6 +59,8 @@ const LoginForm = () => {
           "Login failed. Please check your credentials."
       );
       console.error("Login error:", err);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -71,6 +77,7 @@ const LoginForm = () => {
           value={identifier}
           onChange={onChange}
           required
+          disabled={isLoading}
         />
       </div>
       <div>
@@ -82,9 +89,12 @@ const LoginForm = () => {
           value={password}
           onChange={onChange}
           required
+          disabled={isLoading}
         />
       </div>
-      <button type="submit">Login</button>
+      <button type="submit" disabled={isLoading}>
+        {isLoading ? "Logging in..." : "Login"}
+      </button>
     </form>
   );
 };

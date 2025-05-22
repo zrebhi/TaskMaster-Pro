@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import axios from 'axios';
+import { toast } from 'react-hot-toast';
+import { useNavigate } from 'react-router-dom';
 
 const RegisterForm = () => {
   const [formData, setFormData] = useState({
@@ -10,6 +12,8 @@ const RegisterForm = () => {
   });
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const navigate = useNavigate();
 
   const { username, email, password, confirmPassword } = formData;
 
@@ -20,9 +24,10 @@ const RegisterForm = () => {
     e.preventDefault();
     setError('');
     setSuccessMessage('');
+    setIsLoading(true);
 
     // Basic client-side validation
-    if (password !== confirmPassword && confirmPassword) {
+    if (password !== confirmPassword) {
       setError('Passwords do not match.');
       return;
     }
@@ -47,13 +52,14 @@ const RegisterForm = () => {
 
       // Axios automatically parses JSON and throws an error for non-2xx responses
       setSuccessMessage(response.data.message || 'Registration successful! You can now log in.');
-      // Optionally, redirect to login page or clear form
-      setFormData({ username: '', email: '', password: '', confirmPassword: '' });
-
+      toast.success("Registration successful! You can now log in.");
+      navigate("/auth/login");
     } catch (err) {
       // Axios errors have a response property with status and data
       setError(err.response?.data?.message || err.message || 'Registration failed. Please try again.');
       console.error('Registration error:', err);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -106,7 +112,9 @@ const RegisterForm = () => {
           required
         />
       </div>
-      <button type="submit">Register</button>
+      <button type="submit" disabled={isLoading}>
+        {isLoading ? 'Registering...' : 'Register'}
+      </button>
     </form>
   );
 };
