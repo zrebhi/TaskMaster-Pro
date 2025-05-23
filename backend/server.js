@@ -1,8 +1,7 @@
 const express = require('express');
 const dotenv = require('dotenv');
 const cors = require('cors');
-const sequelize = require('./config/database'); // Import the database configuration
-const authRoutes = require('./routes/auth'); // Import authentication routes
+const sequelize = require('./config/database');
 
 // Load environment variables from .env file
 dotenv.config();
@@ -23,7 +22,8 @@ app.use(cors(corsOptions));
 
 
 // Mount authentication routes
-app.use('/api/auth', authRoutes);
+app.use('/api/auth', require('./routes/auth'));
+app.use('/api/projects', require('./routes/projectRoutes'));
 
 
 // Only start server if this file is run directly (not when imported for tests)
