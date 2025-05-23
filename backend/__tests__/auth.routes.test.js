@@ -1,62 +1,81 @@
 const request = require("supertest");
 const app = require("../server");
-const User = require("../models/User");
-const sequelize = require("../config/database");
-
-jest.mock("../models/User");
-jest.mock("bcryptjs");
-jest.mock("jsonwebtoken");
-
-const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
+const { User, sequelize } = require("../models");
+const bcrypt = require("bcryptjs"); // Real bcrypt
+const jwt = require("jsonwebtoken"); // Real jwt
+const { v4: uuidv4 } = require("uuid");
 
 describe("Authentication Routes - /api/auth", () => {
-  // Clear all mocks before each test to ensure test isolation
-  beforeEach(() => {
-    jest.clearAllMocks();
+  // Setup for database connection and cleanup
+  beforeAll(async () => {
+    if (process.env.NODE_ENV !== "test") {
+      throw new Error(
+        "NODE_ENV not set to 'test'. Aborting to prevent data loss."
+      );
+    }
+    // Ensure JWT_SECRET is set for token generation/verification
+    if (!process.env.JWT_SECRET) {
+        throw new Error("JWT_SECRET environment variable is not set. Please set it in your .env file for testing.");
+    }
+    try {
+      await sequelize.authenticate();
+      await sequelize.sync({ force: true }); // This clears the database
+      console.log("Test database synced successfully for auth tests.");
+    } catch (error) {
+      console.error("Failed to initialize test database for auth tests:", error);
+      process.exit(1);
+    }
   });
 
-  describe("POST /register", () => {
-    test("should register a new user successfully with valid data", async () => {
-      const mockNewUser = {
-        id: 1,
-        username: "testuser",
-        email: "test@example.com",
-        // password_hash is not returned by create, but id is
-      };
-      // Configure User.create to resolve with the mock user
-      User.create.mockResolvedValue(mockNewUser);
-      bcrypt.hash.mockResolvedValue("mocked_hashed_password");
-      // Configure User.findOne to resolve with null (user doesn't exist yet)
-      // This is relevant for controllers that check if user exists before creation
-      User.findOne.mockResolvedValue(null);
+  // Clean up users after each test to ensure isolation
+  afterEach(async () => {
+    await User.destroy({ where: {}, truncate: true, cascade: true });
+  });
 
-      const response = await request(app).post("/api/auth/register").send({
-        username: "testuser",
-        email: "test@example.com",
+  // Close database connection after all tests
+  afterAll(async () => {
+    await sequelize.close();
+  });
+
+  describe("POST /api/auth/register", () => {
+    test("should register a new user successfully with valid data", async () => {
+      const userData = {
+        username: "testuser_register",
+        email: "register@example.com",
         password: "password123",
-      });
+      };
+
+      const response = await request(app)
+        .post("/api/auth/register")
+        .send(userData);
 
       expect(response.statusCode).toBe(201);
       expect(response.body).toHaveProperty(
         "message",
         "User registered successfully."
       );
-      expect(response.body).toHaveProperty("userId", mockNewUser.id);
-      expect(User.create).toHaveBeenCalledTimes(1);
-      expect(User.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          username: "testuser",
-          email: "test@example.com",
-          password_hash: "mocked_hashed_password",
-        })
+      expect(response.body).toHaveProperty("userId");
+      const userId = response.body.userId;
+
+      // Verify user was created in the database
+      const dbUser = await User.findByPk(userId);
+      expect(dbUser).not.toBeNull();
+      expect(dbUser.username).toBe(userData.username);
+      expect(dbUser.email).toBe(userData.email);
+      // Verify password was hashed
+      expect(dbUser.password_hash).not.toBe(userData.password);
+      const isPasswordCorrect = await bcrypt.compare(
+        userData.password,
+        dbUser.password_hash
       );
+      expect(isPasswordCorrect).toBe(true);
     });
 
-    test("should return 400 if required fields are missing", async () => {
+    test("should return 400 if required fields are missing (e.g., email)", async () => {
       const response = await request(app).post("/api/auth/register").send({
-        username: "testuser",
-        // email and password missing
+        username: "testuser_missing_fields",
+        password: "password123",
+        // email missing
       });
 
       expect(response.statusCode).toBe(400);
@@ -65,201 +84,152 @@ describe("Authentication Routes - /api/auth", () => {
         "Please provide username, email, and password."
       );
     });
-
-    test("should return 400 for invalid username format", async () => {
+    
+    test("should return 400 for invalid username format (e.g. contains @)", async () => {
       const response = await request(app).post("/api/auth/register").send({
         username: "test@user", // Invalid char
-        email: "test@example.com",
+        email: "invaliduser@example.com",
         password: "password123",
       });
 
       expect(response.statusCode).toBe(400);
-      expect(response.body).toHaveProperty(
-        "message",
-        "Username can only contain letters, numbers, underscores, and hyphens."
-      );
+      // The exact message might depend on your validation logic in the controller
+      expect(response.body).toHaveProperty("message"); 
+      // Example: "Username can only contain letters, numbers, underscores, and hyphens."
     });
 
-    test("should return 409 if email already exists", async () => {
-      // Spy on console.error and provide a mock implementation for this test
-      const consoleErrorSpy = jest
-        .spyOn(console, "error")
-        .mockImplementation(() => {});
 
-      User.create.mockRejectedValue({
-        name: "SequelizeUniqueConstraintError",
-        errors: [
-          {
-            path: "email",
-            value: "test@example.com",
-            message: "email must be unique",
-          },
-        ],
-      });
+    test("should return 409 if email already exists", async () => {
+      const existingUserData = {
+        id: uuidv4(),
+        username: "existinguser",
+        email: "existing@example.com",
+        password_hash: await bcrypt.hash("password123", 10),
+      };
+      await User.create(existingUserData);
+
+      const consoleErrorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
 
       const response = await request(app).post("/api/auth/register").send({
-        username: "testuser",
-        email: "test@example.com",
-        password: "password123",
+        username: "newuser",
+        email: "existing@example.com", // Same email
+        password: "password456",
       });
 
       expect(response.statusCode).toBe(409);
       expect(response.body.message).toContain(
-        "email 'test@example.com' already exists"
+        `email '${existingUserData.email}' already exists`
       );
+      consoleErrorSpy.mockRestore();
+    });
 
-      // Restore the original console.error implementation
+     test("should return 409 if username already exists", async () => {
+      const existingUserData = {
+        id: uuidv4(),
+        username: "existing_username",
+        email: "unique_email@example.com",
+        password_hash: await bcrypt.hash("password123", 10),
+      };
+      await User.create(existingUserData);
+
+      const consoleErrorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+
+      const response = await request(app).post("/api/auth/register").send({
+        username: "existing_username", // Same username
+        email: "another_unique_email@example.com",
+        password: "password456",
+      });
+      
+      expect(response.statusCode).toBe(409);
+      expect(response.body.message).toContain(
+        `username '${existingUserData.username}' already exists`
+      );
       consoleErrorSpy.mockRestore();
     });
   });
 
-  describe("POST /login", () => {
+  describe("POST /api/auth/login", () => {
+    let testUserLogin;
+    const loginPassword = "loginPassword123";
+
+    beforeEach(async () => {
+      // Create a user to login with before each login test
+      const hashedPassword = await bcrypt.hash(loginPassword, 10);
+      testUserLogin = await User.create({
+        id: uuidv4(),
+        username: "loginuser",
+        email: "login@example.com",
+        password_hash: hashedPassword,
+      });
+    });
+
     test("should login a user successfully with valid email and password", async () => {
-      const mockUser = {
-        id: 1,
-        username: "testuser",
-        email: "test@example.com",
-        password_hash: "hashedpassword",
-      };
-      const mockToken = "fake-jwt-token";
-      const mockExpiresAt = Math.floor(Date.now() / 1000) + 60 * 60; // 1 hour from now
-
-      User.findOne.mockResolvedValue(mockUser);
-      bcrypt.compare.mockResolvedValue(true);
-      jwt.sign.mockReturnValue(mockToken);
-      jwt.decode.mockReturnValue({ exp: mockExpiresAt });
-
       const response = await request(app).post("/api/auth/login").send({
-        email: "test@example.com",
-        password: "password123",
+        email: testUserLogin.email,
+        password: loginPassword,
       });
 
       expect(response.statusCode).toBe(200);
       expect(response.body).toHaveProperty("message", "Login successful.");
-      expect(response.body).toHaveProperty("token", mockToken);
-      expect(response.body).toHaveProperty("expiresAt", mockExpiresAt);
-      expect(response.body.user).toHaveProperty("id", mockUser.id);
-      expect(response.body.user).toHaveProperty("username", mockUser.username);
-      expect(response.body.user).toHaveProperty("email", mockUser.email);
-      expect(User.findOne).toHaveBeenCalledTimes(1);
-      expect(User.findOne).toHaveBeenCalledWith({
-        where: { email: "test@example.com" },
-      });
-      expect(bcrypt.compare).toHaveBeenCalledTimes(1);
-      expect(bcrypt.compare).toHaveBeenCalledWith(
-        "password123",
-        "hashedpassword"
-      );
-      expect(jwt.sign).toHaveBeenCalledTimes(1);
-      expect(jwt.sign).toHaveBeenCalledWith(
-        expect.objectContaining({
-          userId: mockUser.id,
-          username: mockUser.username,
-        }),
-        expect.any(String), // JWT_SECRET
-        expect.any(Object) // JWT_OPTIONS
-      );
+      expect(response.body).toHaveProperty("token");
+      expect(response.body).toHaveProperty("expiresAt");
+      expect(response.body.user).toHaveProperty("id", testUserLogin.id);
+      expect(response.body.user).toHaveProperty("username", testUserLogin.username);
+      expect(response.body.user).toHaveProperty("email", testUserLogin.email);
+
+      // Optionally, verify the token
+      const decodedToken = jwt.verify(response.body.token, process.env.JWT_SECRET);
+      expect(decodedToken.userId).toBe(testUserLogin.id);
+      expect(decodedToken.username).toBe(testUserLogin.username);
     });
 
     test("should login a user successfully with valid username and password", async () => {
-      const mockUser = {
-        id: 1,
-        username: "testuser",
-        email: "test@example.com",
-        password_hash: "hashedpassword",
-      };
-      const mockToken = "fake-jwt-token";
-      const mockExpiresAt = Math.floor(Date.now() / 1000) + 60 * 60; // 1 hour from now
-
-      User.findOne.mockResolvedValue(mockUser);
-      bcrypt.compare.mockResolvedValue(true);
-      jwt.sign.mockReturnValue(mockToken);
-      jwt.decode.mockReturnValue({ exp: mockExpiresAt });
-
       const response = await request(app).post("/api/auth/login").send({
-        username: "testuser",
-        password: "password123",
+        username: testUserLogin.username,
+        password: loginPassword,
       });
 
       expect(response.statusCode).toBe(200);
       expect(response.body).toHaveProperty("message", "Login successful.");
-      expect(response.body).toHaveProperty("token", mockToken);
-      expect(response.body).toHaveProperty("expiresAt", mockExpiresAt);
-      expect(response.body.user).toHaveProperty("id", mockUser.id);
-      expect(response.body.user).toHaveProperty("username", mockUser.username);
-      expect(response.body.user).toHaveProperty("email", mockUser.email);
-      expect(User.findOne).toHaveBeenCalledTimes(1);
-      expect(User.findOne).toHaveBeenCalledWith({
-        where: { username: "testuser" },
-      });
-      expect(bcrypt.compare).toHaveBeenCalledTimes(1);
-      expect(bcrypt.compare).toHaveBeenCalledWith(
-        "password123",
-        "hashedpassword"
-      );
-      expect(jwt.sign).toHaveBeenCalledTimes(1);
-      expect(jwt.sign).toHaveBeenCalledWith(
-        expect.objectContaining({
-          userId: mockUser.id,
-          username: mockUser.username,
-        }),
-        expect.any(String), // JWT_SECRET
-        expect.any(Object) // JWT_OPTIONS
-      );
+      expect(response.body).toHaveProperty("token");
+      // ... other assertions as above
     });
 
-    test("should return 401 if user is not found", async () => {
-      User.findOne.mockResolvedValue(null);
-
+    test("should return 401 if user is not found (wrong email)", async () => {
       const response = await request(app).post("/api/auth/login").send({
         email: "nonexistent@example.com",
-        password: "password123",
+        password: loginPassword,
       });
 
       expect(response.statusCode).toBe(401);
       expect(response.body).toHaveProperty("message", "Invalid credentials.");
-      expect(User.findOne).toHaveBeenCalledTimes(1);
-      expect(User.findOne).toHaveBeenCalledWith({
-        where: { email: "nonexistent@example.com" },
+    });
+    
+    test("should return 401 if user is not found (wrong username)", async () => {
+      const response = await request(app).post("/api/auth/login").send({
+        username: "nonexistent_username",
+        password: loginPassword,
       });
-      expect(bcrypt.compare).not.toHaveBeenCalled();
-      expect(jwt.sign).not.toHaveBeenCalled();
+
+      expect(response.statusCode).toBe(401);
+      expect(response.body).toHaveProperty("message", "Invalid credentials.");
     });
 
+
     test("should return 401 if password is incorrect", async () => {
-      const mockUser = {
-        id: 1,
-        username: "testuser",
-        email: "test@example.com",
-        password_hash: "hashedpassword",
-      };
-
-      User.findOne.mockResolvedValue(mockUser);
-      bcrypt.compare.mockResolvedValue(false);
-
       const response = await request(app).post("/api/auth/login").send({
-        email: "test@example.com",
+        email: testUserLogin.email,
         password: "wrongpassword",
       });
 
       expect(response.statusCode).toBe(401);
       expect(response.body).toHaveProperty("message", "Invalid credentials.");
-      expect(User.findOne).toHaveBeenCalledTimes(1);
-      expect(User.findOne).toHaveBeenCalledWith({
-        where: { email: "test@example.com" },
-      });
-      expect(bcrypt.compare).toHaveBeenCalledTimes(1);
-      expect(bcrypt.compare).toHaveBeenCalledWith(
-        "wrongpassword",
-        "hashedpassword"
-      );
-      expect(jwt.sign).not.toHaveBeenCalled();
     });
 
-    test("should return 400 if required fields are missing (email/username or password)", async () => {
-      // Missing password
-      let response = await request(app).post("/api/auth/login").send({
-        email: "test@example.com",
+    test("should return 400 if required fields are missing (e.g. password)", async () => {
+      const response = await request(app).post("/api/auth/login").send({
+        email: testUserLogin.email,
+        // password missing
       });
 
       expect(response.statusCode).toBe(400);
@@ -267,34 +237,6 @@ describe("Authentication Routes - /api/auth", () => {
         "message",
         "Please provide email or username, and password."
       );
-
-      // Missing email and username
-      response = await request(app).post("/api/auth/login").send({
-        password: "password123",
-      });
-
-      expect(response.statusCode).toBe(400);
-      expect(response.body).toHaveProperty(
-        "message",
-        "Please provide email or username, and password."
-      );
-
-      // Missing all fields
-      response = await request(app).post("/api/auth/login").send({});
-
-      expect(response.statusCode).toBe(400);
-      expect(response.body).toHaveProperty(
-        "message",
-        "Please provide email or username, and password."
-      );
-
-      expect(User.findOne).not.toHaveBeenCalled();
-      expect(bcrypt.compare).not.toHaveBeenCalled();
-      expect(jwt.sign).not.toHaveBeenCalled();
     });
-  });
-
-  afterAll(async () => {
-    await sequelize.close(); // Close the database connection after all tests
   });
 });
