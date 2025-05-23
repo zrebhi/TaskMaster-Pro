@@ -33,6 +33,7 @@ The Minimum Viable Product (MVP) focuses on core task and project management fun
 ## 🛠️ Tech Stack
 
 *   **💻 Frontend:** React.js (with Vite)
+    *   Testing: Jest, @testing-library/react, @testing-library/jest-dom
     *   State Management: React Context API
     *   Routing: React Router DOM
     *   HTTP Client: Axios
@@ -41,6 +42,7 @@ The Minimum Viable Product (MVP) focuses on core task and project management fun
     *   API: RESTful API
     *   Authentication: JWT (jsonwebtoken)
     *   Password Hashing: bcrypt.js
+    *   Testing: Jest, Supertest
 *   **💾 Database:** PostgreSQL
     *   ORM/Query Builder: Sequelize
 
