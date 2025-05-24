@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext } from 'react';
+import React, { createContext, useState, useContext, useCallback } from 'react'; // Import useCallback
 import axios from 'axios';
 import AuthContext from './AuthContext'; // To get the token
 
@@ -12,7 +12,7 @@ export const ProjectProvider = ({ children }) => {
   const { token, isAuthenticated, logout } = useContext(AuthContext);
 
   // Function to fetch projects (will be fully implemented for F-PROJ-02)
-  const fetchProjects = async () => {
+  const fetchProjects = useCallback(async () => { // Wrap with useCallback to avoid infinite loop
     if (!isAuthenticated || !token) {
       // Clear projects if not authenticated
       setProjects([]);
@@ -37,7 +37,7 @@ export const ProjectProvider = ({ children }) => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [token, isAuthenticated, logout]);
 
   // Function to add a newly created project to the state
   const addProject = (newProject) => {

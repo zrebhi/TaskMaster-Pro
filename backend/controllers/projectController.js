@@ -54,3 +54,34 @@ exports.createProject = async (req, res) => {
     res.status(500).json({ message: "Server error while creating project." });
   }
 };
+
+// @desc    Get all projects for the authenticated user
+// @route   GET /api/projects
+// @access  Private
+exports.getProjects = async (req, res) => {
+  try {
+    // Get user ID from the authenticated user (populated by 'protect' middleware)
+    const userId = req.user.userId;
+    if (!userId) {
+      // Should be caught by 'protect' middleware, but good to double-check
+      return res.status(401).json({ message: 'Not authorized, user ID missing.' });
+    }
+
+    // Find all projects belonging to this user
+    // Order by most recently created, for example
+    const projects = await Project.findAll({
+      where: { user_id: userId },
+      order: [['createdAt', 'DESC']], // Order by creation date
+    });
+
+    res.status(200).json({
+      message: 'Projects fetched successfully.',
+      count: projects.length,
+      projects: projects,
+    });
+
+  } catch (error) {
+    console.error('Get projects error:', error);
+    res.status(500).json({ message: 'Server error while fetching projects.' });
+  }
+};
