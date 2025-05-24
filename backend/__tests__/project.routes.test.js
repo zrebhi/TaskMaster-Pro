@@ -159,4 +159,80 @@ Proceeding with caution...
       expect(projectInDb.user_id).toBe(testUser.id);
     });
   });
+
+  describe("GET /api/projects - Get all projects for the authenticated user", () => {
+    it("should return 401 if no token is provided", async () => {
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+      const res = await request(app).get("/api/projects");
+      expect(res.statusCode).toEqual(401);
+      expect(res.body.message).toBe("Not authorized, no token");
+      consoleErrorSpy.mockRestore();
+    });
+
+    it("should return 401 if an invalid token is provided", async () => {
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+      const res = await request(app)
+        .get("/api/projects")
+        .set("Authorization", "Bearer invalidtoken123");
+      expect(res.statusCode).toEqual(401);
+      expect(res.body.message).toBe("Not authorized, token failed");
+      consoleErrorSpy.mockRestore();
+    });
+
+    it("should return an empty array if the user has no projects", async () => {
+      const res = await request(app)
+        .get("/api/projects")
+        .set("Authorization", `Bearer ${testUserToken}`);
+
+      expect(res.statusCode).toEqual(200);
+      expect(res.body.message).toBe("Projects fetched successfully.");
+      expect(res.body.count).toBe(0);
+      expect(res.body.projects).toEqual([]);
+    });
+
+    it("should return projects for the authenticated user", async () => {
+      // Create some projects for the test user
+      await Project.create({ name: "Project 1", user_id: testUser.id });
+      await Project.create({ name: "Project 2", user_id: testUser.id });
+
+      const res = await request(app)
+        .get("/api/projects")
+        .set("Authorization", `Bearer ${testUserToken}`);
+
+      expect(res.statusCode).toEqual(200);
+      expect(res.body.message).toBe("Projects fetched successfully.");
+      expect(res.body.count).toBe(2);
+      expect(res.body.projects).toHaveLength(2);
+      expect(res.body.projects[0].name).toBe("Project 2"); // Ordered by createdAt DESC
+      expect(res.body.projects[1].name).toBe("Project 1");
+      expect(res.body.projects.every(p => p.user_id === testUser.id)).toBe(true);
+    });
+
+    it("should not return projects belonging to other users", async () => {
+      // Create a project for the test user
+      await Project.create({ name: "My Project", user_id: testUser.id });
+
+      // Create another user and their project
+      const otherUser = await User.create({
+        id: uuidv4(),
+        username: "otheruser_project_get",
+        email: "otheruser_project_get@example.com",
+        password_hash: "hashed_password_other",
+      });
+      await Project.create({ name: "Other User Project", user_id: otherUser.id });
+
+      const res = await request(app)
+        .get("/api/projects")
+        .set("Authorization", `Bearer ${testUserToken}`);
+
+      expect(res.statusCode).toEqual(200);
+      expect(res.body.count).toBe(1);
+      expect(res.body.projects).toHaveLength(1);
+      expect(res.body.projects[0].name).toBe("My Project");
+      expect(res.body.projects[0].user_id).toBe(testUser.id);
+
+      // Clean up other user
+      await User.destroy({ where: { id: otherUser.id } });
+    });
+  });
 });
