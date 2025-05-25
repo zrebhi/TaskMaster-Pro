@@ -67,9 +67,9 @@ Proceeding with caution...
 
   describe("POST /api/projects - Create a new project", () => {
     it("should return 401 if no token is provided", async () => {
-      
+
       const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {}); // Suppress console.error for this test
-      
+
       const res = await request(app)
         .post("/api/projects")
         .send({ name: "New Project Without Token" });
@@ -233,6 +233,123 @@ Proceeding with caution...
 
       // Clean up other user
       await User.destroy({ where: { id: otherUser.id } });
+    });
+  });
+
+  describe("PUT /api/projects/:projectId - Update a project", () => {
+    let projectToUpdate;
+
+    beforeEach(async () => {
+      // Create a project for the test user before each update test
+      projectToUpdate = await Project.create({
+        name: "Original Project Name",
+        user_id: testUser.id,
+      });
+      jest.clearAllMocks();
+    });
+
+    it("should return 401 if no token is provided", async () => {
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+      const res = await request(app)
+        .put(`/api/projects/${projectToUpdate.id}`)
+        .send({ name: "Updated Name Without Token" });
+      expect(res.statusCode).toEqual(401);
+      expect(res.body.message).toBe("Not authorized, no token");
+    });
+
+    it("should return 401 if an invalid token is provided", async () => {
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+      const res = await request(app)
+        .put(`/api/projects/${projectToUpdate.id}`)
+        .set("Authorization", "Bearer invalidtoken123")
+        .send({ name: "Updated Name Invalid Token" });
+      expect(res.statusCode).toEqual(401);
+      expect(res.body.message).toBe("Not authorized, token failed");
+    });
+
+    it("should return 404 if the project ID does not exist", async () => {
+      const nonExistentProjectId = uuidv4();
+      const res = await request(app)
+        .put(`/api/projects/${nonExistentProjectId}`)
+        .set("Authorization", `Bearer ${testUserToken}`)
+        .send({ name: "Attempt Update Non-existent" });
+      expect(res.statusCode).toEqual(404);
+      expect(res.body.message).toBe("Project not found.");
+    });
+
+    it("should return 403 if the user tries to update a project they do not own", async () => {
+      // Create another user and their project
+      const otherUser = await User.create({
+        id: uuidv4(),
+        username: "otheruser_project_update",
+        email: "otheruser_project_update@example.com",
+        password_hash: "hashed_password_other_update",
+      });
+      const otherUserProject = await Project.create({
+        name: "Other User's Project",
+        user_id: otherUser.id,
+      });
+
+      const res = await request(app)
+        .put(`/api/projects/${otherUserProject.id}`)
+        .set("Authorization", `Bearer ${testUserToken}`) // Using testUser's token
+        .send({ name: "Attempt to update other user's project" });
+
+      expect(res.statusCode).toEqual(403);
+      expect(res.body.message).toBe("User not authorized to update this project.");
+
+      // Clean up other user and their project
+      await Project.destroy({ where: { id: otherUserProject.id } });
+      await User.destroy({ where: { id: otherUser.id } });
+    });
+
+    it("should return 400 if the new project name is missing", async () => {
+      const res = await request(app)
+        .put(`/api/projects/${projectToUpdate.id}`)
+        .set("Authorization", `Bearer ${testUserToken}`)
+        .send({}); // No name
+      expect(res.statusCode).toEqual(400);
+      expect(res.body.message).toBe("Project name is required.");
+    });
+
+    it("should return 400 if the new project name is an empty string", async () => {
+      const res = await request(app)
+        .put(`/api/projects/${projectToUpdate.id}`)
+        .set("Authorization", `Bearer ${testUserToken}`)
+        .send({ name: "   " }); // Empty name
+      expect(res.statusCode).toEqual(400);
+      expect(res.body.message).toBe("Project name is required.");
+    });
+
+    it("should return 400 if the new project name is too long (over 255 chars)", async () => {
+      const longName = "b".repeat(256);
+      const res = await request(app)
+        .put(`/api/projects/${projectToUpdate.id}`)
+        .set("Authorization", `Bearer ${testUserToken}`)
+        .send({ name: longName });
+      expect(res.statusCode).toEqual(400);
+      expect(res.body.message).toBe("Project name is too long.");
+    });
+
+    it("should update a project successfully with a valid token and new name", async () => {
+      const newProjectName = "Updated Project Name";
+      const res = await request(app)
+        .put(`/api/projects/${projectToUpdate.id}`)
+        .set("Authorization", `Bearer ${testUserToken}`)
+        .send({ name: newProjectName });
+
+      expect(res.statusCode).toEqual(200);
+      expect(res.body.message).toBe("Project updated successfully.");
+      expect(res.body.project).toBeDefined();
+      expect(res.body.project.id).toBe(projectToUpdate.id);
+      expect(res.body.project.name).toBe(newProjectName);
+      expect(res.body.project.user_id).toBe(testUser.id);
+
+      // Verify the project was actually updated in the database
+      const dbProject = await Project.findByPk(projectToUpdate.id);
+      expect(dbProject).not.toBeNull();
+      expect(dbProject.name).toBe(newProjectName);
+      expect(dbProject.user_id).toBe(testUser.id);
     });
   });
 });

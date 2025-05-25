@@ -1,38 +1,35 @@
 const { Project } = require("../models");
 
-// @desc    Create a new project
-// @route   POST /api/projects
-// @access  Private (due to 'protect' middleware in routes)
+/**
+ * @desc    Create a new project
+ * @route   POST /api/projects
+ * @access  Private (requires authentication)
+ * @param   {object} req - Express request object
+ * @param   {object} res - Express response object
+ * @returns {Promise<void>}
+ */
 exports.createProject = async (req, res) => {
   try {
     const { name } = req.body;
 
-    // 1. Validate input
+    // Validate input: project name is required and not too long
     if (!name || name.trim() === "") {
       return res.status(400).json({ message: "Project name is required." });
     }
     if (name.trim().length > 255) {
-      // Check trimmed length
       return res.status(400).json({ message: "Project name is too long." });
     }
 
-    // Additional validation for security
-    const trimmedName = name.trim();
-    if (!/^[a-zA-Z0-9\s\-_\.]+$/.test(trimmedName)) {
-      return res
-        .status(400)
-        .json({ message: "Project name contains invalid characters." });
-    }
-    // 2. Get user ID from the authenticated user (populated by 'protect' middleware)
+    // Get user ID from the authenticated user (populated by 'protect' middleware)
     const userId = req.user.userId;
 
-    // 3. Create the new project in the database
+    // Create the new project in the database
     const newProject = await Project.create({
       name: name.trim(),
       user_id: userId, // Link the project to the authenticated user
     });
 
-    // 4. Respond with the newly created project
+    // Respond with the newly created project details
     res.status(201).json({
       message: "Project created successfully.",
       project: {
@@ -55,33 +52,101 @@ exports.createProject = async (req, res) => {
   }
 };
 
-// @desc    Get all projects for the authenticated user
-// @route   GET /api/projects
-// @access  Private
+/**
+ * @desc    Get all projects for the authenticated user
+ * @route   GET /api/projects
+ * @access  Private (requires authentication)
+ * @param   {object} req - Express request object
+ * @param   {object} res - Express response object
+ * @returns {Promise<void>}
+ */
 exports.getProjects = async (req, res) => {
   try {
     // Get user ID from the authenticated user (populated by 'protect' middleware)
     const userId = req.user.userId;
     if (!userId) {
-      // Should be caught by 'protect' middleware, but good to double-check
-      return res.status(401).json({ message: 'Not authorized, user ID missing.' });
+      // This case should ideally be handled by the 'protect' middleware
+      return res
+        .status(401)
+        .json({ message: "Not authorized, user ID missing." });
     }
 
-    // Find all projects belonging to this user
-    // Order by most recently created, for example
+    // Find all projects belonging to this user, ordered by creation date
     const projects = await Project.findAll({
       where: { user_id: userId },
-      order: [['createdAt', 'DESC']], // Order by creation date
+      order: [["createdAt", "DESC"]],
     });
 
+    // Respond with the list of projects
     res.status(200).json({
-      message: 'Projects fetched successfully.',
+      message: "Projects fetched successfully.",
       count: projects.length,
       projects: projects,
     });
-
   } catch (error) {
-    console.error('Get projects error:', error);
-    res.status(500).json({ message: 'Server error while fetching projects.' });
+    console.error("Get projects error:", error);
+    res.status(500).json({ message: "Server error while fetching projects." });
+  }
+};
+
+/**
+ * @desc    Update an existing project
+ * @route   PUT /api/projects/:projectId
+ * @access  Private (requires authentication)
+ * @param   {object} req - Express request object
+ * @param   {object} res - Express response object
+ * @returns {Promise<void>}
+ */
+exports.updateProject = async (req, res) => {
+  try {
+    const { name } = req.body;
+    const projectId = req.params.projectId;
+    const userId = req.user.userId; // From 'protect' middleware
+
+    // Validate input: project name is required and not too long
+    if (!name || name.trim() === "") {
+      return res.status(400).json({ message: "Project name is required." });
+    }
+    if (name.trim().length > 255) {
+      return res.status(400).json({ message: "Project name is too long." });
+    }
+
+    // Find the project by ID
+    const project = await Project.findByPk(projectId);
+
+    if (!project) {
+      return res.status(404).json({ message: "Project not found." });
+    }
+
+    // Authorization Check: Verify the project belongs to the authenticated user
+    if (project.user_id !== userId) {
+      return res
+        .status(403)
+        .json({ message: "User not authorized to update this project." }); // Forbidden
+    }
+
+    // Update the project name and save changes
+    project.name = name.trim();
+    await project.save();
+
+    // Respond with the updated project details
+    res.status(200).json({
+      message: "Project updated successfully.",
+      project: {
+        id: project.id,
+        name: project.name,
+        user_id: project.user_id,
+        createdAt: project.createdAt,
+        updatedAt: project.updatedAt, // This will be updated by project.save()
+      },
+    });
+  } catch (error) {
+    console.error("Update project error:", error);
+    if (error.name === "SequelizeValidationError") {
+      return res
+        .status(400)
+        .json({ message: error.errors.map((e) => e.message).join(", ") });
+    }
+    res.status(500).json({ message: "Server error while updating project." });
   }
 };

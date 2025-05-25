@@ -12,4 +12,7 @@ router.post('/', projectController.createProject);
 // GET /api/projects - Get all projects for the authenticated user
 router.get('/', projectController.getProjects);
 
+// PUT /api/projects/:projectId - Update a specific project
+router.put('/:projectId', projectController.updateProject);
+
 module.exports = router;
