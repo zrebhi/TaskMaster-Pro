@@ -39,12 +39,16 @@ export const ProjectProvider = ({ children }) => {
     }
   }, [token, isAuthenticated, logout]);
 
-  // Function to add a newly created project to the state
   const addProject = (newProject) => {
     setProjects(prevProjects => [newProject, ...prevProjects]);
   };
 
-  // Other project-related functions (update, delete) will be added later
+  const updateProject = (updatedProject) => {
+    setProjects(prevProjects =>
+      prevProjects.map(p => (p.id === updatedProject.id ? updatedProject : p))
+    );
+  };
+
 
   return (
     <ProjectContext.Provider
@@ -54,7 +58,7 @@ export const ProjectProvider = ({ children }) => {
         error,
         fetchProjects,
         addProject,
-        // Add other functions here later
+        updateProject,
       }}
     >
       {children}

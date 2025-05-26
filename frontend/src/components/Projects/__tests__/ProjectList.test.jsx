@@ -6,13 +6,14 @@ import ProjectListItem from "../ProjectListItem";
 
 // Mock ProjectListItem to isolate ProjectList logic
 jest.mock("../ProjectListItem", () => {
-  return jest.fn(({ project, onSelectProject, isActive }) => (
+  return jest.fn(({ project, onSelectProject, isActive, onEdit }) => (
     <li
       data-testid={`project-item-${project.id}`}
       onClick={() => onSelectProject(project.id)}
       style={{ backgroundColor: isActive ? "activebg" : "inactivebg" }}
     >
       {project.name}
+      {onEdit && <button onClick={() => onEdit(project)}>Edit</button>}
     </li>
   ));
 });
@@ -77,6 +78,7 @@ describe("ProjectList", () => {
         projects={mockProjects}
         onSelectProject={mockOnSelectProject}
         activeProjectId={activeId}
+        onEditProject={jest.fn()}
       />
     );
 
@@ -89,8 +91,9 @@ describe("ProjectList", () => {
         project: mockProjects[0],
         onSelectProject: mockOnSelectProject,
         isActive: false,
+        onEdit: expect.any(Function),
       }),
-      undefined // Second argument to mock constructor (context)
+      undefined
     );
 
     // Check props for the second item (Project Beta, id: '2' - active)
@@ -100,8 +103,9 @@ describe("ProjectList", () => {
         project: mockProjects[1],
         onSelectProject: mockOnSelectProject,
         isActive: true,
+        onEdit: expect.any(Function),
       }),
-      undefined // Second argument to mock constructor (context)
+      undefined
     );
 
     // Check props for the third item (Project Gamma, id: '3')
@@ -111,6 +115,7 @@ describe("ProjectList", () => {
         project: mockProjects[2],
         onSelectProject: mockOnSelectProject,
         isActive: false,
+        onEdit: expect.any(Function),
       }),
       undefined
     );

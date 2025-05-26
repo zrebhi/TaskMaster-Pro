@@ -1,7 +1,13 @@
-import React from 'react';
-import ProjectListItem from './ProjectListItem';
+import React from "react";
+import ProjectListItem from "./ProjectListItem";
 
-const ProjectList = ({ projects, onSelectProject, activeProjectId, onDeleteProject, onEditProject }) => {
+const ProjectList = ({
+  projects,
+  onSelectProject,
+  activeProjectId,
+  onDeleteProject,
+  onEditProject,
+}) => {
   if (!projects || projects.length === 0) {
     return <p>No projects yet. Create one to get started!</p>;
   }
@@ -14,8 +20,8 @@ const ProjectList = ({ projects, onSelectProject, activeProjectId, onDeleteProje
           project={project}
           onSelectProject={onSelectProject}
           isActive={project.id === activeProjectId}
-          // onDelete={onDeleteProject} // Pass down delete handler
-          // onEdit={onEditProject}     // Pass down edit handler
+          onEdit={onEditProject}
+          // onDelete={onDeleteProject}
         />
       ))}
     </ul>
