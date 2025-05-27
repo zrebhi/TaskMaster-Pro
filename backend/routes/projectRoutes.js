@@ -15,4 +15,7 @@ router.get('/', projectController.getProjects);
 // PUT /api/projects/:projectId - Update a specific project
 router.put('/:projectId', projectController.updateProject);
 
+// DELETE /api/projects/:projectId - Delete a specific project
+router.delete('/:projectId', projectController.deleteProject);
+
 module.exports = router;

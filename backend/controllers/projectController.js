@@ -150,3 +150,45 @@ exports.updateProject = async (req, res) => {
     res.status(500).json({ message: "Server error while updating project." });
   }
 };
+
+/**
+ * @desc    Delete an existing project (and its tasks via CASCADE)
+ * @route   DELETE /api/projects/:projectId
+ * @access  Private
+ * @param   {object} req - Express request object
+ * @param   {object} res - Express response object
+ * @returns {Promise<void>}
+ */
+exports.deleteProject = async (req, res) => {
+  try {
+    const projectId = req.params.projectId;
+    const userId = req.user.userId; // From 'protect' middleware
+
+    // 1. Find the project by ID
+    const project = await Project.findByPk(projectId);
+
+    if (!project) {
+      return res.status(404).json({ message: 'Project not found.' });
+    }
+
+    // 2. Authorization Check: Verify the project belongs to the authenticated user
+    if (project.user_id !== userId) {
+      return res.status(403).json({ message: 'User not authorized to delete this project.' });
+    }
+
+    // 3. Delete the project
+    // If ON DELETE CASCADE is set up correctly in the DB for tasks.project_id,
+    // associated tasks will be deleted automatically by the database.
+    await project.destroy();
+
+    // 4. Respond with success
+    // HTTP 204 No Content is often used for successful DELETE operations with no body
+    // Or HTTP 200 with a success message
+    res.status(200).json({ message: 'Project and associated tasks deleted successfully.' });
+    // res.status(204).send(); // Alternative for 204 No Content
+
+  } catch (error) {
+    console.error('Delete project error:', error);
+    res.status(500).json({ message: 'Server error while deleting project.' });
+  }
+};

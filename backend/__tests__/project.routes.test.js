@@ -316,4 +316,90 @@ describe("Project Routes - /api/projects", () => {
       expect(dbProject.user_id).toBe(global.testUser.id);
     });
   });
-});
+  });
+
+  describe("DELETE /api/projects/:projectId - Delete a project", () => {
+    let projectToDelete;
+
+    beforeEach(async () => {
+      // Create a project for the test user before each delete test
+      projectToDelete = await Project.create({
+        name: "Project to Delete",
+        user_id: global.testUser.id,
+      });
+      // TODO: Add tasks associated with this project for cascade delete testing
+      jest.clearAllMocks();
+    });
+
+    it("should return 401 if no token is provided", async () => {
+      const consoleErrorSpy = jest
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
+      const res = await request(app).delete(`/api/projects/${projectToDelete.id}`);
+      expect(res.statusCode).toEqual(401);
+      expect(res.body.message).toBe("Not authorized, no token");
+      consoleErrorSpy.mockRestore();
+    });
+
+    it("should return 401 if an invalid token is provided", async () => {
+      const consoleErrorSpy = jest
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
+      const res = await request(app)
+        .delete(`/api/projects/${projectToDelete.id}`)
+        .set("Authorization", "Bearer invalidtoken123");
+      expect(res.statusCode).toEqual(401);
+      expect(res.body.message).toBe("Not authorized, token failed");
+      consoleErrorSpy.mockRestore();
+    });
+
+    it("should return 404 if the project ID does not exist", async () => {
+      const nonExistentProjectId = uuidv4();
+      const res = await request(app)
+        .delete(`/api/projects/${nonExistentProjectId}`)
+        .set("Authorization", `Bearer ${global.testUserToken}`);
+      expect(res.statusCode).toEqual(404);
+      expect(res.body.message).toBe("Project not found.");
+    });
+
+    it("should return 403 if the user tries to delete a project they do not own", async () => {
+      // Create another user and their project
+      const otherUser = await User.create({
+        id: uuidv4(),
+        username: "otheruser_project_delete",
+        email: "otheruser_project_delete@example.com",
+        password_hash: "hashed_password_other_delete",
+      });
+      const otherUserProject = await Project.create({
+        name: "Other User's Project to Delete",
+        user_id: otherUser.id,
+      });
+
+      const res = await request(app)
+        .delete(`/api/projects/${otherUserProject.id}`)
+        .set("Authorization", `Bearer ${global.testUserToken}`); // Using testUser's token
+      expect(res.statusCode).toEqual(403);
+      expect(res.body.message).toBe(
+        "User not authorized to delete this project."
+      );
+
+      // Clean up other user and their project
+      await Project.destroy({ where: { id: otherUserProject.id } });
+      await User.destroy({ where: { id: otherUser.id } });
+    });
+
+    it("should delete a project successfully with a valid token and project ID", async () => {
+      const res = await request(app)
+        .delete(`/api/projects/${projectToDelete.id}`)
+        .set("Authorization", `Bearer ${global.testUserToken}`);
+
+      expect(res.statusCode).toEqual(200);
+      expect(res.body.message).toBe("Project and associated tasks deleted successfully.");
+
+      // Verify the project was actually deleted from the database
+      const dbProject = await Project.findByPk(projectToDelete.id);
+      expect(dbProject).toBeNull();
+
+      // TODO: Verify associated tasks are deleted (requires Task model and creating tasks in beforeEach)
+    });
+  });
