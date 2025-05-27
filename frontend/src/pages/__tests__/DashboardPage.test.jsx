@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { render, screen, waitFor, within, act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom";
 import DashboardPage from "../DashboardPage";
@@ -53,11 +53,34 @@ jest.mock("../../components/Projects/ProjectList", () => ({
     </div>
   ),
 }));
-jest.mock("../../components/Projects/EditProjectModal", () => ({
-  __esModule: true,
-  default: ({ isOpen, onClose, project, onProjectUpdated }) =>
-    isOpen ? <div>EditProjectModal Mock</div> : null,
-}));
+// More interactive mock for EditProjectModal
+const mockEditModalPassedProps = {
+  onClose: null,
+  onProjectUpdated: null,
+  project: null,
+};
+
+jest.mock("../../components/Projects/EditProjectModal", () => {
+  const ActualEditProjectModal = jest.requireActual("../../components/Projects/EditProjectModal");
+  return {
+    __esModule: true,
+    default: jest.fn(({ isOpen, onClose, project, onProjectUpdated }) => {
+      mockEditModalPassedProps.onClose = onClose;
+      mockEditModalPassedProps.onProjectUpdated = onProjectUpdated;
+      mockEditModalPassedProps.project = project;
+
+      if (!isOpen || !project) return null;
+      return (
+        <div data-testid="edit-project-modal-mock">
+          <span>EditProjectModal Mock for {project.name}</span>
+          {/* Provide ways for tests to simulate prop calls if needed,
+              though direct calls to mockEditModalPassedProps.onClose() etc. are easier */}
+        </div>
+      );
+    }),
+  };
+});
+
 jest.mock("../../components/Projects/DeleteProjectModal", () => ({
   __esModule: true,
   default: ({ isOpen, onClose, onConfirm, title, message, isLoading }) =>
@@ -103,6 +126,11 @@ describe("DashboardPage - Delete Project Logic", () => {
     mockProjectContext.fetchProjects.mockResolvedValue(undefined); // Default successful fetch
     // Reset deleteProject mock implementation for each test
     mockProjectContext.deleteProject.mockResolvedValue(undefined); // Default successful delete
+    // Clear EditProjectModal mock calls and captured props
+    require("../../components/Projects/EditProjectModal").default.mockClear();
+    mockEditModalPassedProps.onClose = null;
+    mockEditModalPassedProps.onProjectUpdated = null;
+    mockEditModalPassedProps.project = null;
   });
 
   const renderDashboard = (
@@ -285,5 +313,137 @@ describe("DashboardPage - Delete Project Logic", () => {
       ).not.toBeInTheDocument();
     });
     jest.restoreAllMocks(); // Restore console.error
+  });
+});
+
+describe("DashboardPage - Edit Project Logic", () => {
+  const mockProjects = [
+    { id: "project-1-id", name: "Project One", user_id: "user-id" },
+    { id: "project-2-id", name: "Project Two", user_id: "user-id" },
+  ];
+
+  const mockProjectContextValue = {
+    projects: mockProjects,
+    fetchProjects: jest.fn().mockResolvedValue(undefined),
+    addProject: jest.fn(),
+    updateProject: jest.fn(), // Mock for updateProject
+    deleteProject: jest.fn().mockResolvedValue(undefined),
+    isLoading: false,
+    error: null,
+  };
+
+  const mockAuthContextValue = {
+    isAuthenticated: true,
+    token: "fake-token",
+    logout: jest.fn(),
+  };
+
+  const renderDashboardWithEditContext = (
+    projectContextOverrides = {},
+    authContextOverrides = {}
+  ) => {
+    return render(
+      <AuthContext.Provider
+        value={{ ...mockAuthContextValue, ...authContextOverrides }}
+      >
+        <ProjectContext.Provider
+          value={{ ...mockProjectContextValue, ...projectContextOverrides }}
+        >
+          <DashboardPage />
+        </ProjectContext.Provider>
+      </AuthContext.Provider>
+    );
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockProjectContextValue.fetchProjects.mockResolvedValue(undefined);
+    mockProjectContextValue.updateProject.mockClear(); // Clear this specifically
+    // Clear EditProjectModal mock calls and captured props
+    require("../../components/Projects/EditProjectModal").default.mockClear();
+    mockEditModalPassedProps.onClose = null;
+    mockEditModalPassedProps.onProjectUpdated = null;
+    mockEditModalPassedProps.project = null;
+  });
+
+  it("should open EditProjectModal with correct project when edit button is clicked", async () => {
+    renderDashboardWithEditContext();
+    const projectToEdit = mockProjects[0]; // Project One
+
+    await screen.findByText("ProjectList Mock"); // Ensure ProjectList is rendered
+
+    const projectOneItem = screen.getByTestId(`project-item-${projectToEdit.id}`);
+    const editButton = within(projectOneItem).getByText("Edit", {
+      selector: "button",
+    });
+    await userEvent.click(editButton);
+
+    // Check if EditProjectModal mock is rendered (isOpen became true)
+    await waitFor(() => {
+      expect(screen.getByTestId("edit-project-modal-mock")).toBeInTheDocument();
+    });
+    
+    // Check that the mock was called with the correct project prop
+    expect(require("../../components/Projects/EditProjectModal").default).toHaveBeenCalled();
+    expect(mockEditModalPassedProps.project).toEqual(projectToEdit);
+    expect(screen.getByText(`EditProjectModal Mock for ${projectToEdit.name}`)).toBeInTheDocument();
+  });
+
+  it("should close EditProjectModal when its onClose prop is called", async () => {
+    renderDashboardWithEditContext();
+    const projectToEdit = mockProjects[0];
+
+    await screen.findByText("ProjectList Mock");
+    const projectOneItem = screen.getByTestId(`project-item-${projectToEdit.id}`);
+    const editButton = within(projectOneItem).getByText("Edit", { selector: "button" });
+    await userEvent.click(editButton);
+
+    // Modal should be open
+    await waitFor(() => {
+      expect(screen.getByTestId("edit-project-modal-mock")).toBeInTheDocument();
+      expect(mockEditModalPassedProps.onClose).toBeInstanceOf(Function);
+    });
+
+    // Simulate the modal calling its onClose prop
+    act(() => {
+      mockEditModalPassedProps.onClose();
+    });
+    
+
+    // Modal should now be closed
+    await waitFor(() => {
+      expect(screen.queryByTestId("edit-project-modal-mock")).not.toBeInTheDocument();
+    });
+  });
+
+  it("should call updateProject from context when EditProjectModal's onProjectUpdated prop is called", async () => {
+    renderDashboardWithEditContext();
+    const projectToEdit = mockProjects[0];
+    const updatedProjectData = { ...projectToEdit, name: "Updated Project One Name" };
+
+    await screen.findByText("ProjectList Mock");
+    const projectOneItem = screen.getByTestId(`project-item-${projectToEdit.id}`);
+    const editButton = within(projectOneItem).getByText("Edit", { selector: "button" });
+    await userEvent.click(editButton);
+
+    // Modal should be open
+    await waitFor(() => {
+      expect(screen.getByTestId("edit-project-modal-mock")).toBeInTheDocument();
+      expect(mockEditModalPassedProps.onProjectUpdated).toBeInstanceOf(Function);
+    });
+
+    // Simulate the modal calling its onProjectUpdated prop
+    act(() => {
+      mockEditModalPassedProps.onProjectUpdated(updatedProjectData);
+    });
+
+    // Check if updateProject from context was called
+    expect(mockProjectContextValue.updateProject).toHaveBeenCalledTimes(1);
+    expect(mockProjectContextValue.updateProject).toHaveBeenCalledWith(updatedProjectData);
+
+    // Optionally, modal might close after update, depending on DashboardPage logic
+    // The current DashboardPage's handleProjectUpdated just calls updateProject.
+    // It doesn't explicitly close the modal here, EditProjectModal itself calls onClose.
+    // So, we don't assert modal closure here unless onProjectUpdated also triggers onClose.
   });
 });

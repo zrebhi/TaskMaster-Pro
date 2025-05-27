@@ -1,4 +1,4 @@
-import React, { useContext } from "react";
+import { useContext } from "react";
 import { render, screen, waitFor, act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom";
@@ -6,8 +6,15 @@ import ProjectContext, { ProjectProvider } from "../ProjectContext";
 import AuthContext from "../AuthContext";
 import axios from "axios";
 
-// Mock axios
 jest.mock("axios");
+
+jest.mock("react-hot-toast", () => ({
+  __esModule: true,
+  default: {
+    success: jest.fn(),
+    error: jest.fn(),
+  },
+}));
 
 // Helper component to consume ProjectContext for testing
 const TestProjectConsumer = () => {
@@ -27,6 +34,7 @@ const TestProjectConsumer = () => {
     fetchProjects,
     addProject,
     updateProject,
+    deleteProject,
   } = context;
 
   return (
@@ -50,6 +58,14 @@ const TestProjectConsumer = () => {
         onClick={() => updateProject({ id: "p1", name: "Updated Project P1" })}
       >
         Update Project P1
+      </button>
+      <button
+        data-testid="delete-project-button"
+        // This button assumes a project with id "p1" exists for deletion.
+        // Test setup will ensure this.
+        onClick={() => deleteProject("p1")}
+      >
+        Delete Project P1
       </button>
     </div>
   );
@@ -76,8 +92,6 @@ describe("ProjectContext", () => {
     jest.clearAllMocks(); // Clear all mocks before each test
     user = userEvent.setup();
     mockAuthLogout = jest.fn(); // Reset mock logout for each test
-    // Reset axios mocks if they are set globally or in describe blocks
-    axios.get.mockReset();
   });
 
   test("initial state is correct", () => {
@@ -180,7 +194,9 @@ describe("ProjectContext", () => {
       axios.get.mockRejectedValue(new Error(errorMessage));
 
       // Suppress console.error for this specific test
-      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+      const consoleErrorSpy = jest
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
 
       renderTestComponent(authValue);
 
@@ -208,7 +224,9 @@ describe("ProjectContext", () => {
         response: { data: { message: apiErrorMessage } },
       });
 
-      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+      const consoleErrorSpy = jest
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
 
       renderTestComponent(authValue);
 
@@ -232,7 +250,9 @@ describe("ProjectContext", () => {
         response: { status: 401, data: { message: unauthorizedMessage } },
       });
 
-      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+      const consoleErrorSpy = jest
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
 
       renderTestComponent(authValue);
 
@@ -259,26 +279,47 @@ describe("ProjectContext", () => {
       token: "test-token",
       logout: mockAuthLogout,
     };
-    renderTestComponent(authValue);
+    // To test addProject thoroughly, we need access to the context instance
+    let projectContextInstance;
+    // useContext can only be called inside a function so we need this.
+    const ContextGrabber = () => {
+      projectContextInstance = useContext(ProjectContext);
+      return null;
+    };
 
-    const projectToAdd = { id: "newP1", name: "New Project Alpha" };
+    render(
+      <AuthContext.Provider value={authValue}>
+        <ProjectProvider>
+          <TestProjectConsumer />
+          <ContextGrabber />
+        </ProjectProvider>
+      </AuthContext.Provider>
+    );
+
+    const projectAlpha = { id: "newP1", name: "New Project Alpha" }; // From button
+    const projectBeta = { id: "newP2", name: "New Project Beta" };
 
     // Initial state should be empty
     expect(screen.getByTestId("projects")).toHaveTextContent(
       JSON.stringify([])
     );
 
+    // Add first project via button
     await user.click(screen.getByTestId("add-project-button"));
 
     expect(screen.getByTestId("projects")).toHaveTextContent(
-      JSON.stringify([projectToAdd])
+      JSON.stringify([projectAlpha])
     );
 
-    // Add another one to see it prepends
-    const anotherProject = { id: "newP1", name: "New Project Alpha" }; // Same data from button
-    // The following act block was empty and has been removed.
-    // If we want to test adding a *distinct* second project, we'd need another button or direct context call.
-    // The current test verifies one addition.
+    // Add a second, different project directly via context to test prepending
+    act(() => {
+      projectContextInstance.addProject(projectBeta);
+    });
+
+    // projectBeta should be prepended to projectAlpha
+    expect(screen.getByTestId("projects")).toHaveTextContent(
+      JSON.stringify([projectBeta, projectAlpha])
+    );
   });
 
   test("updateProject updates an existing project in the list", async () => {
@@ -342,5 +383,257 @@ describe("ProjectContext", () => {
     expect(screen.getByTestId("projects")).toHaveTextContent(
       JSON.stringify([updatedProjectData])
     );
+  });
+
+  describe("deleteProject", () => {
+    const projectIdToDelete = "p1";
+    const initialProjectList = [
+      { id: "p1", name: "Project One to Delete" },
+      { id: "p2", name: "Project Two to Keep" },
+    ];
+
+    test("successfully deletes a project", async () => {
+      const authValue = {
+        isAuthenticated: true,
+        token: "test-token",
+        logout: mockAuthLogout,
+      };
+      // Make axios.delete resolve asynchronously with a more noticeable delay
+      axios.delete.mockImplementation(
+        () => new Promise(resolve => setTimeout(() => resolve({ data: { message: "Project deleted" } }), 20))
+      );
+
+      let projectContextInstance;
+      const ContextGrabber = () => {
+        projectContextInstance = useContext(ProjectContext);
+        return null;
+      };
+      render(
+        <AuthContext.Provider value={authValue}>
+          <ProjectProvider>
+            <TestProjectConsumer />
+            <ContextGrabber />
+          </ProjectProvider>
+        </AuthContext.Provider>
+      );
+
+      act(() => {
+        projectContextInstance.addProject({
+          id: "p2",
+          name: "Project Two to Keep",
+        });
+        projectContextInstance.addProject({
+          id: "p1",
+          name: "Project One to Delete",
+        });
+      });
+      await waitFor(() => {
+        expect(screen.getByTestId("projects")).toHaveTextContent(
+          JSON.stringify([
+            { id: "p1", name: "Project One to Delete" },
+            { id: "p2", name: "Project Two to Keep" },
+          ])
+        );
+      });
+
+      await user.click(screen.getByTestId("delete-project-button")); // This button deletes "p1"
+
+      await waitFor(() =>
+        expect(screen.getByTestId("isLoading")).toHaveTextContent("true")
+      );
+
+      await waitFor(() => {
+        expect(axios.delete).toHaveBeenCalledWith(
+          `/api/projects/${projectIdToDelete}`,
+          {
+            headers: { Authorization: `Bearer ${authValue.token}` },
+          }
+        );
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId("isLoading")).toHaveTextContent("false");
+        // p1 should be removed, p2 remains. addProject prepends, so p2 was added first, then p1.
+        // After deleting p1, only p2 should remain.
+        expect(screen.getByTestId("projects")).toHaveTextContent(
+          JSON.stringify([{ id: "p2", name: "Project Two to Keep" }])
+        );
+        expect(screen.getByTestId("error")).toHaveTextContent("null");
+      });
+    });
+
+    test("sets error on generic API failure", async () => {
+      const authValue = {
+        isAuthenticated: true,
+        token: "test-token",
+        logout: mockAuthLogout,
+      };
+      const errorMessage = "Network Error";
+      axios.delete.mockRejectedValue(new Error(errorMessage));
+      const consoleErrorSpy = jest
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
+
+      let projectContextInstance;
+      const ContextGrabber = () => {
+        projectContextInstance = useContext(ProjectContext);
+        return null;
+      };
+      render(
+        <AuthContext.Provider value={authValue}>
+          <ProjectProvider>
+            <TestProjectConsumer />
+            <ContextGrabber />
+          </ProjectProvider>
+        </AuthContext.Provider>
+      );
+      act(() => {
+        projectContextInstance.addProject({
+          id: "p2",
+          name: "Project Two to Keep",
+        });
+        projectContextInstance.addProject({
+          id: "p1",
+          name: "Project One to Delete",
+        });
+      });
+      await waitFor(() => {
+        expect(screen.getByTestId("projects")).toHaveTextContent(
+          JSON.stringify([
+            { id: "p1", name: "Project One to Delete" },
+            { id: "p2", name: "Project Two to Keep" },
+          ])
+        );
+      });
+
+      await user.click(screen.getByTestId("delete-project-button"));
+
+      await waitFor(() => {
+        expect(screen.getByTestId("isLoading")).toHaveTextContent("false");
+        expect(screen.getByTestId("error")).toHaveTextContent(errorMessage);
+        // Projects list should remain unchanged on error
+        expect(screen.getByTestId("projects")).toHaveTextContent(
+          JSON.stringify([
+            { id: "p1", name: "Project One to Delete" },
+            { id: "p2", name: "Project Two to Keep" },
+          ])
+        );
+      });
+      consoleErrorSpy.mockRestore();
+    });
+
+    test("sets error from err.response.data.message", async () => {
+      const authValue = {
+        isAuthenticated: true,
+        token: "test-token",
+        logout: mockAuthLogout,
+      };
+      const apiErrorMessage = "API specific delete error";
+      axios.delete.mockRejectedValue({
+        response: { data: { message: apiErrorMessage } },
+      });
+      const consoleErrorSpy = jest
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
+
+      let projectContextInstance;
+      const ContextGrabber = () => {
+        projectContextInstance = useContext(ProjectContext);
+        return null;
+      };
+      render(
+        <AuthContext.Provider value={authValue}>
+          <ProjectProvider>
+            <TestProjectConsumer />
+            <ContextGrabber />
+          </ProjectProvider>
+        </AuthContext.Provider>
+      );
+      act(() => {
+        projectContextInstance.addProject({
+          id: "p2",
+          name: "Project Two to Keep",
+        });
+        projectContextInstance.addProject({
+          id: "p1",
+          name: "Project One to Delete",
+        });
+      });
+      await waitFor(() => {
+        expect(screen.getByTestId("projects")).toHaveTextContent(
+          JSON.stringify([
+            { id: "p1", name: "Project One to Delete" },
+            { id: "p2", name: "Project Two to Keep" },
+          ])
+        );
+      });
+
+      await user.click(screen.getByTestId("delete-project-button"));
+
+      await waitFor(() => {
+        expect(screen.getByTestId("isLoading")).toHaveTextContent("false");
+        expect(screen.getByTestId("error")).toHaveTextContent(apiErrorMessage);
+      });
+      consoleErrorSpy.mockRestore();
+    });
+
+    test("calls auth logout and sets error on 401 error", async () => {
+      const authValue = {
+        isAuthenticated: true,
+        token: "test-token",
+        logout: mockAuthLogout,
+      };
+      const unauthorizedMessage = "Session expired";
+      axios.delete.mockRejectedValue({
+        response: { status: 401, data: { message: unauthorizedMessage } },
+      });
+      const consoleErrorSpy = jest
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
+
+      let projectContextInstance;
+      const ContextGrabber = () => {
+        projectContextInstance = useContext(ProjectContext);
+        return null;
+      };
+      render(
+        <AuthContext.Provider value={authValue}>
+          <ProjectProvider>
+            <TestProjectConsumer />
+            <ContextGrabber />
+          </ProjectProvider>
+        </AuthContext.Provider>
+      );
+      act(() => {
+        projectContextInstance.addProject({
+          id: "p2",
+          name: "Project Two to Keep",
+        });
+        projectContextInstance.addProject({
+          id: "p1",
+          name: "Project One to Delete",
+        });
+      });
+      await waitFor(() => {
+        expect(screen.getByTestId("projects")).toHaveTextContent(
+          JSON.stringify([
+            { id: "p1", name: "Project One to Delete" },
+            { id: "p2", name: "Project Two to Keep" },
+          ])
+        );
+      });
+
+      await user.click(screen.getByTestId("delete-project-button"));
+
+      await waitFor(() => {
+        expect(screen.getByTestId("isLoading")).toHaveTextContent("false");
+        expect(screen.getByTestId("error")).toHaveTextContent(
+          unauthorizedMessage
+        );
+        expect(mockAuthLogout).toHaveBeenCalledTimes(1);
+        // expect(toast.error).toHaveBeenCalledWith(`Failed to delete project: ${unauthorizedMessage}. Please log in again.`); // Removed toast assertion
+      });
+      consoleErrorSpy.mockRestore();
+    });
   });
 });

@@ -15,7 +15,6 @@ describe('DeleteProjectModal', () => {
   };
 
   beforeEach(() => {
-    // Clear mock calls before each test
     jest.clearAllMocks();
   });
 
@@ -64,6 +63,4 @@ describe('DeleteProjectModal', () => {
     await userEvent.click(overlay);
     expect(defaultProps.onClose).not.toHaveBeenCalled();
   });
-
-  // Add data-testid="modal-overlay" to the overlay div in DeleteProjectModal.jsx
 });
