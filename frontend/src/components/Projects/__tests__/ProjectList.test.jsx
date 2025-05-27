@@ -6,14 +6,16 @@ import ProjectListItem from "../ProjectListItem";
 
 // Mock ProjectListItem to isolate ProjectList logic
 jest.mock("../ProjectListItem", () => {
-  return jest.fn(({ project, onSelectProject, isActive, onEdit }) => (
+  return jest.fn(({ project, onSelectProject, isActive, onEditClick, onDeleteClick }) => (
     <li
       data-testid={`project-item-${project.id}`}
-      onClick={() => onSelectProject(project.id)}
       style={{ backgroundColor: isActive ? "activebg" : "inactivebg" }}
     >
-      {project.name}
-      {onEdit && <button onClick={() => onEdit(project)}>Edit</button>}
+      <span onClick={() => onSelectProject(project.id)}>{project.name}</span>
+      <div>
+        {onEditClick && <button onClick={() => onEditClick(project)}>Edit</button>}
+        {onDeleteClick && <button onClick={() => onDeleteClick(project.id, project.name)}>Delete</button>}
+      </div>
     </li>
   ));
 });
@@ -79,6 +81,7 @@ describe("ProjectList", () => {
         onSelectProject={mockOnSelectProject}
         activeProjectId={activeId}
         onEditProject={jest.fn()}
+        onDeleteProject={jest.fn()}
       />
     );
 
@@ -91,7 +94,8 @@ describe("ProjectList", () => {
         project: mockProjects[0],
         onSelectProject: mockOnSelectProject,
         isActive: false,
-        onEdit: expect.any(Function),
+        onEditClick: expect.any(Function),
+        onDeleteClick: expect.any(Function),
       }),
       undefined
     );
@@ -103,7 +107,8 @@ describe("ProjectList", () => {
         project: mockProjects[1],
         onSelectProject: mockOnSelectProject,
         isActive: true,
-        onEdit: expect.any(Function),
+        onEditClick: expect.any(Function),
+        onDeleteClick: expect.any(Function),
       }),
       undefined
     );
@@ -115,7 +120,8 @@ describe("ProjectList", () => {
         project: mockProjects[2],
         onSelectProject: mockOnSelectProject,
         isActive: false,
-        onEdit: expect.any(Function),
+        onEditClick: expect.any(Function),
+        onDeleteClick: expect.any(Function),
       }),
       undefined
     );

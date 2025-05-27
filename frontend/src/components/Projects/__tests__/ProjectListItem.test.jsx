@@ -22,7 +22,8 @@ describe("ProjectListItem", () => {
         project={mockProject}
         onSelectProject={mockOnSelectProject}
         isActive={false}
-        onEdit={jest.fn()}
+        onEditClick={jest.fn()}
+        onDeleteClick={jest.fn()}
       />
     );
     expect(screen.getByText(mockProject.name)).toBeInTheDocument();
@@ -35,10 +36,11 @@ describe("ProjectListItem", () => {
         project={mockProject}
         onSelectProject={mockOnSelectProject}
         isActive={false}
-        onEdit={jest.fn()}
+        onEditClick={jest.fn()}
+        onDeleteClick={jest.fn()}
       />
     );
-    const listItem = screen.getByText(mockProject.name);
+    const listItem = screen.getByText(mockProject.name); // Assuming the project name is the clickable area
     await user.click(listItem);
     expect(mockOnSelectProject).toHaveBeenCalledTimes(1);
     expect(mockOnSelectProject).toHaveBeenCalledWith(mockProject.id);
@@ -50,7 +52,8 @@ describe("ProjectListItem", () => {
         project={mockProject}
         onSelectProject={mockOnSelectProject}
         isActive={true}
-        onEdit={jest.fn()}
+        onEditClick={jest.fn()}
+        onDeleteClick={jest.fn()}
       />
     );
     const listItem = screen.getByText(mockProject.name).closest('li');
@@ -63,7 +66,8 @@ describe("ProjectListItem", () => {
         project={mockProject}
         onSelectProject={mockOnSelectProject}
         isActive={false}
-        onEdit={jest.fn()}
+        onEditClick={jest.fn()}
+        onDeleteClick={jest.fn()}
       />
     );
     const listItem = screen.getByText(mockProject.name).closest('li');
@@ -76,7 +80,8 @@ describe("ProjectListItem", () => {
         project={mockProject}
         onSelectProject={mockOnSelectProject}
         isActive={false}
-        onEdit={jest.fn()}
+        onEditClick={jest.fn()}
+        onDeleteClick={jest.fn()}
       />
     );
     expect(screen.getByRole("button", { name: /edit/i })).toBeInTheDocument();
@@ -90,7 +95,8 @@ describe("ProjectListItem", () => {
         project={mockProject}
         onSelectProject={mockOnSelectProject}
         isActive={false}
-        onEdit={mockOnEdit}
+        onEditClick={mockOnEdit}
+        onDeleteClick={jest.fn()}
       />
     );
     const editButton = screen.getByRole("button", { name: /edit/i });
@@ -98,6 +104,39 @@ describe("ProjectListItem", () => {
 
     expect(mockOnEdit).toHaveBeenCalledTimes(1);
     expect(mockOnEdit).toHaveBeenCalledWith(mockProject);
+    expect(mockOnSelectProject).not.toHaveBeenCalled();
+  });
+
+  it("renders the Delete button", () => {
+    render(
+      <ProjectListItem
+        project={mockProject}
+        onSelectProject={mockOnSelectProject}
+        isActive={false}
+        onEditClick={jest.fn()}
+        onDeleteClick={jest.fn()}
+      />
+    );
+    expect(screen.getByRole("button", { name: /delete/i })).toBeInTheDocument();
+  });
+
+  it("calls onDeleteClick with project id and name when the Delete button is clicked", async () => {
+    const user = userEvent.setup();
+    const mockOnDelete = jest.fn();
+    render(
+      <ProjectListItem
+        project={mockProject}
+        onSelectProject={mockOnSelectProject}
+        isActive={false}
+        onEditClick={jest.fn()}
+        onDeleteClick={mockOnDelete}
+      />
+    );
+    const deleteButton = screen.getByRole("button", { name: /delete/i });
+    await user.click(deleteButton);
+
+    expect(mockOnDelete).toHaveBeenCalledTimes(1);
+    expect(mockOnDelete).toHaveBeenCalledWith(mockProject.id, mockProject.name);
     expect(mockOnSelectProject).not.toHaveBeenCalled();
   });
 });
