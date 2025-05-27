@@ -1,6 +1,14 @@
 import React from 'react';
 
-const ProjectListItem = ({ project, onSelectProject, isActive, onEdit }) => {
+/**
+ * @param {object} props - Component props
+ * @param {object} props.project - The project object to display
+ * @param {function} props.onSelectProject - Handler for selecting the project
+ * @param {boolean} props.isActive - Whether the project is currently active
+ * @param {function} props.onEditClick - Handler for clicking the edit button
+ * @param {function} props.onDeleteClick - Handler for clicking the delete button
+ */
+const ProjectListItem = ({ project, onSelectProject, isActive, onEditClick, onDeleteClick }) => {
   return (
     <li
       style={{
@@ -16,16 +24,20 @@ const ProjectListItem = ({ project, onSelectProject, isActive, onEdit }) => {
       <span onClick={() => onSelectProject(project.id)} style={{ cursor: 'pointer', flexGrow: 1 }}>
         {project.name}
       </span>
-      <button
-        onClick={(e) => {
-          e.stopPropagation(); // Prevent li's onClick from firing
-          onEdit(project);
-        }}
-        style={{ marginLeft: '10px' }}
-      >
-        Edit
-      </button>
-      {/* Delete button will be added in F-PROJ-04 */}
+      <div> {/* Wrapper for buttons */}
+        <button
+          onClick={(e) => { e.stopPropagation(); onEditClick(project); }}
+          style={{ marginLeft: '10px' }}
+        >
+          Edit
+        </button>
+        <button
+          onClick={(e) => { e.stopPropagation(); onDeleteClick(project.id, project.name); }} // Pass ID and name for confirmation
+          style={{ marginLeft: '5px', color: 'red' }}
+        >
+          Delete
+        </button>
+      </div>
     </li>
   );
 };

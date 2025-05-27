@@ -20,8 +20,8 @@ const ProjectList = ({
           project={project}
           onSelectProject={onSelectProject}
           isActive={project.id === activeProjectId}
-          onEdit={onEditProject}
-          // onDelete={onDeleteProject}
+          onEditClick={onEditProject}
+          onDeleteClick={onDeleteProject}
         />
       ))}
     </ul>

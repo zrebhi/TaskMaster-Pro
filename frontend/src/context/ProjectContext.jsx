@@ -49,6 +49,32 @@ export const ProjectProvider = ({ children }) => {
     );
   };
 
+/**
+ * Deletes a project by its ID.
+ * @param {string} projectId - The ID of the project to delete.
+ */
+  const deleteProject = async (projectId) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      await axios.delete(`/api/projects/${projectId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      // Update state by removing the deleted project
+      setProjects(prevProjects => prevProjects.filter(p => p.id !== projectId));
+    } catch (err) {
+      console.error('Error deleting project:', err);
+      setError(err.response?.data?.message || err.message || 'Failed to delete project.');
+       if (err.response?.status === 401) {
+          logout(); // Log out if token is invalid/expired
+       }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
 
   return (
     <ProjectContext.Provider
@@ -59,6 +85,7 @@ export const ProjectProvider = ({ children }) => {
         fetchProjects,
         addProject,
         updateProject,
+        deleteProject, // Add deleteProject to the context value
       }}
     >
       {children}
