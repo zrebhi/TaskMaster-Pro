@@ -1,23 +1,32 @@
-import React, { useState, useEffect, useContext } from 'react';
-import axios from 'axios';
-import AuthContext from '../../context/AuthContext';
+import { useState, useEffect, useContext } from "react";
+import ProjectContext from "../../context/ProjectContext";
 
-// Basic Modal Styling (can be improved with a dedicated modal library or CSS)
 const modalStyle = {
-  position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-  backgroundColor: 'white', padding: '20px', zIndex: 1000,
-  border: '1px solid #ccc', borderRadius: '8px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+  position: "fixed",
+  top: "50%",
+  left: "50%",
+  transform: "translate(-50%, -50%)",
+  backgroundColor: "white",
+  padding: "20px",
+  zIndex: 1000,
+  border: "1px solid #ccc",
+  borderRadius: "8px",
+  boxShadow: "0 4px 6px rgba(0,0,0,0.1)",
 };
 const overlayStyle = {
-  position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-  backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 999
+  position: "fixed",
+  top: 0,
+  left: 0,
+  right: 0,
+  bottom: 0,
+  backgroundColor: "rgba(0,0,0,0.5)",
+  zIndex: 999,
 };
 
-const EditProjectModal = ({ project, isOpen, onClose, onProjectUpdated }) => {
-  const [projectName, setProjectName] = useState('');
-  const [error, setError] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const { token, logout } = useContext(AuthContext);
+const EditProjectModal = ({ project, isOpen, onClose }) => {
+  const [projectName, setProjectName] = useState("");
+  const [error, setError] = useState("");
+  const { updateProject, isLoading } = useContext(ProjectContext);
 
   useEffect(() => {
     // Pre-fill form when project data changes (e.g., when modal opens for a specific project)
@@ -30,43 +39,19 @@ const EditProjectModal = ({ project, isOpen, onClose, onProjectUpdated }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
+    setError("");
     if (!projectName.trim()) {
-      setError('Project name cannot be empty.');
+      setError("Project name cannot be empty.");
       return;
     }
-    setIsLoading(true);
 
     try {
-      const response = await axios.put(`/api/projects/${project.id}`,
-        { name: projectName.trim() },
-        {
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-          },
-        }
-      );
+      await updateProject(project.id, { name: projectName.trim() });
 
-      onProjectUpdated(response.data.project);
       onClose();
-
     } catch (err) {
-      console.error('Update project error:', err);
-      if (err.response && err.response.data && err.response.data.message) {
-        setError(err.response.data.message);
-      } else if (err.message) {
-        setError(err.message);
-      } else {
-        setError('Failed to update project.');
-      }
-
-      if (err.response && err.response.status === 401) {
-        logout();
-      }
-
-    } finally {
-      setIsLoading(false);
+      console.error("Update project error:", err);
+      setError("Failed to update project. Please try again.");
     }
   };
 
@@ -76,7 +61,7 @@ const EditProjectModal = ({ project, isOpen, onClose, onProjectUpdated }) => {
       <div style={modalStyle}>
         <h3>Edit Project</h3>
         <form onSubmit={handleSubmit}>
-          {error && <p style={{ color: 'red' }}>{error}</p>}
+          {error && <p style={{ color: "red" }}>{error}</p>}
           <div>
             <label htmlFor="editProjectName">Project Name:</label>
             <input
@@ -88,11 +73,16 @@ const EditProjectModal = ({ project, isOpen, onClose, onProjectUpdated }) => {
               disabled={isLoading}
             />
           </div>
-          <div style={{ marginTop: '10px' }}>
+          <div style={{ marginTop: "10px" }}>
             <button type="submit" disabled={isLoading}>
-              {isLoading ? 'Saving...' : 'Save Changes'}
+              {isLoading ? "Saving..." : "Save Changes"}
             </button>
-            <button type="button" onClick={onClose} style={{ marginLeft: '10px' }} disabled={isLoading}>
+            <button
+              type="button"
+              onClick={onClose}
+              style={{ marginLeft: "10px" }}
+              disabled={isLoading}
+            >
               Cancel
             </button>
           </div>

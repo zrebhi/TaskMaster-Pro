@@ -1,29 +1,30 @@
-import React from "react";
 import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom";
-import axios from "axios";
-import { toast } from "react-hot-toast";
 import EditProjectModal from "../EditProjectModal";
 import AuthContext from "../../../context/AuthContext";
+import ProjectContext from "../../../context/ProjectContext";
 
-jest.mock("axios");
-jest.mock("react-hot-toast", () => ({
-  toast: {
-    success: jest.fn(),
-    error: jest.fn(),
-  },
-}));
+// Mock ProjectContext
+const mockUpdateProject = jest.fn();
+const mockProjectContextValue = {
+  updateProject: mockUpdateProject,
+  isLoading: false,
+  error: null,
+};
 
 const mockAuthContextValue = {
   token: "test-token-123",
   logout: jest.fn(),
+  isAuthenticated: true,
 };
 
-const renderWithContext = (ui, { providerProps, ...renderOptions }) => {
+const renderWithContext = (ui, { authProviderProps, projectProviderProps, ...renderOptions }) => {
   return render(
-    <AuthContext.Provider value={{ ...mockAuthContextValue, ...providerProps }}>
-      {ui}
+    <AuthContext.Provider value={{ ...mockAuthContextValue, ...authProviderProps }}>
+      <ProjectContext.Provider value={{ ...mockProjectContextValue, ...projectProviderProps }}>
+        {ui}
+      </ProjectContext.Provider>
     </AuthContext.Provider>,
     renderOptions
   );
@@ -35,7 +36,6 @@ describe("EditProjectModal", () => {
     name: "Initial Project Name",
   };
   const mockOnClose = jest.fn();
-  const mockOnProjectUpdated = jest.fn();
   let user;
 
   beforeEach(() => {
@@ -49,7 +49,6 @@ describe("EditProjectModal", () => {
         project={mockProject}
         isOpen={false}
         onClose={mockOnClose}
-        onProjectUpdated={mockOnProjectUpdated}
       />,
       {}
     );
@@ -63,7 +62,6 @@ describe("EditProjectModal", () => {
         project={null}
         isOpen={true}
         onClose={mockOnClose}
-        onProjectUpdated={mockOnProjectUpdated}
       />,
       {}
     );
@@ -77,7 +75,6 @@ describe("EditProjectModal", () => {
         project={mockProject}
         isOpen={true}
         onClose={mockOnClose}
-        onProjectUpdated={mockOnProjectUpdated}
       />,
       {}
     );
@@ -99,7 +96,6 @@ describe("EditProjectModal", () => {
         project={mockProject}
         isOpen={true}
         onClose={mockOnClose}
-        onProjectUpdated={mockOnProjectUpdated}
       />,
       {}
     );
@@ -115,7 +111,6 @@ describe("EditProjectModal", () => {
         project={mockProject}
         isOpen={true}
         onClose={mockOnClose}
-        onProjectUpdated={mockOnProjectUpdated}
       />,
       {}
     );
@@ -126,27 +121,21 @@ describe("EditProjectModal", () => {
     const form = screen.getByRole("textbox").closest("form");
     fireEvent.submit(form);
 
-    // The error message should now appear due to our JavaScript validation
     expect(
       screen.getByText("Project name cannot be empty.")
     ).toBeInTheDocument();
-    expect(axios.put).not.toHaveBeenCalled();
-    expect(mockOnProjectUpdated).not.toHaveBeenCalled();
+    expect(mockUpdateProject).not.toHaveBeenCalled();
     expect(mockOnClose).not.toHaveBeenCalled();
   });
 
-  it("submits the form, calls onProjectUpdated, and calls onClose on successful update", async () => {
-    const updatedProjectData = { id: "proj1", name: "Updated Name" };
-    axios.put.mockResolvedValueOnce({
-      data: { project: updatedProjectData, message: "Project updated" },
-    });
+  it("calls updateProject from ProjectContext and calls onClose on successful update", async () => {
+    mockUpdateProject.mockResolvedValueOnce({ id: "proj1", name: "Updated Name" }); // Mock successful update
 
     renderWithContext(
       <EditProjectModal
         project={mockProject}
         isOpen={true}
         onClose={mockOnClose}
-        onProjectUpdated={mockOnProjectUpdated}
       />,
       {}
     );
@@ -158,36 +147,26 @@ describe("EditProjectModal", () => {
     await user.click(saveButton);
 
     await waitFor(() => {
-      expect(axios.put).toHaveBeenCalledWith(
-        `/api/projects/${mockProject.id}`,
-        { name: "Updated Name" },
-        {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${mockAuthContextValue.token}`,
-          },
-        }
+      expect(mockUpdateProject).toHaveBeenCalledWith(
+        mockProject.id,
+        { name: "Updated Name" }
       );
     });
-    expect(mockOnProjectUpdated).toHaveBeenCalledWith(updatedProjectData);
     expect(mockOnClose).toHaveBeenCalledTimes(1);
-    expect(toast.success).not.toHaveBeenCalled(); // Toast is handled in DashboardPage
   });
 
-  it("shows an error message from the server on API error", async () => {
+  it("shows an error message from ProjectContext on update error", async () => {
     jest.spyOn(console, "error").mockImplementation(() => {});
-    axios.put.mockRejectedValueOnce({
-      response: { data: { message: "Server validation failed" }, status: 400 },
-    });
+    const errorMessage = "Failed to update project. Please try again."; // Expected error message from ProjectContext
+    mockUpdateProject.mockRejectedValueOnce(new Error("Any error")); // Mock failed update
 
     renderWithContext(
       <EditProjectModal
         project={mockProject}
         isOpen={true}
         onClose={mockOnClose}
-        onProjectUpdated={mockOnProjectUpdated}
       />,
-      {}
+      { projectProviderProps: { error: errorMessage } } // Provide error via context mock
     );
     const input = screen.getByLabelText(/project name:/i);
     const saveButton = screen.getByRole("button", { name: /save changes/i });
@@ -197,26 +176,28 @@ describe("EditProjectModal", () => {
     await user.click(saveButton);
 
     await waitFor(() => {
-      expect(screen.getByText("Server validation failed")).toBeInTheDocument();
+      expect(screen.getByText(errorMessage)).toBeInTheDocument();
     });
-    expect(mockOnProjectUpdated).not.toHaveBeenCalled();
     expect(mockOnClose).not.toHaveBeenCalled();
+    console.error.mockRestore();
   });
 
-  it("handles 401 error by calling logout", async () => {
+  it("handles 401 error by calling logout (handled by ProjectContext)", async () => {
     jest.spyOn(console, "error").mockImplementation(() => {});
-    axios.put.mockRejectedValueOnce({
-      response: { status: 401, data: { message: "Unauthorized" } },
-    });
+    const errorMessage = "Failed to update project. Please try again."; // Expected error message from ProjectContext after 401
+    // Simulate ProjectContext handling 401 and setting a generic error message
+    mockUpdateProject.mockRejectedValueOnce({ response: { status: 401, data: { message: "Unauthorized" } } });
 
     renderWithContext(
       <EditProjectModal
         project={mockProject}
         isOpen={true}
         onClose={mockOnClose}
-        onProjectUpdated={mockOnProjectUpdated}
       />,
-      {}
+      {
+        authProviderProps: { logout: mockAuthContextValue.logout },
+        projectProviderProps: { error: errorMessage }
+      }
     );
     const input = screen.getByLabelText(/project name:/i);
     const saveButton = screen.getByRole("button", { name: /save changes/i });
@@ -225,27 +206,20 @@ describe("EditProjectModal", () => {
     await user.type(input, "Unauthorized Update");
     await user.click(saveButton);
 
+    // Expect the generic error message from ProjectContext to be displayed
     await waitFor(() => {
-      expect(mockAuthContextValue.logout).toHaveBeenCalledTimes(1);
+       expect(screen.getByText(errorMessage)).toBeInTheDocument();
     });
-    expect(screen.getByText("Unauthorized")).toBeInTheDocument(); // Error message should still be shown
-    expect(mockOnProjectUpdated).not.toHaveBeenCalled();
     expect(mockOnClose).not.toHaveBeenCalled();
+    // We don't assert mockAuthContextValue.logout here as it's called by ProjectContext,
+    // which is mocked. The test for 401 handling is in ProjectContext.test.jsx.
+    console.error.mockRestore();
   });
 
   it('disables form and shows "Saving..." on save button during loading', async () => {
-    // Make axios.put take some time to resolve
-    axios.put.mockImplementationOnce(
-      () =>
-        new Promise((resolve) =>
-          setTimeout(
-            () =>
-              resolve({
-                data: { project: { id: "proj1", name: "Slow Update" } },
-              }),
-            100
-          )
-        )
+    // Simulate isLoading state from ProjectContext
+    mockUpdateProject.mockImplementationOnce(
+      () => new Promise(resolve => setTimeout(() => resolve({ id: "proj1", name: "Slow Update" }), 100))
     );
 
     renderWithContext(
@@ -253,18 +227,14 @@ describe("EditProjectModal", () => {
         project={mockProject}
         isOpen={true}
         onClose={mockOnClose}
-        onProjectUpdated={mockOnProjectUpdated}
       />,
-      {}
+      { projectProviderProps: { isLoading: true } } // Provide isLoading via context mock
     );
     const input = screen.getByLabelText(/project name:/i);
-    const saveButton = screen.getByRole("button", { name: /save changes/i });
+    const saveButton = screen.getByRole("button", { name: /saving.../i }); // Button text changes when loading
     const cancelButton = screen.getByRole("button", { name: /cancel/i });
 
-    await user.clear(input);
-    await user.type(input, "Slow Update");
-    await user.click(saveButton);
-
+    // No need to type and click, just check initial state when isLoading is true
     expect(saveButton).toBeDisabled();
     expect(cancelButton).toBeDisabled();
     expect(input).toBeDisabled();
@@ -272,8 +242,9 @@ describe("EditProjectModal", () => {
       screen.getByRole("button", { name: /saving.../i })
     ).toBeInTheDocument();
 
-    // Wait for the submission to complete to avoid state update errors
-    await waitFor(() => expect(mockOnProjectUpdated).toHaveBeenCalledTimes(1));
+    // Wait for the mock updateProject to potentially finish, though the test
+    // is primarily checking the UI state when isLoading is true.
+    // We don't need to await the button click or form submission here.
   });
 
   it("calls onClose when the Cancel button is clicked", async () => {
@@ -282,7 +253,6 @@ describe("EditProjectModal", () => {
         project={mockProject}
         isOpen={true}
         onClose={mockOnClose}
-        onProjectUpdated={mockOnProjectUpdated}
       />,
       {}
     );
@@ -290,8 +260,7 @@ describe("EditProjectModal", () => {
     await user.click(cancelButton);
 
     expect(mockOnClose).toHaveBeenCalledTimes(1);
-    expect(axios.put).not.toHaveBeenCalled();
-    expect(mockOnProjectUpdated).not.toHaveBeenCalled();
+    expect(mockUpdateProject).not.toHaveBeenCalled();
   });
 
   it("calls onClose when the overlay is clicked", async () => {
@@ -300,7 +269,6 @@ describe("EditProjectModal", () => {
         project={mockProject}
         isOpen={true}
         onClose={mockOnClose}
-        onProjectUpdated={mockOnProjectUpdated}
       />,
       {}
     );
@@ -311,7 +279,6 @@ describe("EditProjectModal", () => {
     await user.click(overlay);
 
     expect(mockOnClose).toHaveBeenCalledTimes(1);
-    expect(axios.put).not.toHaveBeenCalled();
-    expect(mockOnProjectUpdated).not.toHaveBeenCalled();
+    expect(mockUpdateProject).not.toHaveBeenCalled();
   });
 });

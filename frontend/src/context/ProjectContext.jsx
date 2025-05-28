@@ -1,6 +1,12 @@
-import React, { createContext, useState, useContext, useCallback } from "react"; // Import useCallback
-import axios from "axios";
+import { createContext, useState, useContext, useCallback } from "react";
 import AuthContext from "./AuthContext"; // To get the token
+import {
+  getAllProjects,
+  deleteProjectAPI,
+  createProjectAPI,
+  updateProjectAPI,
+} from "../services/projectApiService";
+import toast from "react-hot-toast";
 
 const ProjectContext = createContext(null);
 
@@ -11,9 +17,10 @@ export const ProjectProvider = ({ children }) => {
 
   const { token, isAuthenticated, logout } = useContext(AuthContext);
 
-  // Function to fetch projects (will be fully implemented for F-PROJ-02)
+  /**
+   * Fetches all projects for the authenticated user and updates the state.
+   */
   const fetchProjects = useCallback(async () => {
-    // Wrap with useCallback to avoid infinite loop
     if (!isAuthenticated || !token) {
       // Clear projects if not authenticated
       setProjects([]);
@@ -23,12 +30,8 @@ export const ProjectProvider = ({ children }) => {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await axios.get("/api/projects", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      setProjects(response.data.projects || response.data);
+      const fetchedProjects = await getAllProjects();
+      setProjects(fetchedProjects);
     } catch (err) {
       console.error("Error fetching projects:", err);
       setError(
@@ -44,43 +47,125 @@ export const ProjectProvider = ({ children }) => {
     }
   }, [token, isAuthenticated, logout]);
 
-  const addProject = (newProject) => {
-    setProjects((prevProjects) => [newProject, ...prevProjects]);
-  };
-
-  const updateProject = (updatedProject) => {
-    setProjects((prevProjects) =>
-      prevProjects.map((p) => (p.id === updatedProject.id ? updatedProject : p))
-    );
-  };
+  /**
+   * Creates a new project via the API and updates the state.
+   * @param {object} projectData - The data for the new project (e.g., { name: string }).
+   * @returns {Promise<object>} A promise that resolves with the created project data.
+   * @throws {Error} If the API call fails.
+   */
+  const addProject = useCallback(
+    async (projectData) => {
+      if (!token) {
+        setError("Authentication required to add project.");
+        throw new Error("Authentication required to add project.");
+      }
+      setIsLoading(true);
+      setError(null);
+      try {
+        const newProjectResponse = await createProjectAPI(projectData, token);
+        // Handle both { project: ... } and direct project object return structures
+        const newProject = newProjectResponse.project || newProjectResponse;
+        setProjects((prevProjects) => [newProject, ...prevProjects]);
+        toast.success("Project created successfully!");
+        return newProject;
+      } catch (err) {
+        console.error(
+          "Error creating project:",
+          err.response?.data || err.message
+        );
+        const errorMessage =
+          err.response?.data?.message ||
+          err.message ||
+          "Failed to create project.";
+        setError(errorMessage);
+        toast.error(errorMessage);
+        if (err.response?.status === 401) logout();
+        throw err;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [token, logout]
+  );
 
   /**
-   * Deletes a project by its ID.
+   * Updates an existing project via the API and updates the state.
+   * @param {string} projectId - The ID of the project to update.
+   * @param {object} projectData - The updated data for the project (e.g., { name: string }).
+   * @returns {Promise<object>} A promise that resolves with the updated project data.
+   * @throws {Error} If the API call fails.
+   */
+  const updateProject = useCallback(
+    async (projectId, projectData) => {
+      if (!token) {
+        setError("Authentication required to update project.");
+        throw new Error("Authentication required to update project.");
+      }
+      setIsLoading(true);
+      setError(null);
+      try {
+        const updatedProjectResponse = await updateProjectAPI(
+          projectId,
+          projectData,
+          token
+        );
+        // Handle both { project: ... } and direct project object return structures
+        const updatedProject =
+          updatedProjectResponse.project || updatedProjectResponse;
+        setProjects((prevProjects) =>
+          prevProjects.map((p) =>
+            p.id === updatedProject.id ? updatedProject : p
+          )
+        );
+        toast.success("Project updated successfully!");
+        return updatedProject;
+      } catch (err) {
+        console.error(
+          "Error updating project:",
+          err.response?.data || err.message
+        );
+        const errorMessage =
+          err.response?.data?.message ||
+          err.message ||
+          "Failed to update project.";
+        setError(errorMessage);
+        toast.error(errorMessage);
+        if (err.response?.status === 401) logout();
+        throw err;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [token, logout]
+  );
+
+  /**
+   * Deletes a project by its ID using the API service and updates the state.
    * @param {string} projectId - The ID of the project to delete.
+   * @returns {Promise<void>} A promise that resolves when the deletion and state update are complete.
+   * @throws {Error} If the API call fails.
    */
   const deleteProject = async (projectId) => {
     setIsLoading(true);
     setError(null);
     try {
-      await axios.delete(`/api/projects/${projectId}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      // Update state by removing the deleted project
+      await deleteProjectAPI(projectId);
       setProjects((prevProjects) =>
         prevProjects.filter((p) => p.id !== projectId)
       );
+      toast.success("Project deleted successfully!");
     } catch (err) {
       console.error("Error deleting project:", err);
-      setError(
+      const errorMessage =
         err.response?.data?.message ||
-          err.message ||
-          "Failed to delete project."
-      );
+        err.message ||
+        "Failed to delete project.";
+      setError(errorMessage);
+      toast.error(errorMessage);
       if (err.response?.status === 401) {
-        logout(); // Log out if token is invalid/expired
+        logout();
       }
+      throw err;
     } finally {
       setIsLoading(false);
     }

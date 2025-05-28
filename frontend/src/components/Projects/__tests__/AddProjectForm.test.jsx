@@ -1,48 +1,37 @@
-import React from 'react';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
-import axios from 'axios';
-import { toast } from 'react-hot-toast';
-import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import AddProjectForm from '../AddProjectForm';
 import AuthContext from '../../../context/AuthContext';
+import ProjectContext from '../../../context/ProjectContext';
 
-// Mock dependencies
-jest.mock('axios');
-jest.mock('react-hot-toast', () => ({
-  toast: {
-    success: jest.fn(),
-    error: jest.fn(),
-  },
-}));
+// Mock ProjectContext
+const mockAddProject = jest.fn();
+const mockProjectContextValue = {
+  addProject: mockAddProject,
+  isLoading: false,
+  error: null,
+};
 
-// Mock useNavigate
-const mockNavigate = jest.fn();
-jest.mock('react-router-dom', () => ({
-  ...jest.requireActual('react-router-dom'),
-  useNavigate: () => mockNavigate,
-}));
-
-
+// Mock AuthContext (needed for renderWithContext, though AddProjectForm itself doesn't use it directly anymore)
 const mockAuthContextValue = {
   token: 'test-token-123',
   logout: jest.fn(),
+  isAuthenticated: true, // Assuming authenticated for most tests
 };
 
-const renderWithContext = (ui, { providerProps, ...renderOptions }) => {
+const renderWithContext = (ui, { authProviderProps, projectProviderProps, ...renderOptions }) => {
   return render(
-    <AuthContext.Provider value={{ ...mockAuthContextValue, ...providerProps }}>
-      <MemoryRouter> {/* MemoryRouter is needed if the component uses useNavigate or Link */}
-        {ui}
-      </MemoryRouter>
+    <AuthContext.Provider value={{ ...mockAuthContextValue, ...authProviderProps }}>
+      <ProjectContext.Provider value={{ ...mockProjectContextValue, ...projectProviderProps }}>
+          {ui}
+      </ProjectContext.Provider>
     </AuthContext.Provider>,
     renderOptions
   );
 };
 
 describe('AddProjectForm', () => {
-  const mockOnProjectAdded = jest.fn();
   let user;
 
   beforeEach(() => {
@@ -51,21 +40,21 @@ describe('AddProjectForm', () => {
   });
 
   it('renders the form correctly', () => {
-    renderWithContext(<AddProjectForm onProjectAdded={mockOnProjectAdded} />, {});
+    renderWithContext(<AddProjectForm />, {});
     expect(screen.getByRole('heading', { name: /create new project/i })).toBeInTheDocument();
     expect(screen.getByLabelText(/project name/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /create project/i })).toBeInTheDocument();
   });
 
   it('allows typing in the project name input', async () => {
-    renderWithContext(<AddProjectForm onProjectAdded={mockOnProjectAdded} />, {});
+    renderWithContext(<AddProjectForm />, {});
     const input = screen.getByLabelText(/project name/i);
     await user.type(input, 'New Awesome Project');
     expect(input).toHaveValue('New Awesome Project');
   });
 
   it('shows an error if project name is empty on submit', async () => {
-    renderWithContext(<AddProjectForm onProjectAdded={mockOnProjectAdded} />, {});
+    renderWithContext(<AddProjectForm />, {});
     // To test the JavaScript validation, we submit the form directly,
     // bypassing the browser's own 'required' attribute check on the input.
     const form = screen.getByRole('heading', { name: /create new project/i }).closest('form');
@@ -73,15 +62,14 @@ describe('AddProjectForm', () => {
 
     // The error message should now appear due to our JavaScript validation
     expect(screen.getByText('Project name cannot be empty.')).toBeInTheDocument();
-    expect(axios.post).not.toHaveBeenCalled();
-    expect(mockOnProjectAdded).not.toHaveBeenCalled();
+    expect(mockAddProject).not.toHaveBeenCalled(); // Should not call context if local validation fails
   });
 
-  it('submits the form, calls onProjectAdded, clears input, and shows success toast on successful creation', async () => {
-    const newProjectData = { id: 'proj1', name: 'My New Project' };
-    axios.post.mockResolvedValueOnce({ data: { project: newProjectData, message: 'Project created' } });
+  it('calls addProject from ProjectContext and clears input on successful submission', async () => {
+    // Simulate successful addProject call from context
+    mockAddProject.mockResolvedValueOnce({ id: 'proj1', name: 'My New Project' });
 
-    renderWithContext(<AddProjectForm onProjectAdded={mockOnProjectAdded} />, {});
+    renderWithContext(<AddProjectForm />, {});
     const input = screen.getByLabelText(/project name/i);
     const submitButton = screen.getByRole('button', { name: /create project/i });
 
@@ -89,24 +77,20 @@ describe('AddProjectForm', () => {
     await user.click(submitButton);
 
     await waitFor(() => {
-      expect(axios.post).toHaveBeenCalledWith(
-        '/api/projects',
-        { name: 'My New Project' },
-        { headers: { Authorization: `Bearer ${mockAuthContextValue.token}` } }
-      );
+      expect(mockAddProject).toHaveBeenCalledTimes(1);
+      expect(mockAddProject).toHaveBeenCalledWith({ name: 'My New Project' });
     });
-    expect(mockOnProjectAdded).toHaveBeenCalledWith(newProjectData);
     expect(input).toHaveValue(''); // Input should be cleared
-    expect(toast.success).toHaveBeenCalledWith('Project created successfully!');
+    // Toast success is handled by ProjectContext, not AddProjectForm
   });
 
-  it('shows an error message from the server on API error', async () => {
-    jest.spyOn(console, 'error').mockImplementation(() => {});
-    axios.post.mockRejectedValueOnce({
-      response: { data: { message: 'Server validation failed' }, status: 400 },
-    });
+  it('shows an error message from ProjectContext on submission error', async () => {
+    jest.spyOn(console, 'error').mockImplementation(() => {}); // Suppress expected console errors for this test
+    const errorMessage = 'Failed to create project. Please try again.'; // Updated to match rendered text
+    // Simulate addProject throwing an error
+    mockAddProject.mockRejectedValueOnce(new Error('API Error')); // The component displays the error from context state
 
-    renderWithContext(<AddProjectForm onProjectAdded={mockOnProjectAdded} />, {});
+    renderWithContext(<AddProjectForm />, { projectProviderProps: { error: errorMessage } }); // Provide error via context mock
     const input = screen.getByLabelText(/project name/i);
     const submitButton = screen.getByRole('button', { name: /create project/i });
 
@@ -114,64 +98,23 @@ describe('AddProjectForm', () => {
     await user.click(submitButton);
 
     await waitFor(() => {
-      expect(screen.getByText('Server validation failed')).toBeInTheDocument();
+      expect(mockAddProject).toHaveBeenCalledTimes(1);
+      expect(mockAddProject).toHaveBeenCalledWith({ name: 'Problematic Project' });
+      // Check for error message from context, using a more flexible matcher based on feedback
+      expect(screen.getByText(errorMessage)).toBeInTheDocument();
     });
-    expect(mockOnProjectAdded).not.toHaveBeenCalled();
-    expect(toast.success).not.toHaveBeenCalled();
   });
 
-  it('handles 401 error by calling logout and navigating to login', async () => {
-    jest.spyOn(console, 'error').mockImplementation(() => {});
-    axios.post.mockRejectedValueOnce({
-      response: { status: 401, data: { message: 'Unauthorized' } },
-    });
-
-    renderWithContext(<AddProjectForm onProjectAdded={mockOnProjectAdded} />, {});
+  it('disables form and shows "Creating..." on submit button when ProjectContext is loading', async () => {
+    // Simulate isLoading state from ProjectContext
+    renderWithContext(<AddProjectForm />, { projectProviderProps: { isLoading: true } });
     const input = screen.getByLabelText(/project name/i);
-    const submitButton = screen.getByRole('button', { name: /create project/i });
+    const submitButton = screen.getByRole('button', { name: /creating.../i }); // Button text changes when loading
 
-    await user.type(input, 'Unauthorized Project');
-    await user.click(submitButton);
-
-    await waitFor(() => {
-      expect(mockAuthContextValue.logout).toHaveBeenCalledTimes(1);
-    });
-    expect(mockNavigate).toHaveBeenCalledWith('/auth/login');
-    expect(screen.getByText('Unauthorized')).toBeInTheDocument(); // Error message should still be shown
-  });
-
-  it('disables form and shows "Creating..." on submit button during loading', async () => {
-    // Make axios.post take some time to resolve
-    axios.post.mockImplementationOnce(() => new Promise(resolve => setTimeout(() => resolve({ data: { project: {id: '1', name: 'Slow Project'} } }), 100)));
-
-    renderWithContext(<AddProjectForm onProjectAdded={mockOnProjectAdded} />, {});
-    const input = screen.getByLabelText(/project name/i);
-    const submitButton = screen.getByRole('button', { name: /create project/i });
-
-    await user.type(input, 'Slow Project');
-    await user.click(submitButton);
-
+    // No need to type and click, just check initial state when isLoading is true
     expect(submitButton).toBeDisabled();
     expect(input).toBeDisabled();
     expect(screen.getByRole('button', { name: /creating.../i })).toBeInTheDocument();
-
-    // Wait for the submission to complete to avoid state update errors
-    await waitFor(() => expect(toast.success).toHaveBeenCalledTimes(1));
+    expect(mockAddProject).not.toHaveBeenCalled(); // Should not call addProject just because it's loading
   });
-
-   it('shows an error if auth token is missing', async () => {
-    renderWithContext(<AddProjectForm onProjectAdded={mockOnProjectAdded} />, { providerProps: { token: null } });
-    const input = screen.getByLabelText(/project name/i);
-    const submitButton = screen.getByRole('button', { name: /create project/i });
-
-    await user.type(input, 'Project Without Token');
-    await user.click(submitButton);
-
-    await waitFor(() => {
-      expect(screen.getByText('Authentication error. Please log in again.')).toBeInTheDocument();
-    });
-    expect(mockNavigate).toHaveBeenCalledWith('/auth/login');
-    expect(axios.post).not.toHaveBeenCalled();
-  });
-
 });
