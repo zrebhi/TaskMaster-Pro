@@ -28,7 +28,7 @@ apiClient.interceptors.request.use(
 export const getAllProjects = async () => {
   try {
     const response = await apiClient.get("/projects");
-    return response.data.projects || response.data; // Axios wraps response in 'data'
+    return response.data?.projects || response.data; // Axios wraps response in 'data'
   } catch (error) {
     console.error(
       "Error fetching projects:",
@@ -47,7 +47,7 @@ export const getAllProjects = async () => {
 export const createProjectAPI = async (projectData) => {
   try {
     const response = await apiClient.post("/projects", projectData);
-    return response.data.project || response.data;
+    return response.data?.project || response.data;
   } catch (error) {
     console.error(
       "Error creating project:",
@@ -67,7 +67,7 @@ export const createProjectAPI = async (projectData) => {
 export const updateProjectAPI = async (projectId, projectData) => {
   try {
     const response = await apiClient.put(`/projects/${projectId}`, projectData);
-    return response.data.project || response.data;
+    return response.data?.project || response.data;
   } catch (error) {
     console.error(
       "Error updating project:",
