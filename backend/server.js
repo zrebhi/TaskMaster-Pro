@@ -22,7 +22,7 @@ app.use(cors(corsOptions));
 
 
 // Mount authentication routes
-app.use('/api/auth', require('./routes/auth'));
+app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/projects', require('./routes/projectRoutes'));
 
 
