@@ -35,6 +35,11 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: false, // Ensure user_id is always present
       onDelete: "CASCADE",
     });
+
+    // A Project can have many Tasks
+    Project.hasMany(models.Task, {
+      foreignKey: "project_id", // The foreign key in the Task model
+    });
   };
 
   return Project;
