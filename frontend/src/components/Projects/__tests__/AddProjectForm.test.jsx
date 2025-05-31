@@ -1,4 +1,6 @@
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import {
+  render, screen, waitFor, fireEvent,
+} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
 import AddProjectForm from '../AddProjectForm';
@@ -24,10 +26,10 @@ const renderWithContext = (ui, { authProviderProps, projectProviderProps, ...ren
   return render(
     <AuthContext.Provider value={{ ...mockAuthContextValue, ...authProviderProps }}>
       <ProjectContext.Provider value={{ ...mockProjectContextValue, ...projectProviderProps }}>
-          {ui}
+        {ui}
       </ProjectContext.Provider>
     </AuthContext.Provider>,
-    renderOptions
+    renderOptions,
   );
 };
 

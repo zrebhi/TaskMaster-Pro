@@ -1,4 +1,4 @@
-import React, { useContext } from "react";
+import { useContext } from "react";
 import { render, screen, act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom";
@@ -91,7 +91,9 @@ describe("AuthContext", () => {
     expect(sessionStorageMock.getItem).toHaveBeenCalledWith("token");
     expect(sessionStorageMock.getItem).toHaveBeenCalledWith("user");
     expect(screen.getByTestId("token")).toHaveTextContent(token);
-    expect(screen.getByTestId("user")).toHaveTextContent(JSON.stringify(userData));
+    expect(screen.getByTestId("user")).toHaveTextContent(
+      JSON.stringify(userData)
+    );
     expect(screen.getByTestId("isAuthenticated")).toHaveTextContent("true");
   });
 

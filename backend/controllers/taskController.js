@@ -1,4 +1,4 @@
-const { Task } = require("../models"); // Project model is no longer needed here directly for these ops
+const { Task } = require('../models'); // Project model is no longer needed here directly for these ops
 
 /**
  * @desc    Create a new task within a specific project
@@ -13,8 +13,8 @@ exports.createTask = async (req, res) => {
     const { title, description, due_date, priority } = req.body;
 
     // Input validation for task fields (Sequelize model validations will also run)
-    if (!title || title.trim() === "") {
-      return res.status(400).json({ message: "Task title is required." });
+    if (!title || title.trim() === '') {
+      return res.status(400).json({ message: 'Task title is required.' });
     }
     // (Other specific task field validations can remain if not covered by model)
 
@@ -26,18 +26,18 @@ exports.createTask = async (req, res) => {
       priority: priority || 2,
     });
 
-    res.status(201).json({
-      message: "Task created successfully.",
+    return res.status(201).json({
+      message: 'Task created successfully.',
       task: newTask,
     });
   } catch (error) {
-    console.error("Create task error:", error);
-    if (error.name === "SequelizeValidationError") {
+    console.error('Create task error:', error);
+    if (error.name === 'SequelizeValidationError') {
       return res
         .status(400)
-        .json({ message: error.errors.map((e) => e.message).join(", ") });
+        .json({ message: error.errors.map((e) => e.message).join(', ') });
     }
-    res.status(500).json({ message: "Server error while creating task." });
+    return res.status(500).json({ message: 'Server error while creating task.' });
   }
 };
 
@@ -53,16 +53,16 @@ exports.getTasksForProject = async (req, res) => {
 
     const tasks = await Task.findAll({
       where: { project_id: projectId },
-      order: [["createdAt", "ASC"]],
+      order: [['createdAt', 'ASC']],
     });
 
     res.status(200).json({
-      message: "Tasks fetched successfully.",
+      message: 'Tasks fetched successfully.',
       count: tasks.length,
       tasks: tasks,
     });
   } catch (error) {
-    console.error("Get tasks for project error:", error);
-    res.status(500).json({ message: "Server error while fetching tasks." });
+    console.error('Get tasks for project error:', error);
+    res.status(500).json({ message: 'Server error while fetching tasks.' });
   }
 };

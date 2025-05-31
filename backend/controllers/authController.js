@@ -1,6 +1,6 @@
-const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
-const { User } = require("../models");
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+const { User } = require('../models');
 
 /**
  * @desc    Register a new user
@@ -18,7 +18,7 @@ exports.registerUser = async (req, res) => {
     if (!username || !email || !password) {
       return res
         .status(400)
-        .json({ message: "Please provide username, email, and password." });
+        .json({ message: 'Please provide username, email, and password.' });
     }
 
     // Basic username validation (only letters, numbers, underscores, and hyphens)
@@ -26,7 +26,7 @@ exports.registerUser = async (req, res) => {
     if (!usernameRegex.test(username)) {
       return res.status(400).json({
         message:
-          "Username can only contain letters, numbers, underscores, and hyphens.",
+          'Username can only contain letters, numbers, underscores, and hyphens.',
       });
     }
 
@@ -34,14 +34,14 @@ exports.registerUser = async (req, res) => {
     if (password.length < 6) {
       return res
         .status(400)
-        .json({ message: "Password must be at least 6 characters long." });
+        .json({ message: 'Password must be at least 6 characters long.' });
     }
     // TODO: Add more robust password validation (complexity, etc.)
 
     // Sequelize model handles username and email format validation
 
     // Hash the password
-    const saltRounds = parseInt(process.env.BCRYPT_SALT_ROUNDS) || 12;
+    const saltRounds = parseInt(process.env.BCRYPT_SALT_ROUNDS, 10) || 12;
     const hashedPassword = await bcrypt.hash(password, saltRounds);
 
     // Create the new user in the database
@@ -53,34 +53,34 @@ exports.registerUser = async (req, res) => {
 
     // Respond with success (do not send back the password_hash)
     // TODO: Implement immediate login and return a JWT upon successful registration
-    res.status(201).json({
-      message: "User registered successfully.",
+    return res.status(201).json({
+      message: 'User registered successfully.',
       userId: newUser.id,
     });
   } catch (error) {
-    console.error("Registration error:", error);
-    if (error.name === "SequelizeValidationError") {
+    console.error('Registration error:', error);
+    if (error.name === 'SequelizeValidationError') {
       const friendlyMessages = error.errors.map((e) => {
         switch (e.validatorKey) {
-          case "isEmail":
-            return "Please provide a valid email address.";
-          case "len":
+          case 'isEmail':
+            return 'Please provide a valid email address.';
+          case 'len':
             return `Invalid length for ${e.path}`;
-          case "notEmpty":
+          case 'notEmpty':
             return `${e.path} cannot be empty`;
           default:
             return e.message;
         }
       });
-      return res.status(400).json({ message: friendlyMessages.join(" ") });
+      return res.status(400).json({ message: friendlyMessages.join(' ') });
     }
-    if (error.name === "SequelizeUniqueConstraintError") {
+    if (error.name === 'SequelizeUniqueConstraintError') {
       const messages = error.errors.map(
-        (e) => `${e.path} '${e.value}' already exists`
+        (e) => `${e.path} '${e.value}' already exists`,
       );
-      return res.status(409).json({ message: messages.join(", ") });
+      return res.status(409).json({ message: messages.join(', ') });
     }
-    res.status(500).json({ message: "Server error during registration." });
+    return res.status(500).json({ message: 'Server error during registration.' });
   }
 };
 
@@ -100,7 +100,7 @@ exports.loginUser = async (req, res) => {
     if ((!email && !username) || !password) {
       return res
         .status(400)
-        .json({ message: "Please provide email or username, and password." });
+        .json({ message: 'Please provide email or username, and password.' });
     }
 
     // Find the user by email or username
@@ -116,13 +116,13 @@ exports.loginUser = async (req, res) => {
     });
 
     if (!user) {
-      return res.status(401).json({ message: "Invalid credentials." });
+      return res.status(401).json({ message: 'Invalid credentials.' });
     }
 
     // Compare the provided password with the stored hashed password
     const isMatch = await bcrypt.compare(password, user.password_hash);
     if (!isMatch) {
-      return res.status(401).json({ message: "Invalid credentials." });
+      return res.status(401).json({ message: 'Invalid credentials.' });
     }
 
     // Generate JWT
@@ -134,18 +134,18 @@ exports.loginUser = async (req, res) => {
     // Sign the token using JWT secret and expiration from environment variables
     const jwtSecret = process.env.JWT_SECRET;
     if (!jwtSecret) {
-      console.error("🔥 JWT_SECRET environment variable not set!");
-      return res.status(500).json({ message: "Server configuration error." });
+      console.error('🔥 JWT_SECRET environment variable not set!');
+      return res.status(500).json({ message: 'Server configuration error.' });
     }
 
     const jwtExpiresIn = process.env.JWT_EXPIRES_IN;
     if (!jwtExpiresIn) {
-      console.error("🔥 JWT_EXPIRES_IN environment variable not set!");
-      return res.status(500).json({ message: "Server configuration error." });
+      console.error('🔥 JWT_EXPIRES_IN environment variable not set!');
+      return res.status(500).json({ message: 'Server configuration error.' });
     }
     const jwtOptions = {
       expiresIn: jwtExpiresIn,
-      algorithm: "HS256",
+      algorithm: 'HS256',
     };
     const token = jwt.sign(payload, jwtSecret, jwtOptions);
 
@@ -153,8 +153,8 @@ exports.loginUser = async (req, res) => {
     const decodedToken = jwt.decode(token); // Decode the token to get payload
     const expiresAt = decodedToken.exp; // Get expiration timestamp
 
-    res.status(200).json({
-      message: "Login successful.",
+    return res.status(200).json({
+      message: 'Login successful.',
       token: token,
       expiresAt: expiresAt, // Include expiration timestamp
       user: {
@@ -165,7 +165,7 @@ exports.loginUser = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Login error:", error);
-    res.status(500).json({ message: "Server error during login." });
+    console.error('Login error:', error);
+    return res.status(500).json({ message: 'Server error during login.' });
   }
 };

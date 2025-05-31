@@ -1,7 +1,6 @@
 const express = require('express');
 const dotenv = require('dotenv');
 const cors = require('cors');
-const sequelize = require('./config/database');
 
 // Load environment variables from .env file
 dotenv.config();
@@ -29,7 +28,7 @@ app.use('/api/projects', require('./routes/projectRoutes'));
 // Only start server if this file is run directly (not when imported for tests)
 if (require.main === module) {
   app.listen(port, () => {
-    console.log(`Server running on port ${port} in ${process.env.NODE_ENV || 'development'} mode`);
+    console.warn(`Server running on port ${port} in ${process.env.NODE_ENV || 'development'} mode`);
   });
 }
 

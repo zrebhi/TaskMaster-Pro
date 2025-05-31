@@ -1,4 +1,4 @@
-require("dotenv").config(); // Load environment variables from .env
+require('dotenv').config(); // Load environment variables from .env
 
 module.exports = {
   development: {
@@ -7,14 +7,14 @@ module.exports = {
     database: process.env.DB_NAME,
     host: process.env.DB_HOST,
     port: process.env.DB_PORT,
-    dialect: "postgres",
+    dialect: 'postgres',
     dialectOptions: {
       ssl: {
-        require: process.env.DB_SSL === "true",
-        rejectUnauthorized: process.env.DB_REJECT_UNAUTHORIZED !== "false",
+        require: process.env.DB_SSL === 'true',
+        rejectUnauthorized: process.env.DB_REJECT_UNAUTHORIZED !== 'false',
       },
     },
-    logging: process.env.SEQUELIZE_LOGGING === "true" ? console.log : false,
+    logging: process.env.SEQUELIZE_LOGGING === 'true' ? console.warn : false,
   },
   test: {
     username: process.env.DB_USER,
@@ -22,11 +22,11 @@ module.exports = {
     database: process.env.TEST_DB_NAME,
     host: process.env.DB_HOST,
     port: process.env.DB_PORT,
-    dialect: "postgres",
+    dialect: 'postgres',
     dialectOptions: {
       ssl: {
-        require: process.env.DB_SSL === "true",
-        rejectUnauthorized: process.env.DB_REJECT_UNAUTHORIZED !== "false",
+        require: process.env.DB_SSL === 'true',
+        rejectUnauthorized: process.env.DB_REJECT_UNAUTHORIZED !== 'false',
       },
     },
     logging: false, // Typically disable logging in tests
@@ -37,11 +37,11 @@ module.exports = {
     database: process.env.DB_NAME,
     host: process.env.DB_HOST,
     port: process.env.DB_PORT,
-    dialect: "postgres",
+    dialect: 'postgres',
     dialectOptions: {
       ssl: {
-        require: process.env.DB_SSL === "true", // Often required in production
-        rejectUnauthorized: process.env.DB_REJECT_UNAUTHORIZED !== "false", // Adjust based on provider
+        require: process.env.DB_SSL === 'true', // Often required in production
+        rejectUnauthorized: process.env.DB_REJECT_UNAUTHORIZED !== 'false', // Adjust based on provider
       },
     },
     logging: false, // Typically disable logging in production

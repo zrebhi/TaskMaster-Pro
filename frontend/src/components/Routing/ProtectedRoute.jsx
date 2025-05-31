@@ -1,4 +1,4 @@
-import React, { useContext } from 'react';
+import { useContext } from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
 import AuthContext from '../../context/AuthContext';
 
@@ -8,7 +8,7 @@ const ProtectedRoute = () => {
   if (auth === null) {
     // AuthContext might not be initialized yet, or there's an issue.
     // For simplicity, redirecting if context is not available.
-    console.warn("AuthContext not available in ProtectedRoute. Redirecting to login.");
+    console.warn('AuthContext not available in ProtectedRoute. Redirecting to login.');
     return <Navigate to="/auth" replace />;
   }
 

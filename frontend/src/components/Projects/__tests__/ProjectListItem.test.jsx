@@ -1,4 +1,3 @@
-import React from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom";
@@ -56,8 +55,8 @@ describe("ProjectListItem", () => {
         onDeleteClick={jest.fn()}
       />
     );
-    const listItem = screen.getByText(mockProject.name).closest('li');
-    expect(listItem).toHaveStyle('background-color: #e0e0e0');
+    const listItem = screen.getByText(mockProject.name).closest("li");
+    expect(listItem).toHaveStyle("background-color: #e0e0e0");
   });
 
   it("applies non-active styles when isActive is false", () => {
@@ -70,8 +69,8 @@ describe("ProjectListItem", () => {
         onDeleteClick={jest.fn()}
       />
     );
-    const listItem = screen.getByText(mockProject.name).closest('li');
-    expect(listItem).toHaveStyle('background-color: transparent');
+    const listItem = screen.getByText(mockProject.name).closest("li");
+    expect(listItem).toHaveStyle("background-color: transparent");
   });
 
   it("renders the Edit button", () => {

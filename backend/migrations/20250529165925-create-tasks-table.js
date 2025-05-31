@@ -58,8 +58,8 @@ module.exports = {
     await queryInterface.addIndex('tasks', ['project_id']);
   },
 
-  async down(queryInterface, Sequelize) {
+  async down(queryInterface) {
     await queryInterface.removeIndex('tasks', ['project_id']); // Remove index first
     await queryInterface.dropTable('tasks');
-  }
+  },
 };

@@ -1,12 +1,16 @@
-import { useState, useEffect, useCallback, useContext } from "react";
-import AddProjectForm from "../components/Projects/AddProjectForm";
-import ProjectList from "../components/Projects/ProjectList";
-import ProjectContext from "../context/ProjectContext";
-import EditProjectModal from "../components/Projects/EditProjectModal";
-import DeleteProjectModal from "../components/Projects/DeleteProjectModal.jsx";
+import {
+  useState, useEffect, useCallback, useContext,
+} from 'react';
+import AddProjectForm from '../components/Projects/AddProjectForm';
+import ProjectList from '../components/Projects/ProjectList';
+import ProjectContext from '../context/ProjectContext';
+import EditProjectModal from '../components/Projects/EditProjectModal';
+import DeleteProjectModal from '../components/Projects/DeleteProjectModal.jsx';
 
 const DashboardPage = () => {
-  const { projects, fetchProjects, deleteProject, isLoading, error } =
+  const {
+    projects, fetchProjects, deleteProject, isLoading, error,
+  } =
     useContext(ProjectContext);
   const [activeProjectId, setActiveProjectId] = useState(null);
 
@@ -47,7 +51,7 @@ const DashboardPage = () => {
   }, []);
 
   const handleConfirmDelete = useCallback(async () => {
-    if (!projectToDelete) return;
+    if (!projectToDelete) {return;}
     setIsDeleting(true);
 
     try {
@@ -59,7 +63,7 @@ const DashboardPage = () => {
       }
       handleCloseDeleteModal();
     } catch (err) {
-      console.error("Delete project error:", err);
+      console.error('Delete project error:', err);
       handleCloseDeleteModal();
     } finally {
       setIsDeleting(false);
@@ -68,20 +72,20 @@ const DashboardPage = () => {
 
   return (
     <>
-      <div style={{ display: "flex" }}>
+      <div style={{ display: 'flex' }}>
         <aside
           style={{
-            width: "30%",
-            padding: "10px",
-            borderRight: "1px solid #eee",
+            width: '30%',
+            padding: '10px',
+            borderRight: '1px solid #eee',
           }}
         >
           <h2>Dashboard</h2>
           <AddProjectForm />
           <hr />
           <h3>Your Projects</h3>
-          {isLoading && <p>Loading projects...</p>}
-          {error && <p style={{ color: "red" }}>{error}</p>}
+          {isLoading ? <p>Loading projects...</p> : null}
+          {error ? <p style={{ color: 'red' }}>{error}</p> : null}
           {!isLoading && !error && (
             <ProjectList
               projects={projects}
@@ -92,7 +96,7 @@ const DashboardPage = () => {
             />
           )}
         </aside>
-        <main style={{ width: "70%", padding: "10px" }}>
+        <main style={{ width: '70%', padding: '10px' }}>
           {activeProjectId ? (
             <h3>Tasks for Project ID: {activeProjectId}</h3>
           ) : (

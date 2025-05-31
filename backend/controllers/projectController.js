@@ -1,4 +1,4 @@
-const { Project } = require("../models"); // Still needed for createProject and getProjects
+const { Project } = require('../models'); // Still needed for createProject and getProjects
 
 /**
  * @desc    Create a new project
@@ -10,11 +10,11 @@ exports.createProject = async (req, res) => {
     const { name } = req.body;
     const userId = req.user.userId;
 
-    if (!name || name.trim() === "") {
-      return res.status(400).json({ message: "Project name is required." });
+    if (!name || name.trim() === '') {
+      return res.status(400).json({ message: 'Project name is required.' });
     }
     if (name.trim().length > 255) {
-      return res.status(400).json({ message: "Project name is too long." });
+      return res.status(400).json({ message: 'Project name is too long.' });
     }
 
     const newProject = await Project.create({
@@ -22,18 +22,18 @@ exports.createProject = async (req, res) => {
       user_id: userId,
     });
 
-    res.status(201).json({
-      message: "Project created successfully.",
+    return res.status(201).json({
+      message: 'Project created successfully.',
       project: newProject, // Send the full project object
     });
   } catch (error) {
-    console.error("Create project error:", error);
-    if (error.name === "SequelizeValidationError") {
+    console.error('Create project error:', error);
+    if (error.name === 'SequelizeValidationError') {
       return res
         .status(400)
-        .json({ message: error.errors.map((e) => e.message).join(", ") });
+        .json({ message: error.errors.map((e) => e.message).join(', ') });
     }
-    res.status(500).json({ message: "Server error while creating project." });
+    return res.status(500).json({ message: 'Server error while creating project.' });
   }
 };
 
@@ -48,17 +48,17 @@ exports.getProjects = async (req, res) => {
 
     const projects = await Project.findAll({
       where: { user_id: userId },
-      order: [["createdAt", "DESC"]],
+      order: [['createdAt', 'DESC']],
     });
 
     res.status(200).json({
-      message: "Projects fetched successfully.",
+      message: 'Projects fetched successfully.',
       count: projects.length,
       projects: projects,
     });
   } catch (error) {
-    console.error("Get projects error:", error);
-    res.status(500).json({ message: "Server error while fetching projects." });
+    console.error('Get projects error:', error);
+    res.status(500).json({ message: 'Server error while fetching projects.' });
   }
 };
 
@@ -74,29 +74,29 @@ exports.updateProject = async (req, res) => {
     const project = req.project;
 
     // Validate input for the name
-    if (!name || name.trim() === "") {
-      return res.status(400).json({ message: "Project name is required." });
+    if (!name || name.trim() === '') {
+      return res.status(400).json({ message: 'Project name is required.' });
     }
     if (name.trim().length > 255) {
-      return res.status(400).json({ message: "Project name is too long." });
+      return res.status(400).json({ message: 'Project name is too long.' });
     }
 
     // Update the project name and save changes
     project.name = name.trim();
     await project.save();
 
-    res.status(200).json({
-      message: "Project updated successfully.",
+    return res.status(200).json({
+      message: 'Project updated successfully.',
       project: project, // Send the updated project object
     });
   } catch (error) {
-    console.error("Update project error:", error);
-    if (error.name === "SequelizeValidationError") {
+    console.error('Update project error:', error);
+    if (error.name === 'SequelizeValidationError') {
       return res
         .status(400)
-        .json({ message: error.errors.map((e) => e.message).join(", ") });
+        .json({ message: error.errors.map((e) => e.message).join(', ') });
     }
-    res.status(500).json({ message: "Server error while updating project." });
+    return res.status(500).json({ message: 'Server error while updating project.' });
   }
 };
 

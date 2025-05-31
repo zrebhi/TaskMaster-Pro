@@ -1,6 +1,6 @@
 module.exports = (sequelize, DataTypes) => {
   const Project = sequelize.define(
-    "Project",
+    'Project',
     {
       id: {
         type: DataTypes.UUID,
@@ -23,22 +23,22 @@ module.exports = (sequelize, DataTypes) => {
       // createdAt and updatedAt are handled by Sequelize by default
     },
     {
-      tableName: "projects",
+      tableName: 'projects',
       timestamps: true,
-    }
+    },
   );
 
   Project.associate = (models) => {
     // Project belongs to a User
     Project.belongsTo(models.User, {
-      foreignKey: "user_id",
+      foreignKey: 'user_id',
       allowNull: false, // Ensure user_id is always present
-      onDelete: "CASCADE",
+      onDelete: 'CASCADE',
     });
 
     // A Project can have many Tasks
     Project.hasMany(models.Task, {
-      foreignKey: "project_id", // The foreign key in the Task model
+      foreignKey: 'project_id', // The foreign key in the Task model
     });
   };
 

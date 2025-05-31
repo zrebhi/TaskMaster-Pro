@@ -1,4 +1,3 @@
-import React from "react";
 import { render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import ProjectList from "../ProjectList";
@@ -6,18 +5,33 @@ import ProjectListItem from "../ProjectListItem";
 
 // Mock ProjectListItem to isolate ProjectList logic
 jest.mock("../ProjectListItem", () => {
-  return jest.fn(({ project, onSelectProject, isActive, onEditClick, onDeleteClick }) => (
-    <li
-      data-testid={`project-item-${project.id}`}
-      style={{ backgroundColor: isActive ? "activebg" : "inactivebg" }}
-    >
-      <span onClick={() => onSelectProject(project.id)}>{project.name}</span>
-      <div>
-        {onEditClick && <button onClick={() => onEditClick(project)}>Edit</button>}
-        {onDeleteClick && <button onClick={() => onDeleteClick(project.id, project.name)}>Delete</button>}
-      </div>
-    </li>
-  ));
+  return jest.fn(
+    ({ project, onSelectProject, isActive, onEditClick, onDeleteClick }) => (
+      <li
+        data-testid={`project-item-${project.id}`}
+        style={{ backgroundColor: isActive ? "activebg" : "inactivebg" }}
+      >
+        <span
+          onClick={() => onSelectProject(project.id)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              onSelectProject(project.id);
+            }
+          }}
+          role="button"
+          tabIndex={0}
+        >
+          {project.name}
+        </span>
+        <div>
+          {onEditClick ? <button onClick={() => onEditClick(project)}>Edit</button> : null}
+          {onDeleteClick ? <button onClick={() => onDeleteClick(project.id, project.name)}>
+              Delete
+            </button> : null}
+        </div>
+      </li>
+    )
+  );
 });
 
 describe("ProjectList", () => {

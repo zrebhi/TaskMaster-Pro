@@ -1,4 +1,3 @@
-import React from "react";
 import ProjectListItem from "./ProjectListItem";
 
 const ProjectList = ({

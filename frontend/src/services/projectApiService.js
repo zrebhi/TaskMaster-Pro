@@ -1,14 +1,14 @@
-import axios from "axios";
+import axios from 'axios';
 
 const apiClient = axios.create({
-  baseURL: "/api",
+  baseURL: '/api',
 });
 
 // Interceptor to automatically add the Authorization header
 apiClient.interceptors.request.use(
   (config) => {
     // Get token from sessionStorage
-    const token = sessionStorage.getItem("token");
+    const token = sessionStorage.getItem('token');
 
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -27,11 +27,11 @@ apiClient.interceptors.request.use(
  */
 export const getAllProjects = async () => {
   try {
-    const response = await apiClient.get("/projects");
+    const response = await apiClient.get('/projects');
     return response.data?.projects || response.data; // Axios wraps response in 'data'
   } catch (error) {
     console.error(
-      "Error fetching projects:",
+      'Error fetching projects:',
       error.response?.data?.message || error.message
     );
     throw error.response?.data || error;
@@ -46,11 +46,11 @@ export const getAllProjects = async () => {
  */
 export const createProjectAPI = async (projectData) => {
   try {
-    const response = await apiClient.post("/projects", projectData);
+    const response = await apiClient.post('/projects', projectData);
     return response.data?.project || response.data;
   } catch (error) {
     console.error(
-      "Error creating project:",
+      'Error creating project:',
       error.response?.data?.message || error.message
     );
     throw error.response?.data || error;
@@ -70,7 +70,7 @@ export const updateProjectAPI = async (projectId, projectData) => {
     return response.data?.project || response.data;
   } catch (error) {
     console.error(
-      "Error updating project:",
+      'Error updating project:',
       error.response?.data?.message || error.message
     );
     throw error.response?.data || error;
@@ -89,7 +89,7 @@ export const deleteProjectAPI = async (projectId) => {
     return response.data; // Or handle 204 No Content appropriately
   } catch (error) {
     console.error(
-      "Error deleting project:",
+      'Error deleting project:',
       error.response?.data?.message || error.message
     );
     throw error.response?.data || error;

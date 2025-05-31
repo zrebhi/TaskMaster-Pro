@@ -1,12 +1,14 @@
-import { createContext, useState, useContext, useCallback } from "react";
-import AuthContext from "./AuthContext"; // To get the token
+import {
+  createContext, useState, useContext, useCallback,
+} from 'react';
+import AuthContext from './AuthContext'; // To get the token
 import {
   getAllProjects,
   deleteProjectAPI,
   createProjectAPI,
   updateProjectAPI,
-} from "../services/projectApiService";
-import toast from "react-hot-toast";
+} from '../services/projectApiService';
+import toast from 'react-hot-toast';
 
 const ProjectContext = createContext(null);
 
@@ -33,11 +35,11 @@ export const ProjectProvider = ({ children }) => {
       const fetchedProjects = await getAllProjects();
       setProjects(fetchedProjects);
     } catch (err) {
-      console.error("Error fetching projects:", err);
+      console.error('Error fetching projects:', err);
       setError(
         err.response?.data?.message ||
           err.message ||
-          "Failed to fetch projects."
+          'Failed to fetch projects.',
       );
       if (err.response?.status === 401) {
         logout(); // Log out if token is invalid/expired
@@ -56,8 +58,8 @@ export const ProjectProvider = ({ children }) => {
   const addProject = useCallback(
     async (projectData) => {
       if (!token) {
-        setError("Authentication required to add project.");
-        throw new Error("Authentication required to add project.");
+        setError('Authentication required to add project.');
+        throw new Error('Authentication required to add project.');
       }
       setIsLoading(true);
       setError(null);
@@ -66,26 +68,26 @@ export const ProjectProvider = ({ children }) => {
         // Handle both { project: ... } and direct project object return structures
         const newProject = newProjectResponse.project || newProjectResponse;
         setProjects((prevProjects) => [newProject, ...prevProjects]);
-        toast.success("Project created successfully!");
+        toast.success('Project created successfully!');
         return newProject;
       } catch (err) {
         console.error(
-          "Error creating project:",
-          err.response?.data || err.message
+          'Error creating project:',
+          err.response?.data || err.message,
         );
         const errorMessage =
           err.response?.data?.message ||
           err.message ||
-          "Failed to create project.";
+          'Failed to create project.';
         setError(errorMessage);
         toast.error(errorMessage);
-        if (err.response?.status === 401) logout();
+        if (err.response?.status === 401) {logout();}
         throw err;
       } finally {
         setIsLoading(false);
       }
     },
-    [token, logout]
+    [token, logout],
   );
 
   /**
@@ -98,8 +100,8 @@ export const ProjectProvider = ({ children }) => {
   const updateProject = useCallback(
     async (projectId, projectData) => {
       if (!token) {
-        setError("Authentication required to update project.");
-        throw new Error("Authentication required to update project.");
+        setError('Authentication required to update project.');
+        throw new Error('Authentication required to update project.');
       }
       setIsLoading(true);
       setError(null);
@@ -107,36 +109,36 @@ export const ProjectProvider = ({ children }) => {
         const updatedProjectResponse = await updateProjectAPI(
           projectId,
           projectData,
-          token
+          token,
         );
         // Handle both { project: ... } and direct project object return structures
         const updatedProject =
           updatedProjectResponse.project || updatedProjectResponse;
         setProjects((prevProjects) =>
           prevProjects.map((p) =>
-            p.id === updatedProject.id ? updatedProject : p
-          )
+            p.id === updatedProject.id ? updatedProject : p,
+          ),
         );
-        toast.success("Project updated successfully!");
+        toast.success('Project updated successfully!');
         return updatedProject;
       } catch (err) {
         console.error(
-          "Error updating project:",
-          err.response?.data || err.message
+          'Error updating project:',
+          err.response?.data || err.message,
         );
         const errorMessage =
           err.response?.data?.message ||
           err.message ||
-          "Failed to update project.";
+          'Failed to update project.';
         setError(errorMessage);
         toast.error(errorMessage);
-        if (err.response?.status === 401) logout();
+        if (err.response?.status === 401) {logout();}
         throw err;
       } finally {
         setIsLoading(false);
       }
     },
-    [token, logout]
+    [token, logout],
   );
 
   /**
@@ -151,15 +153,15 @@ export const ProjectProvider = ({ children }) => {
     try {
       await deleteProjectAPI(projectId);
       setProjects((prevProjects) =>
-        prevProjects.filter((p) => p.id !== projectId)
+        prevProjects.filter((p) => p.id !== projectId),
       );
-      toast.success("Project deleted successfully!");
+      toast.success('Project deleted successfully!');
     } catch (err) {
-      console.error("Error deleting project:", err);
+      console.error('Error deleting project:', err);
       const errorMessage =
         err.response?.data?.message ||
         err.message ||
-        "Failed to delete project.";
+        'Failed to delete project.';
       setError(errorMessage);
       toast.error(errorMessage);
       if (err.response?.status === 401) {

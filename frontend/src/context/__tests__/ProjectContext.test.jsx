@@ -50,7 +50,7 @@ const TestProjectConsumer = () => {
         onClick={async () => {
           try {
             await addProject({ name: "New Project Alpha" });
-          } catch (e) {
+          } catch {
             // Error is handled by context and toast, ignore here for button click
           }
         }}
@@ -62,7 +62,7 @@ const TestProjectConsumer = () => {
         onClick={async () => {
           try {
             await updateProject("p1", { name: "Updated Project P1" });
-          } catch (e) {
+          } catch {
             // Error is handled by context and toast, ignore here for button click
           }
         }}
@@ -74,7 +74,7 @@ const TestProjectConsumer = () => {
         onClick={async () => {
           try {
             await deleteProject("p1");
-          } catch (e) {
+          } catch {
             // Error is handled by context and toast, ignore here for button click
           }
         }}
@@ -491,19 +491,22 @@ describe("ProjectContext", () => {
         .spyOn(console, "error")
         .mockImplementation(() => {});
 
+      let caughtError = null;
+
       // Attempt to update a non-existent project directly
       await act(async () => {
-        // Wrap direct context call in act
         try {
           await projectContextInstance.updateProject(
             nonExistentId,
             nonExistentUpdateData
           );
         } catch (e) {
-          // Expected to throw
-          expect(e.message).toBe(errorMessage);
+          caughtError = e; // Capture error to assert outside act's callback
         }
       });
+
+      // Assert that an error was caught and it has the correct message.
+      expect(caughtError && caughtError.message).toBe(errorMessage);
 
       await waitFor(() => {
         expect(screen.getByTestId("error")).toHaveTextContent(errorMessage);
@@ -512,6 +515,7 @@ describe("ProjectContext", () => {
           JSON.stringify([])
         ); // List remains empty
       });
+      expect.assertions(4); // 1 for rejection, 3 for state checks in waitFor
       consoleErrorSpy.mockRestore();
     });
   });

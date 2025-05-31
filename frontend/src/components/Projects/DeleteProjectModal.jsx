@@ -1,5 +1,3 @@
-import React from "react";
-
 // Basic Modal Styling (can be improved)
 const modalStyle = {
   position: "fixed",
@@ -42,11 +40,13 @@ const DeleteProjectModal = ({
   message,
   isLoading,
 }) => {
-  if (!isOpen) return null;
+  if (!isOpen) {
+    return null;
+  }
 
   const handleOverlayClick = (e) => {
-    e.stopPropagation();
-    if (!isLoading) {
+    // Close only if the click is directly on the overlay
+    if (e.target === e.currentTarget && !isLoading) {
       onClose();
     }
   };
@@ -55,11 +55,24 @@ const DeleteProjectModal = ({
     <>
       <div
         style={overlayStyle}
-        onClick={handleOverlayClick}
+        onClick={handleOverlayClick} // Uses the modified handler
+        onKeyDown={(e) => {
+          if (e.key === 'Escape' && !isLoading) {
+            onClose(); // Closes modal on Escape key press
+          }
+        }}
+        role="button" // Makes it interactive and announces its role
+        tabIndex={0}  // Makes it focusable via keyboard
         data-testid="modal-overlay"
+        aria-label="Close dialog" // Provides an accessible name
       />
-      <div style={modalStyle} onClick={(e) => e.stopPropagation()}>
-        <h3>{title || "Confirm Action"}</h3>
+      <div
+        style={modalStyle}
+        role="dialog" // Identifies the element as a dialog
+        aria-modal="true" // Indicates it's a modal dialog
+        aria-labelledby="delete-project-modal-title" // Associates with the title
+      >
+        <h3 id="delete-project-modal-title">{title || "Confirm Action"}</h3>
         <p>{message || "Are you sure?"}</p>
         <div style={{ marginTop: "20px", textAlign: "right" }}>
           <button

@@ -54,7 +54,7 @@ module.exports = (sequelize, DataTypes) => {
     {
       tableName: 'tasks',
       timestamps: true, // This enables createdAt and updatedAt columns
-      underscored: true, // Add this line to map camelCase to snake_case
+      underscored: true, // To map camelCase to snake_case
     },
   );
 

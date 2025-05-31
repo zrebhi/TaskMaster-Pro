@@ -1,4 +1,4 @@
-import React, { createContext, useState, useEffect } from "react";
+import { createContext, useState, useEffect } from "react";
 
 const AuthContext = createContext(null);
 
@@ -40,12 +40,18 @@ export const AuthProvider = ({ children }) => {
     setToken(null);
     setUser(null);
     setIsAuthenticated(false);
-    // TO-DO: Potentially call backend /api/auth/logout when implemented
+    // TODO: Potentially call backend /api/auth/logout when implemented
   };
 
   return (
     <AuthContext.Provider
-      value={{ token, user, isAuthenticated, login, logout }}
+      value={{
+        token,
+        user,
+        isAuthenticated,
+        login,
+        logout,
+      }}
     >
       {children}
     </AuthContext.Provider>

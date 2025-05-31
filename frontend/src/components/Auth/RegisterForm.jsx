@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
@@ -15,7 +15,9 @@ const RegisterForm = () => {
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
-  const { username, email, password, confirmPassword } = formData;
+  const {
+    username, email, password, confirmPassword,
+  } = formData;
 
   const onChange = (e) =>
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -32,8 +34,8 @@ const RegisterForm = () => {
       return;
     }
     if (password.length < 6) {
-        setError('Password must be at least 6 characters long.');
-        return;
+      setError('Password must be at least 6 characters long.');
+      return;
     }
 
     // Basic username validation (no special characters except underscore and hyphen)
@@ -52,8 +54,8 @@ const RegisterForm = () => {
 
       // Axios automatically parses JSON and throws an error for non-2xx responses
       setSuccessMessage(response.data.message || 'Registration successful! You can now log in.');
-      toast.success("Registration successful! You can now log in.");
-      navigate("/auth/login");
+      toast.success('Registration successful! You can now log in.');
+      navigate('/auth/login');
     } catch (err) {
       // Axios errors have a response property with status and data
       setError(err.response?.data?.message || err.message || 'Registration failed. Please try again.');
@@ -66,8 +68,8 @@ const RegisterForm = () => {
   return (
     <form onSubmit={onSubmit}>
       <h2>Register</h2>
-      {error && <p style={{ color: 'red' }}>{error}</p>}
-      {successMessage && <p style={{ color: 'green' }}>{successMessage}</p>}
+      {error ? <p style={{ color: 'red' }}>{error}</p> : null}
+      {successMessage ? <p style={{ color: 'green' }}>{successMessage}</p> : null}
       <div>
         <label htmlFor="username">Username:</label>
         <input
