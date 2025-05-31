@@ -3,14 +3,25 @@ const app = require('../server');
 const { User } = require('../models');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const databaseTestHelper = require('./helpers/database');
+const { createUser } = require('./helpers/testDataFactory');
 
 describe('Authentication Routes - /api/auth', () => {
-  // Setup for database connection and cleanup
-  // Database sync and global test user/token creation are handled in backend/jest.setup.js
-  // beforeAll hook.
+  let testUser;
 
-  // Clean up users after each test to ensure isolation
+  beforeEach(async () => {
+    // Create a test user for this test suite
+    const userData = await createUser({
+      username: 'globaltestuser',
+      email: 'globaltestuser@example.com',
+    });
+
+    testUser = userData.user;
+  });
+
   afterEach(async () => {
+    // Clean up test data manually
+    await databaseTestHelper.truncateAllTables();
     jest.clearAllMocks();
   });
 
@@ -29,7 +40,7 @@ describe('Authentication Routes - /api/auth', () => {
       expect(response.statusCode).toBe(201);
       expect(response.body).toHaveProperty(
         'message',
-        'User registered successfully.',
+        'User registered successfully.'
       );
       expect(response.body).toHaveProperty('userId');
       const userId = response.body.userId;
@@ -43,7 +54,7 @@ describe('Authentication Routes - /api/auth', () => {
       expect(dbUser.password_hash).not.toBe(userData.password);
       const isPasswordCorrect = await bcrypt.compare(
         userData.password,
-        dbUser.password_hash,
+        dbUser.password_hash
       );
       expect(isPasswordCorrect).toBe(true);
     });
@@ -58,7 +69,7 @@ describe('Authentication Routes - /api/auth', () => {
       expect(response.statusCode).toBe(400);
       expect(response.body).toHaveProperty(
         'message',
-        'Please provide username, email, and password.',
+        'Please provide username, email, and password.'
       );
     });
 
@@ -83,13 +94,13 @@ describe('Authentication Routes - /api/auth', () => {
 
       const response = await request(app).post('/api/auth/register').send({
         username: 'newuser',
-        email: global.testUser.email, // Same email as global user
+        email: testUser.email, // Same email as test user
         password: 'password456',
       });
 
       expect(response.statusCode).toBe(409);
       expect(response.body.message).toContain(
-        `email '${global.testUser.email}' already exists`,
+        `email '${testUser.email}' already exists`
       );
       consoleErrorSpy.mockRestore(); // Restore original console.error
     });
@@ -101,14 +112,14 @@ describe('Authentication Routes - /api/auth', () => {
         .mockImplementation(() => {});
 
       const response = await request(app).post('/api/auth/register').send({
-        username: global.testUser.username, // Same username as global user
+        username: testUser.username, // Same username as test user
         email: 'another_unique_email@example.com',
         password: 'password456',
       });
 
       expect(response.statusCode).toBe(409);
       expect(response.body.message).toContain(
-        `username '${global.testUser.username}' already exists`,
+        `username '${testUser.username}' already exists`
       );
       consoleErrorSpy.mockRestore(); // Restore original console.error
     });
@@ -117,7 +128,7 @@ describe('Authentication Routes - /api/auth', () => {
   describe('POST /api/auth/login', () => {
     test('should login a user successfully with valid email and password', async () => {
       const response = await request(app).post('/api/auth/login').send({
-        email: global.testUser.email,
+        email: testUser.email,
         password: 'testpassword123',
       });
 
@@ -125,25 +136,22 @@ describe('Authentication Routes - /api/auth', () => {
       expect(response.body).toHaveProperty('message', 'Login successful.');
       expect(response.body).toHaveProperty('token');
       expect(response.body).toHaveProperty('expiresAt');
-      expect(response.body.user).toHaveProperty('id', global.testUser.id);
-      expect(response.body.user).toHaveProperty(
-        'username',
-        global.testUser.username,
-      );
-      expect(response.body.user).toHaveProperty('email', global.testUser.email);
+      expect(response.body.user).toHaveProperty('id', testUser.id);
+      expect(response.body.user).toHaveProperty('username', testUser.username);
+      expect(response.body.user).toHaveProperty('email', testUser.email);
 
       // Verify the token contains the correct user information
       const decodedToken = jwt.verify(
         response.body.token,
-        process.env.JWT_SECRET,
+        process.env.JWT_SECRET
       );
-      expect(decodedToken.userId).toBe(global.testUser.id);
-      expect(decodedToken.username).toBe(global.testUser.username);
+      expect(decodedToken.userId).toBe(testUser.id);
+      expect(decodedToken.username).toBe(testUser.username);
     });
 
     test('should login a user successfully with valid username and password', async () => {
       const response = await request(app).post('/api/auth/login').send({
-        username: global.testUser.username,
+        username: testUser.username,
         password: 'testpassword123',
       });
 
@@ -175,7 +183,7 @@ describe('Authentication Routes - /api/auth', () => {
 
     test('should return 401 if password is incorrect', async () => {
       const response = await request(app).post('/api/auth/login').send({
-        email: global.testUser.email,
+        email: testUser.email,
         password: 'wrongpassword',
       });
 
@@ -185,14 +193,14 @@ describe('Authentication Routes - /api/auth', () => {
 
     test('should return 400 if required fields are missing (e.g. password)', async () => {
       const response = await request(app).post('/api/auth/login').send({
-        email: global.testUser.email,
+        email: testUser.email,
         // password missing
       });
 
       expect(response.statusCode).toBe(400);
       expect(response.body).toHaveProperty(
         'message',
-        'Please provide email or username, and password.',
+        'Please provide email or username, and password.'
       );
     });
   });
