@@ -1,6 +1,6 @@
 module.exports = (sequelize, DataTypes) => {
   const Task = sequelize.define(
-    "Task",
+    'Task',
     {
       id: {
         type: DataTypes.UUID,
@@ -16,11 +16,11 @@ module.exports = (sequelize, DataTypes) => {
         allowNull: false,
         validate: {
           notEmpty: {
-            msg: "Task title cannot be empty.",
+            msg: 'Task title cannot be empty.',
           },
           len: {
             args: [1, 255],
-            msg: "Task title must be between 1 and 255 characters.",
+            msg: 'Task title must be between 1 and 255 characters.',
           },
         },
       },
@@ -40,7 +40,7 @@ module.exports = (sequelize, DataTypes) => {
         validate: {
           isIn: {
             args: [[1, 2, 3]],
-            msg: "Priority must be 1 (Low), 2 (Medium), or 3 (High).",
+            msg: 'Priority must be 1 (Low), 2 (Medium), or 3 (High).',
           },
         },
       },
@@ -52,17 +52,18 @@ module.exports = (sequelize, DataTypes) => {
       // createdAt and updatedAt are handled by Sequelize by default (timestamps: true)
     },
     {
-      tableName: "tasks",
+      tableName: 'tasks',
       timestamps: true, // This enables createdAt and updatedAt columns
-    }
+      underscored: true, // Add this line to map camelCase to snake_case
+    },
   );
 
   Task.associate = (models) => {
     // A Task belongs to a Project
     Task.belongsTo(models.Project, {
-      foreignKey: "project_id", // This task's column that references Project
+      foreignKey: 'project_id', // This task's column that references Project
       allowNull: false,         // Ensure project_id is always present
-      onDelete: "CASCADE",      // If a Project is deleted, its Tasks are also deleted
+      onDelete: 'CASCADE',      // If a Project is deleted, its Tasks are also deleted
     });
   };
 

@@ -259,7 +259,7 @@ describe("Project Routes - /api/projects", () => {
         .send({ name: "Attempt to update other user's project" });
       expect(res.statusCode).toEqual(403);
       expect(res.body.message).toBe(
-        "User not authorized to update this project."
+        "User not authorized to access or modify this project's resources."
       );
 
       // Clean up other user and their project
@@ -380,7 +380,7 @@ describe("Project Routes - /api/projects", () => {
         .set("Authorization", `Bearer ${global.testUserToken}`); // Using testUser's token
       expect(res.statusCode).toEqual(403);
       expect(res.body.message).toBe(
-        "User not authorized to delete this project."
+        "User not authorized to access or modify this project's resources."
       );
 
       // Clean up other user and their project
