@@ -16,8 +16,10 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.STRING,
         allowNull: false,
         validate: {
-          len: [1, 255],
-          notEmpty: true,
+          len: {
+            args: [1, 255],
+            msg: 'Project name must be between 1 and 255 characters.',
+          },
         },
       },
       // createdAt and updatedAt are handled by Sequelize by default
@@ -25,7 +27,7 @@ module.exports = (sequelize, DataTypes) => {
     {
       tableName: 'projects',
       timestamps: true,
-    },
+    }
   );
 
   Project.associate = (models) => {

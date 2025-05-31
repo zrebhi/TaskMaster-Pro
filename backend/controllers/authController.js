@@ -76,11 +76,13 @@ exports.registerUser = async (req, res) => {
     }
     if (error.name === 'SequelizeUniqueConstraintError') {
       const messages = error.errors.map(
-        (e) => `${e.path} '${e.value}' already exists`,
+        (e) => `${e.path} '${e.value}' already exists.`
       );
-      return res.status(409).json({ message: messages.join(', ') });
+      return res.status(409).json({ message: messages.join(' ') });
     }
-    return res.status(500).json({ message: 'Server error during registration.' });
+    return res
+      .status(500)
+      .json({ message: 'Server error during registration.' });
   }
 };
 

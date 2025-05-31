@@ -7,7 +7,8 @@ module.exports = (sequelize, DataTypes) => {
         defaultValue: DataTypes.UUIDV4,
         primaryKey: true,
       },
-      project_id: { // Foreign key linking to Project model
+      project_id: {
+        // Foreign key linking to Project model
         type: DataTypes.UUID,
         allowNull: false,
       },
@@ -15,9 +16,6 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.STRING,
         allowNull: false,
         validate: {
-          notEmpty: {
-            msg: 'Task title cannot be empty.',
-          },
           len: {
             args: [1, 255],
             msg: 'Task title must be between 1 and 255 characters.',
@@ -55,15 +53,15 @@ module.exports = (sequelize, DataTypes) => {
       tableName: 'tasks',
       timestamps: true, // This enables createdAt and updatedAt columns
       underscored: true, // To map camelCase to snake_case
-    },
+    }
   );
 
   Task.associate = (models) => {
     // A Task belongs to a Project
     Task.belongsTo(models.Project, {
       foreignKey: 'project_id', // This task's column that references Project
-      allowNull: false,         // Ensure project_id is always present
-      onDelete: 'CASCADE',      // If a Project is deleted, its Tasks are also deleted
+      allowNull: false, // Ensure project_id is always present
+      onDelete: 'CASCADE', // If a Project is deleted, its Tasks are also deleted
     });
   };
 

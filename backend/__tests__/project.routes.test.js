@@ -60,7 +60,7 @@ describe('Project Routes - /api/projects', () => {
       const res = await request(app)
         .post('/api/projects')
         .set('Authorization', `Bearer ${testUserToken}`)
-        .send({}); // No name
+        .send({ description: 'Project without name' }); // Body exists but no name
       expect(res.statusCode).toEqual(400);
       expect(res.body.message).toBe('Project name is required.');
     });
@@ -72,6 +72,28 @@ describe('Project Routes - /api/projects', () => {
         .send({ name: '   ' }); // Empty name
       expect(res.statusCode).toEqual(400);
       expect(res.body.message).toBe('Project name is required.');
+    });
+
+    it('should return 400 when request body is empty', async () => {
+      const res = await request(app)
+        .post('/api/projects')
+        .set('Authorization', `Bearer ${testUserToken}`)
+        .send({}); // Empty body
+      expect(res.statusCode).toEqual(400);
+      expect(res.body.message).toBe(
+        'Request body is required. Please provide the necessary data.'
+      );
+    });
+
+    it('should return 400 when no request body is provided', async () => {
+      const res = await request(app)
+        .post('/api/projects')
+        .set('Authorization', `Bearer ${testUserToken}`);
+      // No .send() call - no body
+      expect(res.statusCode).toEqual(400);
+      expect(res.body.message).toBe(
+        'Request body is required. Please provide the necessary data.'
+      );
     });
 
     it('should return 400 if project name is too long (over 255 chars)', async () => {
@@ -278,7 +300,20 @@ describe('Project Routes - /api/projects', () => {
         .set('Authorization', `Bearer ${testUserToken}`)
         .send({}); // No name
       expect(res.statusCode).toEqual(400);
-      expect(res.body.message).toBe('Project name is required.');
+      expect(res.body.message).toBe(
+        'Request body is required. Please provide the necessary data.'
+      );
+    });
+
+    it('should return 400 when no request body is provided', async () => {
+      const res = await request(app)
+        .put(`/api/projects/${projectToUpdate.id}`)
+        .set('Authorization', `Bearer ${testUserToken}`);
+      // No .send() call - no body
+      expect(res.statusCode).toEqual(400);
+      expect(res.body.message).toBe(
+        'Request body is required. Please provide the necessary data.'
+      );
     });
 
     it('should return 400 if the new project name is an empty string', async () => {

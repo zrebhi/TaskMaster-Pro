@@ -73,6 +73,27 @@ describe('Authentication Routes - /api/auth', () => {
       );
     });
 
+    test('should return 400 when request body is empty', async () => {
+      const response = await request(app).post('/api/auth/register').send({});
+
+      expect(response.statusCode).toBe(400);
+      expect(response.body).toHaveProperty(
+        'message',
+        'Request body is required. Please provide the necessary data.'
+      );
+    });
+
+    test('should return 400 when no request body is provided', async () => {
+      const response = await request(app).post('/api/auth/register');
+      // No .send() call - no body
+
+      expect(response.statusCode).toBe(400);
+      expect(response.body).toHaveProperty(
+        'message',
+        'Request body is required. Please provide the necessary data.'
+      );
+    });
+
     test('should return 400 for invalid username format (e.g. contains @)', async () => {
       const response = await request(app).post('/api/auth/register').send({
         username: 'test@user', // Invalid char
@@ -201,6 +222,27 @@ describe('Authentication Routes - /api/auth', () => {
       expect(response.body).toHaveProperty(
         'message',
         'Please provide email or username, and password.'
+      );
+    });
+
+    test('should return 400 when request body is empty', async () => {
+      const response = await request(app).post('/api/auth/login').send({});
+
+      expect(response.statusCode).toBe(400);
+      expect(response.body).toHaveProperty(
+        'message',
+        'Request body is required. Please provide the necessary data.'
+      );
+    });
+
+    test('should return 400 when no request body is provided', async () => {
+      const response = await request(app).post('/api/auth/login');
+      // No .send() call - no body
+
+      expect(response.statusCode).toBe(400);
+      expect(response.body).toHaveProperty(
+        'message',
+        'Request body is required. Please provide the necessary data.'
       );
     });
   });

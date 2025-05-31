@@ -31,9 +31,11 @@ exports.createProject = async (req, res) => {
     if (error.name === 'SequelizeValidationError') {
       return res
         .status(400)
-        .json({ message: error.errors.map((e) => e.message).join(', ') });
+        .json({ message: error.errors.map((e) => e.message).join(' ') });
     }
-    return res.status(500).json({ message: 'Server error while creating project.' });
+    return res
+      .status(500)
+      .json({ message: 'Server error while creating project.' });
   }
 };
 
@@ -94,9 +96,11 @@ exports.updateProject = async (req, res) => {
     if (error.name === 'SequelizeValidationError') {
       return res
         .status(400)
-        .json({ message: error.errors.map((e) => e.message).join(', ') });
+        .json({ message: error.errors.map((e) => e.message).join(' ') });
     }
-    return res.status(500).json({ message: 'Server error while updating project.' });
+    return res
+      .status(500)
+      .json({ message: 'Server error while updating project.' });
   }
 };
 
@@ -115,7 +119,9 @@ exports.deleteProject = async (req, res) => {
     // will handle associated data.
     await project.destroy();
 
-    res.status(200).json({ message: 'Project and associated tasks deleted successfully.' });
+    res
+      .status(200)
+      .json({ message: 'Project and associated tasks deleted successfully.' });
     // Alternatively, for 204 No Content:
     // res.status(204).send();
   } catch (error) {

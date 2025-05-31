@@ -1,19 +1,19 @@
-const { registerUser, loginUser } = require("../controllers/authController");
-const { User } = require("../models");
-const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
+const { registerUser, loginUser } = require('../controllers/authController');
+const { User } = require('../models');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 
-jest.mock("../models", () => ({
+jest.mock('../models', () => ({
   User: {
     create: jest.fn(),
     findOne: jest.fn(),
   },
 }));
 
-jest.mock("bcryptjs");
-jest.mock("jsonwebtoken");
+jest.mock('bcryptjs');
+jest.mock('jsonwebtoken');
 
-describe("Auth Controller", () => {
+describe('Auth Controller', () => {
   let mockReq;
   let mockRes;
   let consoleErrorSpy;
@@ -21,7 +21,7 @@ describe("Auth Controller", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    
+
     mockReq = {
       body: {},
     };
@@ -32,7 +32,7 @@ describe("Auth Controller", () => {
     };
 
     consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-    
+
     // Store original environment variables
     originalEnv = { ...process.env };
   });
@@ -43,17 +43,21 @@ describe("Auth Controller", () => {
     process.env = originalEnv;
   });
 
-  describe("registerUser", () => {
-    it("should use correct bcrypt salt rounds from environment configuration", async () => {
+  describe('registerUser', () => {
+    it('should use correct bcrypt salt rounds from environment configuration', async () => {
       // Arrange
-      mockReq.body = { 
-        username: 'testuser', 
-        email: 'test@example.com', 
-        password: 'password123' 
+      mockReq.body = {
+        username: 'testuser',
+        email: 'test@example.com',
+        password: 'password123',
       };
       process.env.BCRYPT_SALT_ROUNDS = '10';
       bcrypt.hash.mockResolvedValue('hashedpassword');
-      const mockUser = { id: 'user-123', username: 'testuser', email: 'test@example.com' };
+      const mockUser = {
+        id: 'user-123',
+        username: 'testuser',
+        email: 'test@example.com',
+      };
       User.create.mockResolvedValue(mockUser);
 
       // Act
@@ -73,12 +77,12 @@ describe("Auth Controller", () => {
       });
     });
 
-    it("should handle bcrypt library failure during password hashing", async () => {
+    it('should handle bcrypt library failure during password hashing', async () => {
       // Arrange
-      mockReq.body = { 
-        username: 'testuser', 
-        email: 'test@example.com', 
-        password: 'password123' 
+      mockReq.body = {
+        username: 'testuser',
+        email: 'test@example.com',
+        password: 'password123',
       };
       const bcryptError = new Error('Bcrypt library failure');
       bcrypt.hash.mockRejectedValue(bcryptError);
@@ -88,26 +92,29 @@ describe("Auth Controller", () => {
 
       // Assert
       expect(mockRes.status).toHaveBeenCalledWith(500);
-      expect(mockRes.json).toHaveBeenCalledWith({ 
-        message: 'Server error during registration.' 
+      expect(mockRes.json).toHaveBeenCalledWith({
+        message: 'Server error during registration.',
       });
-      expect(consoleErrorSpy).toHaveBeenCalledWith('Registration error:', bcryptError);
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        'Registration error:',
+        bcryptError
+      );
       expect(User.create).not.toHaveBeenCalled();
     });
   });
 
-  describe("loginUser", () => {
-    it("should handle JWT_SECRET environment variable validation", async () => {
+  describe('loginUser', () => {
+    it('should handle JWT_SECRET environment variable validation', async () => {
       // Arrange
-      mockReq.body = { 
-        email: 'test@example.com', 
-        password: 'password123' 
-      };
-      const mockUser = { 
-        id: 'user-123', 
-        username: 'testuser', 
+      mockReq.body = {
         email: 'test@example.com',
-        password_hash: 'hashedpassword'
+        password: 'password123',
+      };
+      const mockUser = {
+        id: 'user-123',
+        username: 'testuser',
+        email: 'test@example.com',
+        password_hash: 'hashedpassword',
       };
       User.findOne.mockResolvedValue(mockUser);
       bcrypt.compare.mockResolvedValue(true);
@@ -118,24 +125,26 @@ describe("Auth Controller", () => {
 
       // Assert
       expect(mockRes.status).toHaveBeenCalledWith(500);
-      expect(mockRes.json).toHaveBeenCalledWith({ 
-        message: 'Server configuration error.' 
+      expect(mockRes.json).toHaveBeenCalledWith({
+        message: 'Server configuration error.',
       });
-      expect(consoleErrorSpy).toHaveBeenCalledWith('🔥 JWT_SECRET environment variable not set!');
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        '🔥 JWT_SECRET environment variable not set!'
+      );
       expect(jwt.sign).not.toHaveBeenCalled();
     });
 
-    it("should handle JWT library failure during token generation", async () => {
+    it('should handle JWT library failure during token generation', async () => {
       // Arrange
-      mockReq.body = { 
-        email: 'test@example.com', 
-        password: 'password123' 
-      };
-      const mockUser = { 
-        id: 'user-123', 
-        username: 'testuser', 
+      mockReq.body = {
         email: 'test@example.com',
-        password_hash: 'hashedpassword'
+        password: 'password123',
+      };
+      const mockUser = {
+        id: 'user-123',
+        username: 'testuser',
+        email: 'test@example.com',
+        password_hash: 'hashedpassword',
       };
       User.findOne.mockResolvedValue(mockUser);
       bcrypt.compare.mockResolvedValue(true);
@@ -150,8 +159,8 @@ describe("Auth Controller", () => {
 
       // Assert
       expect(mockRes.status).toHaveBeenCalledWith(500);
-      expect(mockRes.json).toHaveBeenCalledWith({ 
-        message: 'Server error during login.' 
+      expect(mockRes.json).toHaveBeenCalledWith({
+        message: 'Server error during login.',
       });
       expect(consoleErrorSpy).toHaveBeenCalledWith('Login error:', jwtError);
     });

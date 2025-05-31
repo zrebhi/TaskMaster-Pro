@@ -19,16 +19,21 @@ const corsOptions = {
 };
 app.use(cors(corsOptions));
 
+// Middleware to validate request body for POST, PUT, PATCH requests
+const { validateRequestBody } = require('./middleware/validateRequestBody');
+app.use(validateRequestBody);
 
 // Mount authentication routes
 app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/projects', require('./routes/projectRoutes'));
-
+app.use('/api/tasks', require('./routes/taskRoutes'));
 
 // Only start server if this file is run directly (not when imported for tests)
 if (require.main === module) {
   app.listen(port, () => {
-    console.warn(`Server running on port ${port} in ${process.env.NODE_ENV || 'development'} mode`);
+    console.warn(
+      `Server running on port ${port} in ${process.env.NODE_ENV || 'development'} mode`
+    );
   });
 }
 

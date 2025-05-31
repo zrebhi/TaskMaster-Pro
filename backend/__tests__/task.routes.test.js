@@ -90,7 +90,9 @@ describe('Task Routes - /api/projects/:projectId/tasks', () => {
     });
 
     it('should return 401 if no authentication token is provided', async () => {
-      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+      const consoleErrorSpy = jest
+        .spyOn(console, 'error')
+        .mockImplementation(() => {});
 
       const res = await request(app)
         .post(`/api/projects/${testProject.id}/tasks`)
@@ -103,7 +105,9 @@ describe('Task Routes - /api/projects/:projectId/tasks', () => {
     });
 
     it('should return 401 if invalid authentication token is provided', async () => {
-      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+      const consoleErrorSpy = jest
+        .spyOn(console, 'error')
+        .mockImplementation(() => {});
 
       const res = await request(app)
         .post(`/api/projects/${testProject.id}/tasks`)
@@ -130,7 +134,9 @@ describe('Task Routes - /api/projects/:projectId/tasks', () => {
       );
 
       // Verify no task was created
-      const tasks = await Task.findAll({ where: { project_id: otherProject.id } });
+      const tasks = await Task.findAll({
+        where: { project_id: otherProject.id },
+      });
       expect(tasks).toHaveLength(0);
     });
 
@@ -186,6 +192,30 @@ describe('Task Routes - /api/projects/:projectId/tasks', () => {
       expect(res.body.task.title).toBe('Whitespace Task');
       expect(res.body.task.description).toBe('Description with spaces');
     });
+
+    it('should return 400 when request body is empty', async () => {
+      const res = await request(app)
+        .post(`/api/projects/${testProject.id}/tasks`)
+        .set('Authorization', `Bearer ${testUserToken}`)
+        .send({}); // Empty body
+
+      expect(res.statusCode).toEqual(400);
+      expect(res.body.message).toBe(
+        'Request body is required. Please provide the necessary data.'
+      );
+    });
+
+    it('should return 400 when no request body is provided', async () => {
+      const res = await request(app)
+        .post(`/api/projects/${testProject.id}/tasks`)
+        .set('Authorization', `Bearer ${testUserToken}`);
+      // No .send() call - no body
+
+      expect(res.statusCode).toEqual(400);
+      expect(res.body.message).toBe(
+        'Request body is required. Please provide the necessary data.'
+      );
+    });
   });
 
   describe('GET /api/projects/:projectId/tasks - Get tasks for a project', () => {
@@ -217,7 +247,9 @@ describe('Task Routes - /api/projects/:projectId/tasks', () => {
       expect(res.body.tasks).toHaveLength(2);
       expect(res.body.tasks[0].title).toBe('First Task');
       expect(res.body.tasks[1].title).toBe('Second Task');
-      expect(res.body.tasks.every(task => task.project_id === testProject.id)).toBe(true);
+      expect(
+        res.body.tasks.every((task) => task.project_id === testProject.id)
+      ).toBe(true);
     });
 
     it('should return empty array when project has no tasks', async () => {
@@ -235,9 +267,13 @@ describe('Task Routes - /api/projects/:projectId/tasks', () => {
     });
 
     it('should return 401 if no authentication token is provided', async () => {
-      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+      const consoleErrorSpy = jest
+        .spyOn(console, 'error')
+        .mockImplementation(() => {});
 
-      const res = await request(app).get(`/api/projects/${testProject.id}/tasks`);
+      const res = await request(app).get(
+        `/api/projects/${testProject.id}/tasks`
+      );
 
       expect(res.statusCode).toEqual(401);
       expect(res.body.message).toBe('Not authorized, no token');
@@ -246,7 +282,9 @@ describe('Task Routes - /api/projects/:projectId/tasks', () => {
     });
 
     it('should return 401 if invalid authentication token is provided', async () => {
-      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+      const consoleErrorSpy = jest
+        .spyOn(console, 'error')
+        .mockImplementation(() => {});
 
       const res = await request(app)
         .get(`/api/projects/${testProject.id}/tasks`)
@@ -294,8 +332,234 @@ describe('Task Routes - /api/projects/:projectId/tasks', () => {
 
       expect(res.statusCode).toEqual(200);
       expect(res.body.count).toBe(2); // Only tasks from testProject
-      expect(res.body.tasks.every(task => task.project_id === testProject.id)).toBe(true);
-      expect(res.body.tasks.some(task => task.title === 'Other Project Task')).toBe(false);
+      expect(
+        res.body.tasks.every((task) => task.project_id === testProject.id)
+      ).toBe(true);
+      expect(
+        res.body.tasks.some((task) => task.title === 'Other Project Task')
+      ).toBe(false);
+    });
+  });
+
+  describe('PUT /api/tasks/:taskId - Update Task', () => {
+    let testTask;
+    let otherTask;
+
+    beforeEach(async () => {
+      // Create test task for the main user's project
+      testTask = await Task.create({
+        title: 'Original Task Title',
+        description: 'Original description',
+        due_date: '2024-06-15',
+        priority: 2,
+        is_completed: false,
+        project_id: testProject.id,
+      });
+
+      // Create task for other user's project for authorization tests
+      otherTask = await Task.create({
+        title: 'Other User Task',
+        description: 'Task belonging to other user',
+        project_id: otherProject.id,
+      });
+    });
+
+    it('should update task successfully with all fields', async () => {
+      const updateData = {
+        title: 'Updated Task Title',
+        description: 'Updated description for the task.',
+        due_date: '2024-12-31',
+        priority: 1,
+        is_completed: true,
+      };
+
+      const res = await request(app)
+        .put(`/api/tasks/${testTask.id}`)
+        .set('Authorization', `Bearer ${testUserToken}`)
+        .send(updateData);
+
+      expect(res.statusCode).toEqual(200);
+      expect(res.body.message).toBe('Task updated successfully.');
+      expect(res.body.task.title).toBe('Updated Task Title');
+      expect(res.body.task.description).toBe(
+        'Updated description for the task.'
+      );
+      expect(res.body.task.due_date).toBe('2024-12-31');
+      expect(res.body.task.priority).toBe(1);
+      expect(res.body.task.is_completed).toBe(true);
+
+      // Verify database was updated
+      const updatedTask = await Task.findByPk(testTask.id);
+      expect(updatedTask.title).toBe('Updated Task Title');
+      expect(updatedTask.is_completed).toBe(true);
+    });
+
+    it('should update task successfully with partial data (is_completed only)', async () => {
+      const updateData = {
+        is_completed: true,
+      };
+
+      const res = await request(app)
+        .put(`/api/tasks/${testTask.id}`)
+        .set('Authorization', `Bearer ${testUserToken}`)
+        .send(updateData);
+
+      expect(res.statusCode).toEqual(200);
+      expect(res.body.message).toBe('Task updated successfully.');
+      expect(res.body.task.is_completed).toBe(true);
+      // Other fields should remain unchanged
+      expect(res.body.task.title).toBe('Original Task Title');
+      expect(res.body.task.description).toBe('Original description');
+    });
+
+    it('should return 404 when task does not exist', async () => {
+      const nonExistentTaskId = uuidv4();
+      const updateData = { title: 'This should fail' };
+
+      const res = await request(app)
+        .put(`/api/tasks/${nonExistentTaskId}`)
+        .set('Authorization', `Bearer ${testUserToken}`)
+        .send(updateData);
+
+      expect(res.statusCode).toEqual(404);
+      expect(res.body.message).toBe('Task not found.');
+    });
+
+    it('should return 403 when user does not own the task', async () => {
+      const updateData = { title: 'Unauthorized update attempt' };
+
+      const res = await request(app)
+        .put(`/api/tasks/${otherTask.id}`)
+        .set('Authorization', `Bearer ${testUserToken}`)
+        .send(updateData);
+
+      expect(res.statusCode).toEqual(403);
+      expect(res.body.message).toBe('User not authorized to update this task.');
+
+      // Verify task was not updated
+      const unchangedTask = await Task.findByPk(otherTask.id);
+      expect(unchangedTask.title).toBe('Other User Task');
+    });
+
+    it('should return 400 for invalid data (invalid priority)', async () => {
+      jest.spyOn(console, 'error').mockImplementation(() => {});
+      const updateData = {
+        priority: 5, // Invalid: outside defined range 1-3
+      };
+
+      const res = await request(app)
+        .put(`/api/tasks/${testTask.id}`)
+        .set('Authorization', `Bearer ${testUserToken}`)
+        .send(updateData);
+
+      expect(res.statusCode).toEqual(400);
+      expect(res.body.message).toContain(
+        'Priority must be 1 (Low), 2 (Medium), or 3 (High)'
+      );
+    });
+
+    it('should return 400 for invalid data (empty title)', async () => {
+      jest.spyOn(console, 'error').mockImplementation(() => {});
+      const updateData = {
+        title: '  ', // Invalid: empty after trim
+      };
+
+      const res = await request(app)
+        .put(`/api/tasks/${testTask.id}`)
+        .set('Authorization', `Bearer ${testUserToken}`)
+        .send(updateData);
+
+      expect(res.statusCode).toEqual(400);
+      expect(res.body.message).toBe(
+        'Task title must be between 1 and 255 characters.'
+      );
+    });
+
+    it('should return 401 when no authentication token is provided', async () => {
+      const consoleErrorSpy = jest
+        .spyOn(console, 'error')
+        .mockImplementation(() => {});
+      const updateData = { title: 'This should fail' };
+
+      const res = await request(app)
+        .put(`/api/tasks/${testTask.id}`)
+        .send(updateData);
+
+      expect(res.statusCode).toEqual(401);
+      expect(res.body.message).toBe('Not authorized, no token');
+
+      consoleErrorSpy.mockRestore();
+    });
+
+    it('should handle null values correctly for optional fields', async () => {
+      const updateData = {
+        description: null,
+        due_date: null,
+      };
+
+      const res = await request(app)
+        .put(`/api/tasks/${testTask.id}`)
+        .set('Authorization', `Bearer ${testUserToken}`)
+        .send(updateData);
+
+      expect(res.statusCode).toEqual(200);
+      expect(res.body.task.description).toBeNull();
+      expect(res.body.task.due_date).toBeNull();
+    });
+
+    it('should trim whitespace from title and description', async () => {
+      const updateData = {
+        title: '  Trimmed Title  ',
+        description: '  Trimmed Description  ',
+      };
+
+      const res = await request(app)
+        .put(`/api/tasks/${testTask.id}`)
+        .set('Authorization', `Bearer ${testUserToken}`)
+        .send(updateData);
+
+      expect(res.statusCode).toEqual(200);
+      expect(res.body.task.title).toBe('Trimmed Title');
+      expect(res.body.task.description).toBe('Trimmed Description');
+    });
+
+    it('should return 400 when trying to set title to null (not allowed)', async () => {
+      jest.spyOn(console, 'error').mockImplementation(() => {});
+      const updateData = {
+        title: null, // This should be rejected
+      };
+
+      const res = await request(app)
+        .put(`/api/tasks/${testTask.id}`)
+        .set('Authorization', `Bearer ${testUserToken}`)
+        .send(updateData);
+
+      expect(res.statusCode).toEqual(400);
+      expect(res.body.message).toContain('cannot be null');
+    });
+
+    it('should return 400 when request body is empty', async () => {
+      const res = await request(app)
+        .put(`/api/tasks/${testTask.id}`)
+        .set('Authorization', `Bearer ${testUserToken}`)
+        .send({}); // Empty body
+
+      expect(res.statusCode).toEqual(400);
+      expect(res.body.message).toBe(
+        'Request body is required. Please provide the necessary data.'
+      );
+    });
+
+    it('should return 400 when no request body is provided', async () => {
+      const res = await request(app)
+        .put(`/api/tasks/${testTask.id}`)
+        .set('Authorization', `Bearer ${testUserToken}`);
+      // No .send() call - no body
+
+      expect(res.statusCode).toEqual(400);
+      expect(res.body.message).toBe(
+        'Request body is required. Please provide the necessary data.'
+      );
     });
   });
 });
