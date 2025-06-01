@@ -1,27 +1,25 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
-import axios from 'axios';
 import LoginForm from '../LoginForm';
 import AuthContext from '../../../context/AuthContext.jsx';
-import { toast } from 'react-hot-toast';
+import { loginUser } from '../../../services/authApiService';
 
-// Mock axios
-jest.mock('axios');
+jest.mock('../../../services/authApiService');
 
-// Mock react-router-dom's useNavigate
 const mockedNavigate = jest.fn();
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
   useNavigate: () => mockedNavigate,
 }));
 
-// Mock react-hot-toast
-jest.mock('react-hot-toast', () => ({
-  toast: {
-    success: jest.fn(),
-    error: jest.fn(),
-  },
+const mockShowErrorToast = jest.fn();
+const mockShowSuccess = jest.fn();
+jest.mock('../../../context/ErrorContext', () => ({
+  useError: () => ({
+    showErrorToast: mockShowErrorToast,
+    showSuccess: mockShowSuccess,
+  }),
 }));
 
 describe('LoginForm', () => {
@@ -69,22 +67,25 @@ describe('LoginForm', () => {
   // Test Case 3: Form Submission - Successful Login (Username)
   test('calls API with username and navigates on successful login', async () => {
     const successResponse = {
-      data: {
-        message: 'Login successful.',
-        token: 'fake-token',
-        user: { id: '123', username: 'testuser', email: 'test@example.com' },
-      },
-      status: 200,
+      message: 'Login successful.',
+      token: 'fake-token',
+      user: { id: '123', username: 'testuser', email: 'test@example.com' },
     };
-    axios.post.mockResolvedValue(successResponse);
+    loginUser.mockResolvedValue(successResponse);
 
     const mockLogin = jest.fn();
     render(
-      <AuthContext.Provider value={{
-        login: mockLogin, token: null, user: null, isAuthenticated: false, logout: jest.fn(),
-      }}>
+      <AuthContext.Provider
+        value={{
+          login: mockLogin,
+          token: null,
+          user: null,
+          isAuthenticated: false,
+          logout: jest.fn(),
+        }}
+      >
         <LoginForm />
-      </AuthContext.Provider>,
+      </AuthContext.Provider>
     );
     identifierInput = screen.getByLabelText('Email or Username:');
     passwordInput = screen.getByLabelText('Password:');
@@ -96,19 +97,11 @@ describe('LoginForm', () => {
     await user.click(submitButton);
 
     await waitFor(() => {
-      expect(axios.post).toHaveBeenCalledTimes(1);
-      expect(axios.post).toHaveBeenCalledWith('/api/auth/login', {
+      expect(loginUser).toHaveBeenCalledTimes(1);
+      expect(loginUser).toHaveBeenCalledWith({
         username: 'testuser',
         password: 'password123',
       });
-      expect(sessionStorage.getItem('token')).toBe('fake-token');
-      expect(sessionStorage.getItem('user')).toBe(
-        JSON.stringify({
-          id: '123',
-          username: 'testuser',
-          email: 'test@example.com',
-        }),
-      );
       expect(mockLogin).toHaveBeenCalledTimes(1);
       expect(mockLogin).toHaveBeenCalledWith('fake-token', {
         id: '123',
@@ -117,31 +110,34 @@ describe('LoginForm', () => {
       });
       expect(mockedNavigate).toHaveBeenCalledTimes(1);
       expect(mockedNavigate).toHaveBeenCalledWith('/dashboard');
-      expect(toast.success).toHaveBeenCalledTimes(1);
-      expect(toast.success).toHaveBeenCalledWith('Login successful!');
-      expect(submitButton).not.toBeDisabled(); // Ensure button is re-enabled
+      expect(mockShowSuccess).toHaveBeenCalledTimes(1);
+      expect(mockShowSuccess).toHaveBeenCalledWith('Login successful!');
+      expect(submitButton).not.toBeDisabled();
     });
   });
 
   // Test Case 4: Form Submission - Successful Login (Email)
   test('calls API with email and navigates on successful login', async () => {
     const successResponse = {
-      data: {
-        message: 'Login successful.',
-        token: 'fake-token-email',
-        user: { id: '456', username: 'emailuser', email: 'email@example.com' },
-      },
-      status: 200,
+      message: 'Login successful.',
+      token: 'fake-token-email',
+      user: { id: '456', username: 'emailuser', email: 'email@example.com' },
     };
-    axios.post.mockResolvedValue(successResponse);
+    loginUser.mockResolvedValue(successResponse);
 
     const mockLogin = jest.fn();
     render(
-      <AuthContext.Provider value={{
-        login: mockLogin, token: null, user: null, isAuthenticated: false, logout: jest.fn(),
-      }}>
+      <AuthContext.Provider
+        value={{
+          login: mockLogin,
+          token: null,
+          user: null,
+          isAuthenticated: false,
+          logout: jest.fn(),
+        }}
+      >
         <LoginForm />
-      </AuthContext.Provider>,
+      </AuthContext.Provider>
     );
     identifierInput = screen.getByLabelText('Email or Username:');
     passwordInput = screen.getByLabelText('Password:');
@@ -153,19 +149,11 @@ describe('LoginForm', () => {
     await user.click(submitButton);
 
     await waitFor(() => {
-      expect(axios.post).toHaveBeenCalledTimes(1);
-      expect(axios.post).toHaveBeenCalledWith('/api/auth/login', {
+      expect(loginUser).toHaveBeenCalledTimes(1);
+      expect(loginUser).toHaveBeenCalledWith({
         email: 'email@example.com',
         password: 'password456',
       });
-      expect(sessionStorage.getItem('token')).toBe('fake-token-email');
-      expect(sessionStorage.getItem('user')).toBe(
-        JSON.stringify({
-          id: '456',
-          username: 'emailuser',
-          email: 'email@example.com',
-        }),
-      );
       expect(mockLogin).toHaveBeenCalledTimes(1);
       expect(mockLogin).toHaveBeenCalledWith('fake-token-email', {
         id: '456',
@@ -174,9 +162,9 @@ describe('LoginForm', () => {
       });
       expect(mockedNavigate).toHaveBeenCalledTimes(1);
       expect(mockedNavigate).toHaveBeenCalledWith('/dashboard');
-      expect(toast.success).toHaveBeenCalledTimes(1);
-      expect(toast.success).toHaveBeenCalledWith('Login successful!');
-      expect(submitButton).not.toBeDisabled(); // Ensure button is re-enabled
+      expect(mockShowSuccess).toHaveBeenCalledTimes(1);
+      expect(mockShowSuccess).toHaveBeenCalledWith('Login successful!');
+      expect(submitButton).not.toBeDisabled();
     });
   });
 
@@ -187,13 +175,13 @@ describe('LoginForm', () => {
     passwordInput = screen.getByLabelText('Password:');
     submitButton = screen.getByRole('button', { name: 'Login' });
 
-    const errorResponse = {
-      response: {
-        data: { message: 'Invalid credentials.' },
-        status: 401,
+    const errorWithProcessed = {
+      processedError: {
+        message: 'Invalid credentials.',
+        severity: 'medium',
       },
     };
-    axios.post.mockRejectedValue(errorResponse);
+    loginUser.mockRejectedValue(errorWithProcessed);
 
     await user.type(identifierInput, 'wronguser');
     await user.type(passwordInput, 'wrongpassword');
@@ -201,11 +189,14 @@ describe('LoginForm', () => {
     await user.click(submitButton);
 
     await waitFor(() => {
-      expect(axios.post).toHaveBeenCalledTimes(1);
+      expect(loginUser).toHaveBeenCalledTimes(1);
       expect(screen.getByText(/invalid credentials./i)).toBeInTheDocument();
-      expect(mockedNavigate).not.toHaveBeenCalled(); // Navigation should not happen
-      expect(toast.success).not.toHaveBeenCalled(); // Success toast should not happen
-      expect(submitButton).not.toBeDisabled(); // Ensure button is re-enabled
+      expect(mockShowErrorToast).toHaveBeenCalledWith(
+        errorWithProcessed.processedError
+      );
+      expect(mockedNavigate).not.toHaveBeenCalled();
+      expect(mockShowSuccess).not.toHaveBeenCalled();
+      expect(submitButton).not.toBeDisabled();
     });
   });
 
@@ -216,7 +207,8 @@ describe('LoginForm', () => {
     passwordInput = screen.getByLabelText('Password:');
     submitButton = screen.getByRole('button', { name: 'Login' });
 
-    axios.post.mockRejectedValue(new Error('Network error, server down'));
+    const networkError = new Error('Network error, server down');
+    loginUser.mockRejectedValue(networkError);
 
     await user.type(identifierInput, 'testuser');
     await user.type(passwordInput, 'password123');
@@ -224,8 +216,12 @@ describe('LoginForm', () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText('Network error, server down'),
+        screen.getByText('Login failed. Please check your credentials.')
       ).toBeInTheDocument();
+      expect(mockShowErrorToast).toHaveBeenCalledWith({
+        message: 'Login failed. Please check your credentials.',
+        severity: 'medium',
+      });
       expect(mockedNavigate).not.toHaveBeenCalled();
       expect(submitButton).not.toBeDisabled();
     });
@@ -238,8 +234,7 @@ describe('LoginForm', () => {
     passwordInput = screen.getByLabelText('Password:');
     submitButton = screen.getByRole('button', { name: 'Login' });
 
-    // Mock axios.post to return a promise that never resolves to simulate loading
-    axios.post.mockImplementation(() => new Promise(() => {}));
+    loginUser.mockImplementation(() => new Promise(() => {}));
 
     await user.type(identifierInput, 'testuser');
     await user.type(passwordInput, 'password123');

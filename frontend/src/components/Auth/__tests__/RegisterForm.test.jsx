@@ -1,11 +1,10 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
-import axios from 'axios';
 import RegisterForm from '../RegisterForm';
-import { toast } from 'react-hot-toast';
+import { registerUser } from '../../../services/authApiService';
 
-jest.mock('axios');
+jest.mock('../../../services/authApiService');
 
 const mockedNavigate = jest.fn();
 jest.mock('react-router-dom', () => ({
@@ -13,31 +12,39 @@ jest.mock('react-router-dom', () => ({
   useNavigate: () => mockedNavigate,
 }));
 
-jest.mock('react-hot-toast', () => ({
-  toast: {
-    success: jest.fn(),
-    error: jest.fn(),
-  },
+const mockShowErrorToast = jest.fn();
+const mockShowSuccess = jest.fn();
+jest.mock('../../../context/ErrorContext', () => ({
+  useError: () => ({
+    showErrorToast: mockShowErrorToast,
+    showSuccess: mockShowSuccess,
+  }),
 }));
 
 // Helper function to fill and submit the form
 const fillAndSubmitForm = async (
   user,
-  {
-    username, email, password, confirmPassword,
-  },
+  { username, email, password, confirmPassword },
   {
     usernameInput,
     emailInput,
     passwordInput,
     confirmPasswordInput,
     submitButton,
-  },
+  }
 ) => {
-  if (username !== undefined) {await user.type(usernameInput, username);}
-  if (email !== undefined) {await user.type(emailInput, email);}
-  if (password !== undefined) {await user.type(passwordInput, password);}
-  if (confirmPassword !== undefined) {await user.type(confirmPasswordInput, confirmPassword);}
+  if (username !== undefined) {
+    await user.type(usernameInput, username);
+  }
+  if (email !== undefined) {
+    await user.type(emailInput, email);
+  }
+  if (password !== undefined) {
+    await user.type(passwordInput, password);
+  }
+  if (confirmPassword !== undefined) {
+    await user.type(confirmPasswordInput, confirmPassword);
+  }
   await user.click(submitButton);
 };
 
@@ -51,7 +58,6 @@ describe('RegisterForm', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    // Mock console.error to prevent test output
     jest.spyOn(console, 'error').mockImplementation(() => {});
 
     render(<RegisterForm />);
@@ -67,7 +73,7 @@ describe('RegisterForm', () => {
   // Test Case 1: Component Rendering
   test('renders the registration form correctly', () => {
     expect(
-      screen.getByRole('heading', { name: /register/i }),
+      screen.getByRole('heading', { name: /register/i })
     ).toBeInTheDocument();
     expect(usernameInput).toBeInTheDocument();
     expect(emailInput).toBeInTheDocument();
@@ -75,10 +81,10 @@ describe('RegisterForm', () => {
     expect(confirmPasswordInput).toBeInTheDocument();
     expect(submitButton).toBeInTheDocument();
     expect(
-      screen.queryByText(/passwords do not match/i),
+      screen.queryByText(/passwords do not match/i)
     ).not.toBeInTheDocument();
     expect(
-      screen.queryByText(/registration successful/i),
+      screen.queryByText(/registration successful/i)
     ).not.toBeInTheDocument();
   });
 
@@ -111,13 +117,13 @@ describe('RegisterForm', () => {
         passwordInput,
         confirmPasswordInput,
         submitButton,
-      },
+      }
     );
 
     expect(screen.getByText(/passwords do not match/i)).toBeInTheDocument();
-    expect(axios.post).not.toHaveBeenCalled(); // API call should not happen
-    expect(mockedNavigate).not.toHaveBeenCalled(); // Navigation should not happen
-    expect(toast.success).not.toHaveBeenCalled(); // Success toast should not happen
+    expect(registerUser).not.toHaveBeenCalled();
+    expect(mockedNavigate).not.toHaveBeenCalled();
+    expect(mockShowSuccess).not.toHaveBeenCalled();
   });
 
   // Test Case 4: Client-Side Validation - Password too short
@@ -136,15 +142,15 @@ describe('RegisterForm', () => {
         passwordInput,
         confirmPasswordInput,
         submitButton,
-      },
+      }
     );
 
     expect(
-      screen.getByText(/password must be at least 6 characters long/i),
+      screen.getByText(/password must be at least 6 characters long/i)
     ).toBeInTheDocument();
-    expect(axios.post).not.toHaveBeenCalled(); // API call should not happen
-    expect(mockedNavigate).not.toHaveBeenCalled(); // Navigation should not happen
-    expect(toast.success).not.toHaveBeenCalled(); // Success toast should not happen
+    expect(registerUser).not.toHaveBeenCalled();
+    expect(mockedNavigate).not.toHaveBeenCalled();
+    expect(mockShowSuccess).not.toHaveBeenCalled();
   });
 
   // Test Case 5: Client-Side Validation - Invalid Username Characters
@@ -163,28 +169,25 @@ describe('RegisterForm', () => {
         passwordInput,
         confirmPasswordInput,
         submitButton,
-      },
+      }
     );
 
     expect(
       screen.getByText(
-        /username can only contain letters, numbers, underscores, and hyphens/i,
-      ),
+        /username can only contain letters, numbers, underscores, and hyphens/i
+      )
     ).toBeInTheDocument();
-    expect(axios.post).not.toHaveBeenCalled(); // API call should not happen
-    expect(mockedNavigate).not.toHaveBeenCalled(); // Navigation should not happen
-    expect(toast.success).not.toHaveBeenCalled(); // Success toast should not happen
+    expect(registerUser).not.toHaveBeenCalled();
+    expect(mockedNavigate).not.toHaveBeenCalled();
+    expect(mockShowSuccess).not.toHaveBeenCalled();
   });
   // Test Case 6: Form Submission - Successful Registration
   test('calls API and navigates on successful registration', async () => {
     const successResponse = {
-      data: {
-        message: 'Registration successful! You can now log in.',
-        userId: '123',
-      },
-      status: 201,
+      message: 'Registration successful! You can now log in.',
+      userId: '123',
     };
-    axios.post.mockResolvedValue(successResponse);
+    registerUser.mockResolvedValue(successResponse);
 
     await fillAndSubmitForm(
       user,
@@ -200,38 +203,38 @@ describe('RegisterForm', () => {
         passwordInput,
         confirmPasswordInput,
         submitButton,
-      },
+      }
     );
 
     await waitFor(() => {
-      expect(axios.post).toHaveBeenCalledTimes(1);
-      expect(axios.post).toHaveBeenCalledWith('/api/auth/register', {
+      expect(registerUser).toHaveBeenCalledTimes(1);
+      expect(registerUser).toHaveBeenCalledWith({
         username: 'testuser',
         email: 'test@example.com',
         password: 'password123',
       });
       expect(
-        screen.getByText(/registration successful! you can now log in./i),
+        screen.getByText(/registration successful! you can now log in./i)
       ).toBeInTheDocument();
-      expect(toast.success).toHaveBeenCalledTimes(1);
-      expect(toast.success).toHaveBeenCalledWith(
-        'Registration successful! You can now log in.',
+      expect(mockShowSuccess).toHaveBeenCalledTimes(1);
+      expect(mockShowSuccess).toHaveBeenCalledWith(
+        'Registration successful! You can now log in.'
       );
       expect(mockedNavigate).toHaveBeenCalledTimes(1);
       expect(mockedNavigate).toHaveBeenCalledWith('/auth/login');
-      expect(submitButton).not.toBeDisabled(); // Ensure button is re-enabled
+      expect(submitButton).not.toBeDisabled();
     });
   });
 
   // Test Case 7: Form Submission - Failed Registration (e.g., Duplicate User)
   test('displays error message on failed registration', async () => {
-    const errorResponse = {
-      response: {
-        data: { message: "Username 'testuser' already exists" },
-        status: 409,
+    const errorWithProcessed = {
+      processedError: {
+        message: "Username 'testuser' already exists",
+        severity: 'medium',
       },
     };
-    axios.post.mockRejectedValue(errorResponse);
+    registerUser.mockRejectedValue(errorWithProcessed);
 
     await fillAndSubmitForm(
       user,
@@ -247,28 +250,30 @@ describe('RegisterForm', () => {
         passwordInput,
         confirmPasswordInput,
         submitButton,
-      },
+      }
     );
 
     await waitFor(() => {
-      expect(axios.post).toHaveBeenCalledTimes(1);
-      expect(axios.post).toHaveBeenCalledWith('/api/auth/register', {
+      expect(registerUser).toHaveBeenCalledTimes(1);
+      expect(registerUser).toHaveBeenCalledWith({
         username: 'testuser',
         email: 'test@example.com',
         password: 'password123',
       });
       expect(
-        screen.getByText(/username 'testuser' already exists/i),
+        screen.getByText(/username 'testuser' already exists/i)
       ).toBeInTheDocument();
-      expect(mockedNavigate).not.toHaveBeenCalled(); // Navigation should not happen
-      expect(submitButton).not.toBeDisabled(); // Ensure button is re-enabled
+      expect(mockShowErrorToast).toHaveBeenCalledWith(
+        errorWithProcessed.processedError
+      );
+      expect(mockedNavigate).not.toHaveBeenCalled();
+      expect(submitButton).not.toBeDisabled();
     });
   });
 
   // Test Case 8: Loading State
   test('disables submit button while loading', async () => {
-    // Mock axios.post to return a promise that never resolves to simulate loading
-    axios.post.mockImplementation(() => new Promise(() => {}));
+    registerUser.mockImplementation(() => new Promise(() => {}));
 
     await fillAndSubmitForm(
       user,
@@ -284,7 +289,7 @@ describe('RegisterForm', () => {
         passwordInput,
         confirmPasswordInput,
         submitButton,
-      },
+      }
     );
 
     expect(submitButton).toBeDisabled();
@@ -292,7 +297,8 @@ describe('RegisterForm', () => {
 
   // Test Case 9: Form Submission - Network Error
   test('displays generic error message on network error', async () => {
-    axios.post.mockRejectedValue(new Error('Network error, server down'));
+    const networkError = new Error('Network error, server down');
+    registerUser.mockRejectedValue(networkError);
 
     await fillAndSubmitForm(
       user,
@@ -308,13 +314,17 @@ describe('RegisterForm', () => {
         passwordInput,
         confirmPasswordInput,
         submitButton,
-      },
+      }
     );
 
     await waitFor(() => {
       expect(
-        screen.getByText('Network error, server down'),
+        screen.getByText('Registration failed. Please try again.')
       ).toBeInTheDocument();
+      expect(mockShowErrorToast).toHaveBeenCalledWith({
+        message: 'Registration failed. Please try again.',
+        severity: 'medium',
+      });
       expect(mockedNavigate).not.toHaveBeenCalled();
       expect(submitButton).not.toBeDisabled();
     });

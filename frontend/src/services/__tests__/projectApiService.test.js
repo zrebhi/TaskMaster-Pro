@@ -1,37 +1,14 @@
-// Mock console.error to suppress expected error logs in tests
-const mockConsoleError = jest
-  .spyOn(console, 'error')
-  .mockImplementation(() => {});
-
-// Mock axios client that will be returned by axios.create
-const mockApiClient = {
+const mockApi = {
   get: jest.fn(),
   post: jest.fn(),
   put: jest.fn(),
   delete: jest.fn(),
-  interceptors: {
-    request: {
-      use: jest.fn(),
-    },
-    response: {
-      use: jest.fn(),
-    },
-  },
+  patch: jest.fn(),
 };
 
-// Mock axios itself
-const mockAxios = {
-  create: jest.fn(() => mockApiClient),
-};
-
-// Mock the axios module before importing
-jest.mock('axios', () => mockAxios);
-// Import the service to trigger interceptor setup
-require('../projectApiService');
-
-// Extract interceptor functions for reuse in tests
-const requestInterceptor =
-  mockApiClient.interceptors.request.use.mock.calls[0]?.[0];
+jest.mock('../apiClient', () => ({
+  api: mockApi,
+}));
 
 const {
   getAllProjects,
@@ -42,142 +19,6 @@ const {
 
 beforeEach(() => {
   jest.clearAllMocks();
-  // Clear sessionStorage before each test
-  sessionStorage.clear();
-});
-
-afterAll(() => {
-  mockConsoleError.mockRestore();
-});
-
-describe('Axios Interceptor Tests', () => {
-  it('should add Authorization header with Bearer token if token exists in sessionStorage', () => {
-    // Arrange
-    const testToken = 'test-token-123';
-    sessionStorage.setItem('token', testToken);
-
-    const mockConfig = {
-      headers: {},
-      method: 'get',
-      url: '/projects',
-    };
-
-    // Act
-    const result = requestInterceptor(mockConfig);
-
-    // Assert
-    expect(sessionStorage.getItem('token')).toBe(testToken);
-    expect(result.headers.Authorization).toBe(`Bearer ${testToken}`);
-    expect(result).toBe(mockConfig); // Should return the same config object
-  });
-
-  it('should NOT add Authorization header if no token exists in sessionStorage', () => {
-    // Arrange - sessionStorage is already cleared in beforeEach
-    // No token set, so sessionStorage.getItem('token') will return null
-
-    const mockConfig = {
-      headers: {},
-      method: 'get',
-      url: '/projects',
-    };
-
-    // Act
-    const result = requestInterceptor(mockConfig);
-
-    // Assert
-    expect(sessionStorage.getItem('token')).toBeNull();
-    expect(result.headers.Authorization).toBeUndefined();
-    expect(result).toBe(mockConfig);
-  });
-
-  it('should handle request interceptor error', () => {
-    // Arrange
-    const testError = new Error('SessionStorage access error');
-    const getItemSpy = jest
-      .spyOn(Storage.prototype, 'getItem')
-      .mockImplementation(() => {
-        throw testError;
-      });
-
-    const mockConfig = {
-      headers: {},
-      method: 'get',
-      url: '/projects',
-    };
-
-    // Act & Assert
-    expect(() => requestInterceptor(mockConfig)).toThrow(testError);
-    expect(getItemSpy).toHaveBeenCalledWith('token');
-
-    // Cleanup
-    getItemSpy.mockRestore();
-  });
-
-  it('should preserve existing headers when adding Authorization header', () => {
-    // Arrange
-    const testToken = 'test-token-456';
-    sessionStorage.setItem('token', testToken);
-
-    const mockConfig = {
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Custom-Header': 'custom-value',
-      },
-      method: 'post',
-      url: '/projects',
-    };
-
-    // Act
-    const result = requestInterceptor(mockConfig);
-
-    // Assert
-    expect(result.headers).toEqual({
-      'Content-Type': 'application/json',
-      'X-Custom-Header': 'custom-value',
-      Authorization: `Bearer ${testToken}`,
-    });
-  });
-
-  it('should handle empty string token as falsy value', () => {
-    // Arrange
-    sessionStorage.setItem('token', '');
-
-    const mockConfig = {
-      headers: {},
-      method: 'get',
-      url: '/projects',
-    };
-
-    // Act
-    const result = requestInterceptor(mockConfig);
-
-    // Assert
-    expect(sessionStorage.getItem('token')).toBe('');
-    expect(result.headers.Authorization).toBeUndefined();
-    expect(result).toBe(mockConfig);
-  });
-
-  it('should reflect changes in sessionStorage token between requests', () => {
-    // This test verifies that the interceptor reads the token fresh from sessionStorage on each request
-
-    // Test first token
-    sessionStorage.setItem('token', 'token1');
-    const mockConfig1 = { headers: {} };
-    const result1 = requestInterceptor(mockConfig1);
-    expect(result1.headers.Authorization).toBe('Bearer token1');
-
-    // Test second token - change sessionStorage and verify interceptor picks up new value
-    sessionStorage.setItem('token', 'token2');
-    const mockConfig2 = { headers: {} };
-    const result2 = requestInterceptor(mockConfig2);
-    expect(result2.headers.Authorization).toBe('Bearer token2');
-
-    // Test no token
-    sessionStorage.removeItem('token');
-    const mockConfig3 = { headers: {} };
-    const result3 = requestInterceptor(mockConfig3);
-    expect(result3.headers.Authorization).toBeUndefined();
-  });
 });
 
 describe('getAllProjects Function Tests', () => {
@@ -193,13 +34,13 @@ describe('getAllProjects Function Tests', () => {
         total: 2,
       },
     };
-    mockApiClient.get.mockResolvedValue(mockResponse);
+    mockApi.get.mockResolvedValue(mockResponse);
 
     // Act
     const result = await getAllProjects();
 
     // Assert
-    expect(mockApiClient.get).toHaveBeenCalledWith('/projects');
+    expect(mockApi.get).toHaveBeenCalledWith('/projects', 'fetching projects');
     expect(result).toEqual(mockProjects);
   });
 
@@ -212,13 +53,13 @@ describe('getAllProjects Function Tests', () => {
     const mockResponse = {
       data: mockProjects,
     };
-    mockApiClient.get.mockResolvedValue(mockResponse);
+    mockApi.get.mockResolvedValue(mockResponse);
 
     // Act
     const result = await getAllProjects();
 
     // Assert
-    expect(mockApiClient.get).toHaveBeenCalledWith('/projects');
+    expect(mockApi.get).toHaveBeenCalledWith('/projects', 'fetching projects');
     expect(result).toEqual(mockProjects);
   });
 
@@ -232,31 +73,21 @@ describe('getAllProjects Function Tests', () => {
         },
       },
     };
-    mockApiClient.get.mockRejectedValue(mockErrorResponse);
+    mockApi.get.mockRejectedValue(mockErrorResponse);
 
     // Act & Assert
-    await expect(getAllProjects()).rejects.toEqual(
-      mockErrorResponse.response.data,
-    );
-    expect(mockApiClient.get).toHaveBeenCalledWith('/projects');
-    expect(mockConsoleError).toHaveBeenCalledWith(
-      'Error fetching projects:',
-      'Unauthorized access',
-    );
+    await expect(getAllProjects()).rejects.toEqual(mockErrorResponse);
+    expect(mockApi.get).toHaveBeenCalledWith('/projects', 'fetching projects');
   });
 
   it('should handle network error and throw the error object', async () => {
     // Arrange
     const networkError = new Error('Network Error');
-    mockApiClient.get.mockRejectedValue(networkError);
+    mockApi.get.mockRejectedValue(networkError);
 
     // Act & Assert
     await expect(getAllProjects()).rejects.toEqual(networkError);
-    expect(mockApiClient.get).toHaveBeenCalledWith('/projects');
-    expect(mockConsoleError).toHaveBeenCalledWith(
-      'Error fetching projects:',
-      'Network Error',
-    );
+    expect(mockApi.get).toHaveBeenCalledWith('/projects', 'fetching projects');
   });
 
   it('should handle API error without error message and use error.message as fallback', async () => {
@@ -269,17 +100,11 @@ describe('getAllProjects Function Tests', () => {
       },
       message: 'Internal Server Error',
     };
-    mockApiClient.get.mockRejectedValue(mockErrorResponse);
+    mockApi.get.mockRejectedValue(mockErrorResponse);
 
     // Act & Assert
-    await expect(getAllProjects()).rejects.toEqual(
-      mockErrorResponse.response.data,
-    );
-    expect(mockApiClient.get).toHaveBeenCalledWith('/projects');
-    expect(mockConsoleError).toHaveBeenCalledWith(
-      'Error fetching projects:',
-      'Internal Server Error',
-    );
+    await expect(getAllProjects()).rejects.toEqual(mockErrorResponse);
+    expect(mockApi.get).toHaveBeenCalledWith('/projects', 'fetching projects');
   });
 
   it('should handle empty projects array response', async () => {
@@ -290,39 +115,39 @@ describe('getAllProjects Function Tests', () => {
         total: 0,
       },
     };
-    mockApiClient.get.mockResolvedValue(mockResponse);
+    mockApi.get.mockResolvedValue(mockResponse);
 
     // Act
     const result = await getAllProjects();
 
     // Assert
-    expect(mockApiClient.get).toHaveBeenCalledWith('/projects');
+    expect(mockApi.get).toHaveBeenCalledWith('/projects', 'fetching projects');
     expect(result).toEqual([]);
   });
 
   it('should handle API response where response.data is null', async () => {
     // Arrange
     const mockResponse = { data: null };
-    mockApiClient.get.mockResolvedValue(mockResponse);
+    mockApi.get.mockResolvedValue(mockResponse);
 
     // Act
     const result = await getAllProjects();
 
     // Assert
-    expect(mockApiClient.get).toHaveBeenCalledWith('/projects');
+    expect(mockApi.get).toHaveBeenCalledWith('/projects', 'fetching projects');
     expect(result).toBeNull();
   });
 
   it('should handle API response where response.data is undefined', async () => {
     // Arrange
     const mockResponse = { data: undefined };
-    mockApiClient.get.mockResolvedValue(mockResponse);
+    mockApi.get.mockResolvedValue(mockResponse);
 
     // Act
     const result = await getAllProjects();
 
     // Assert
-    expect(mockApiClient.get).toHaveBeenCalledWith('/projects');
+    expect(mockApi.get).toHaveBeenCalledWith('/projects', 'fetching projects');
     expect(result).toBeUndefined();
   });
 });
@@ -341,15 +166,16 @@ describe('createProjectAPI Function Tests', () => {
         project: mockCreatedProject,
       },
     };
-    mockApiClient.post.mockResolvedValue(mockResponse);
+    mockApi.post.mockResolvedValue(mockResponse);
 
     // Act
     const result = await createProjectAPI(mockProjectData);
 
     // Assert
-    expect(mockApiClient.post).toHaveBeenCalledWith(
+    expect(mockApi.post).toHaveBeenCalledWith(
       '/projects',
       mockProjectData,
+      'creating project'
     );
     expect(result).toEqual(mockCreatedProject);
   });
@@ -365,20 +191,21 @@ describe('createProjectAPI Function Tests', () => {
     const mockResponse = {
       data: mockCreatedProject,
     };
-    mockApiClient.post.mockResolvedValue(mockResponse);
+    mockApi.post.mockResolvedValue(mockResponse);
 
     // Act
     const result = await createProjectAPI(mockProjectData);
 
     // Assert
-    expect(mockApiClient.post).toHaveBeenCalledWith(
+    expect(mockApi.post).toHaveBeenCalledWith(
       '/projects',
       mockProjectData,
+      'creating project'
     );
     expect(result).toEqual(mockCreatedProject);
   });
 
-  it('should handle API error and throw the error response data', async () => {
+  it('should handle API error and throw the error object', async () => {
     // Arrange
     const mockProjectData = { name: 'New Project' };
     const mockErrorResponse = {
@@ -389,19 +216,16 @@ describe('createProjectAPI Function Tests', () => {
         },
       },
     };
-    mockApiClient.post.mockRejectedValue(mockErrorResponse);
+    mockApi.post.mockRejectedValue(mockErrorResponse);
 
     // Act & Assert
     await expect(createProjectAPI(mockProjectData)).rejects.toEqual(
-      mockErrorResponse.response.data,
+      mockErrorResponse
     );
-    expect(mockApiClient.post).toHaveBeenCalledWith(
+    expect(mockApi.post).toHaveBeenCalledWith(
       '/projects',
       mockProjectData,
-    );
-    expect(mockConsoleError).toHaveBeenCalledWith(
-      'Error creating project:',
-      'Validation Error',
+      'creating project'
     );
   });
 
@@ -409,34 +233,32 @@ describe('createProjectAPI Function Tests', () => {
     // Arrange
     const mockProjectData = { name: 'New Project' };
     const networkError = new Error('Network Error');
-    mockApiClient.post.mockRejectedValue(networkError);
+    mockApi.post.mockRejectedValue(networkError);
 
     // Act & Assert
     await expect(createProjectAPI(mockProjectData)).rejects.toEqual(
-      networkError,
+      networkError
     );
-    expect(mockApiClient.post).toHaveBeenCalledWith(
+    expect(mockApi.post).toHaveBeenCalledWith(
       '/projects',
       mockProjectData,
-    );
-    expect(mockConsoleError).toHaveBeenCalledWith(
-      'Error creating project:',
-      'Network Error',
+      'creating project'
     );
   });
   it('should handle API response where response.data is null', async () => {
     // Arrange
     const mockProjectData = { name: 'New Project' };
     const mockResponse = { data: null };
-    mockApiClient.post.mockResolvedValue(mockResponse);
+    mockApi.post.mockResolvedValue(mockResponse);
 
     // Act
     const result = await createProjectAPI(mockProjectData);
 
     // Assert
-    expect(mockApiClient.post).toHaveBeenCalledWith(
+    expect(mockApi.post).toHaveBeenCalledWith(
       '/projects',
       mockProjectData,
+      'creating project'
     );
     expect(result).toBeNull();
   });
@@ -453,15 +275,16 @@ describe('updateProjectAPI Function Tests', () => {
         project: mockUpdatedProject,
       },
     };
-    mockApiClient.put.mockResolvedValue(mockResponse);
+    mockApi.put.mockResolvedValue(mockResponse);
 
     // Act
     const result = await updateProjectAPI(projectId, mockProjectData);
 
     // Assert
-    expect(mockApiClient.put).toHaveBeenCalledWith(
+    expect(mockApi.put).toHaveBeenCalledWith(
       `/projects/${projectId}`,
       mockProjectData,
+      'updating project'
     );
     expect(result).toEqual(mockUpdatedProject);
   });
@@ -474,15 +297,16 @@ describe('updateProjectAPI Function Tests', () => {
     const mockResponse = {
       data: mockUpdatedProject,
     };
-    mockApiClient.put.mockResolvedValue(mockResponse);
+    mockApi.put.mockResolvedValue(mockResponse);
 
     // Act
     const result = await updateProjectAPI(projectId, mockProjectData);
 
     // Assert
-    expect(mockApiClient.put).toHaveBeenCalledWith(
+    expect(mockApi.put).toHaveBeenCalledWith(
       `/projects/${projectId}`,
       mockProjectData,
+      'updating project'
     );
     expect(result).toEqual(mockUpdatedProject);
   });
@@ -492,20 +316,21 @@ describe('updateProjectAPI Function Tests', () => {
     const projectId = 'project-id';
     const mockProjectData = { name: 'Updated Name' };
     const mockResponse = { data: null };
-    mockApiClient.put.mockResolvedValue(mockResponse);
+    mockApi.put.mockResolvedValue(mockResponse);
 
     // Act
     const result = await updateProjectAPI(projectId, mockProjectData);
 
     // Assert
-    expect(mockApiClient.put).toHaveBeenCalledWith(
+    expect(mockApi.put).toHaveBeenCalledWith(
       `/projects/${projectId}`,
       mockProjectData,
+      'updating project'
     );
     expect(result).toBeNull();
   });
 
-  it('should handle API error and throw error.response.data', async () => {
+  it('should handle API error and throw the error object', async () => {
     // Arrange
     const projectId = 'project-id';
     const mockProjectData = { name: 'Updated Name' };
@@ -517,19 +342,16 @@ describe('updateProjectAPI Function Tests', () => {
         },
       },
     };
-    mockApiClient.put.mockRejectedValue(mockErrorResponse);
+    mockApi.put.mockRejectedValue(mockErrorResponse);
 
     // Act & Assert
     await expect(updateProjectAPI(projectId, mockProjectData)).rejects.toEqual(
-      mockErrorResponse.response.data,
+      mockErrorResponse
     );
-    expect(mockApiClient.put).toHaveBeenCalledWith(
+    expect(mockApi.put).toHaveBeenCalledWith(
       `/projects/${projectId}`,
       mockProjectData,
-    );
-    expect(mockConsoleError).toHaveBeenCalledWith(
-      'Error updating project:',
-      'Update failed',
+      'updating project'
     );
   });
 
@@ -538,19 +360,16 @@ describe('updateProjectAPI Function Tests', () => {
     const projectId = 'project-id';
     const mockProjectData = { name: 'Updated Name' };
     const networkError = new Error('Network Error');
-    mockApiClient.put.mockRejectedValue(networkError);
+    mockApi.put.mockRejectedValue(networkError);
 
     // Act & Assert
     await expect(updateProjectAPI(projectId, mockProjectData)).rejects.toEqual(
-      networkError,
+      networkError
     );
-    expect(mockApiClient.put).toHaveBeenCalledWith(
+    expect(mockApi.put).toHaveBeenCalledWith(
       `/projects/${projectId}`,
       mockProjectData,
-    );
-    expect(mockConsoleError).toHaveBeenCalledWith(
-      'Error updating project:',
-      'Network Error',
+      'updating project'
     );
   });
 });
@@ -560,31 +379,37 @@ describe('deleteProjectAPI Function Tests', () => {
     // Arrange
     const projectId = 'project-id';
     const mockResponse = { data: { message: 'Deleted successfully' } };
-    mockApiClient.delete.mockResolvedValue(mockResponse);
+    mockApi.delete.mockResolvedValue(mockResponse);
 
     // Act
     const result = await deleteProjectAPI(projectId);
 
     // Assert
-    expect(mockApiClient.delete).toHaveBeenCalledWith(`/projects/${projectId}`);
+    expect(mockApi.delete).toHaveBeenCalledWith(
+      `/projects/${projectId}`,
+      'deleting project'
+    );
     expect(result).toEqual(mockResponse.data);
   });
 
   it('should handle successful deletion with 204 No Content (empty response.data)', async () => {
     // Arrange
     const projectId = 'project-id';
-    const mockResponse = { data: undefined }; // Mimics 204 No Content
-    mockApiClient.delete.mockResolvedValue(mockResponse);
+    const mockResponse = { data: undefined };
+    mockApi.delete.mockResolvedValue(mockResponse);
 
     // Act
     const result = await deleteProjectAPI(projectId);
 
     // Assert
-    expect(mockApiClient.delete).toHaveBeenCalledWith(`/projects/${projectId}`);
+    expect(mockApi.delete).toHaveBeenCalledWith(
+      `/projects/${projectId}`,
+      'deleting project'
+    );
     expect(result).toBeUndefined();
   });
 
-  it('should handle API error and throw error.response.data', async () => {
+  it('should handle API error and throw the error object', async () => {
     // Arrange
     const projectId = 'project-id';
     const mockErrorResponse = {
@@ -595,16 +420,15 @@ describe('deleteProjectAPI Function Tests', () => {
         },
       },
     };
-    mockApiClient.delete.mockRejectedValue(mockErrorResponse);
+    mockApi.delete.mockRejectedValue(mockErrorResponse);
 
     // Act & Assert
     await expect(deleteProjectAPI(projectId)).rejects.toEqual(
-      mockErrorResponse.response.data,
+      mockErrorResponse
     );
-    expect(mockApiClient.delete).toHaveBeenCalledWith(`/projects/${projectId}`);
-    expect(mockConsoleError).toHaveBeenCalledWith(
-      'Error deleting project:',
-      'Deletion failed',
+    expect(mockApi.delete).toHaveBeenCalledWith(
+      `/projects/${projectId}`,
+      'deleting project'
     );
   });
 
@@ -612,14 +436,13 @@ describe('deleteProjectAPI Function Tests', () => {
     // Arrange
     const projectId = 'project-id';
     const networkError = new Error('Network Error');
-    mockApiClient.delete.mockRejectedValue(networkError);
+    mockApi.delete.mockRejectedValue(networkError);
 
     // Act & Assert
     await expect(deleteProjectAPI(projectId)).rejects.toEqual(networkError);
-    expect(mockApiClient.delete).toHaveBeenCalledWith(`/projects/${projectId}`);
-    expect(mockConsoleError).toHaveBeenCalledWith(
-      'Error deleting project:',
-      'Network Error',
+    expect(mockApi.delete).toHaveBeenCalledWith(
+      `/projects/${projectId}`,
+      'deleting project'
     );
   });
 });

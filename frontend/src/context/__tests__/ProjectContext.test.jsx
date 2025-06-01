@@ -1,20 +1,39 @@
-import { useContext } from "react";
-import { render, screen, waitFor, act } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
-import "@testing-library/jest-dom";
-import ProjectContext, { ProjectProvider } from "../ProjectContext";
-import AuthContext from "../AuthContext";
-import toast from "react-hot-toast";
-import * as projectApiService from "../../services/projectApiService";
+import { useContext } from 'react';
+import { render, screen, waitFor, act } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import '@testing-library/jest-dom';
+import ProjectContext, { ProjectProvider } from '../ProjectContext';
+import AuthContext from '../AuthContext';
+import { ErrorProvider } from '../ErrorContext';
+import * as projectApiService from '../../services/projectApiService';
 
-jest.mock("../../services/projectApiService");
+jest.mock('../../services/projectApiService');
 
-jest.mock("react-hot-toast", () => ({
+jest.mock('react-hot-toast', () => ({
   __esModule: true,
   default: {
     success: jest.fn(),
     error: jest.fn(),
   },
+}));
+
+const mockShowErrorToast = jest.fn();
+const mockShowSuccess = jest.fn();
+const mockShowInfo = jest.fn();
+
+jest.mock('../ErrorContext', () => ({
+  ...jest.requireActual('../ErrorContext'),
+  useError: () => ({
+    showErrorToast: mockShowErrorToast,
+    showSuccess: mockShowSuccess,
+    showInfo: mockShowInfo,
+    globalErrors: [],
+    isOnline: true,
+    addError: jest.fn(),
+    removeError: jest.fn(),
+    clearAllErrors: jest.fn(),
+  }),
+  ErrorProvider: ({ children }) => children,
 }));
 
 // Helper component to consume ProjectContext for testing
@@ -41,7 +60,7 @@ const TestProjectConsumer = () => {
     <div data-testid="project-context-consumer">
       <span data-testid="projects">{JSON.stringify(projects)}</span>
       <span data-testid="isLoading">{isLoading.toString()}</span>
-      <span data-testid="error">{error ? String(error) : "null"}</span>
+      <span data-testid="error">{error ? String(error) : 'null'}</span>
       <button data-testid="fetch-projects-button" onClick={fetchProjects}>
         Fetch Projects
       </button>
@@ -49,7 +68,7 @@ const TestProjectConsumer = () => {
         data-testid="add-project-button"
         onClick={async () => {
           try {
-            await addProject({ name: "New Project Alpha" });
+            await addProject({ name: 'New Project Alpha' });
           } catch {
             // Error is handled by context and toast, ignore here for button click
           }
@@ -61,7 +80,7 @@ const TestProjectConsumer = () => {
         data-testid="update-project-button"
         onClick={async () => {
           try {
-            await updateProject("p1", { name: "Updated Project P1" });
+            await updateProject('p1', { name: 'Updated Project P1' });
           } catch {
             // Error is handled by context and toast, ignore here for button click
           }
@@ -73,7 +92,7 @@ const TestProjectConsumer = () => {
         data-testid="delete-project-button"
         onClick={async () => {
           try {
-            await deleteProject("p1");
+            await deleteProject('p1');
           } catch {
             // Error is handled by context and toast, ignore here for button click
           }
@@ -87,27 +106,32 @@ const TestProjectConsumer = () => {
 
 const mockAuthLogout = jest.fn();
 
-describe("ProjectContext", () => {
+describe('ProjectContext', () => {
   let user;
 
   const initialProjects = [];
 
   const renderTestComponent = (authContextValue) => {
     return render(
-      <AuthContext.Provider value={authContextValue}>
-        <ProjectProvider>
-          <TestProjectConsumer />
-        </ProjectProvider>
-      </AuthContext.Provider>
+      <ErrorProvider>
+        <AuthContext.Provider value={authContextValue}>
+          <ProjectProvider>
+            <TestProjectConsumer />
+          </ProjectProvider>
+        </AuthContext.Provider>
+      </ErrorProvider>
     );
   };
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockShowErrorToast.mockClear();
+    mockShowSuccess.mockClear();
+    mockShowInfo.mockClear();
     user = userEvent.setup();
   });
 
-  test("initial state is correct", () => {
+  test('initial state is correct', () => {
     const authValue = {
       isAuthenticated: false,
       token: null,
@@ -115,137 +139,146 @@ describe("ProjectContext", () => {
     };
     renderTestComponent(authValue);
 
-    expect(screen.getByTestId("projects")).toHaveTextContent(
+    expect(screen.getByTestId('projects')).toHaveTextContent(
       JSON.stringify(initialProjects)
     );
-    expect(screen.getByTestId("isLoading")).toHaveTextContent("false");
-    expect(screen.getByTestId("error")).toHaveTextContent("null");
+    expect(screen.getByTestId('isLoading')).toHaveTextContent('false');
+    expect(screen.getByTestId('error')).toHaveTextContent('null');
   });
 
-  describe("fetchProjects", () => {
-    test("clears projects and does not call API if not authenticated", async () => {
+  describe('fetchProjects', () => {
+    test('clears projects and does not call API if not authenticated', async () => {
       const authValue = {
         isAuthenticated: false,
         token: null,
         logout: mockAuthLogout,
       };
       renderTestComponent(authValue);
-      await user.click(screen.getByTestId("fetch-projects-button"));
+      await user.click(screen.getByTestId('fetch-projects-button'));
 
       expect(projectApiService.getAllProjects).not.toHaveBeenCalled();
       await waitFor(() => {
-        expect(screen.getByTestId("projects")).toHaveTextContent(
+        expect(screen.getByTestId('projects')).toHaveTextContent(
           JSON.stringify([])
         );
-        expect(screen.getByTestId("isLoading")).toHaveTextContent("false");
+        expect(screen.getByTestId('isLoading')).toHaveTextContent('false');
       });
     });
 
-    test("fetches projects successfully when authenticated", async () => {
+    test('fetches projects successfully when authenticated', async () => {
       const authValue = {
         isAuthenticated: true,
-        token: "test-token",
+        token: 'test-token',
         logout: mockAuthLogout,
       };
-      const mockProjects = [{ id: "p1", name: "Project One" }];
+      const mockProjects = [{ id: 'p1', name: 'Project One' }];
       projectApiService.getAllProjects.mockResolvedValue(mockProjects);
 
       renderTestComponent(authValue);
-      await user.click(screen.getByTestId("fetch-projects-button"));
+      await user.click(screen.getByTestId('fetch-projects-button'));
 
       expect(projectApiService.getAllProjects).toHaveBeenCalled();
       await waitFor(() => {
-        expect(screen.getByTestId("isLoading")).toHaveTextContent("false");
-        expect(screen.getByTestId("projects")).toHaveTextContent(
+        expect(screen.getByTestId('isLoading')).toHaveTextContent('false');
+        expect(screen.getByTestId('projects')).toHaveTextContent(
           JSON.stringify(mockProjects)
         );
-        expect(screen.getByTestId("error")).toHaveTextContent("null");
+        expect(screen.getByTestId('error')).toHaveTextContent('null');
       });
     });
 
-    test("sets error on generic fetch failure", async () => {
+    test('sets error on generic fetch failure', async () => {
       const authValue = {
         isAuthenticated: true,
-        token: "test-token",
+        token: 'test-token',
         logout: mockAuthLogout,
       };
-      const errorMessage = "Network Error";
+      const fallbackMessage = 'Failed to fetch projects.';
       projectApiService.getAllProjects.mockRejectedValue(
-        new Error(errorMessage)
+        new Error('Network Error')
       );
 
-      const consoleErrorSpy = jest
-        .spyOn(console, "error")
-        .mockImplementation(() => {});
       renderTestComponent(authValue);
-      await user.click(screen.getByTestId("fetch-projects-button"));
+      await user.click(screen.getByTestId('fetch-projects-button'));
 
       await waitFor(() => {
-        expect(screen.getByTestId("isLoading")).toHaveTextContent("false");
-        expect(screen.getByTestId("projects")).toHaveTextContent(
+        expect(screen.getByTestId('isLoading')).toHaveTextContent('false');
+        expect(screen.getByTestId('projects')).toHaveTextContent(
           JSON.stringify(initialProjects)
         );
-        expect(screen.getByTestId("error")).toHaveTextContent(errorMessage);
+        expect(screen.getByTestId('error')).toHaveTextContent(fallbackMessage);
+        expect(mockShowErrorToast).toHaveBeenCalledWith({
+          message: fallbackMessage,
+          severity: 'medium',
+        });
       });
-      consoleErrorSpy.mockRestore();
     });
 
-    test("sets error from err.response.data.message on API error", async () => {
+    test('sets error from err.processedError on API error', async () => {
       const authValue = {
         isAuthenticated: true,
-        token: "test-token",
+        token: 'test-token',
         logout: mockAuthLogout,
       };
-      const apiErrorMessage = "API specific error";
-      projectApiService.getAllProjects.mockRejectedValue({
-        response: { data: { message: apiErrorMessage } },
-      });
+      const processedErrorMessage = 'API specific error';
+      const mockError = {
+        processedError: {
+          message: processedErrorMessage,
+          severity: 'medium',
+        },
+      };
+      projectApiService.getAllProjects.mockRejectedValue(mockError);
 
-      const consoleErrorSpy = jest
-        .spyOn(console, "error")
-        .mockImplementation(() => {});
       renderTestComponent(authValue);
-      await user.click(screen.getByTestId("fetch-projects-button"));
+      await user.click(screen.getByTestId('fetch-projects-button'));
 
       await waitFor(() => {
-        expect(screen.getByTestId("error")).toHaveTextContent(apiErrorMessage);
+        expect(screen.getByTestId('error')).toHaveTextContent(
+          processedErrorMessage
+        );
+        expect(mockShowErrorToast).toHaveBeenCalledWith(
+          mockError.processedError
+        );
       });
-      consoleErrorSpy.mockRestore();
     });
 
-    test("sets error and calls auth logout on 401 error during fetch", async () => {
+    test('sets error on 401 error during fetch', async () => {
       const authValue = {
         isAuthenticated: true,
-        token: "test-token",
+        token: 'test-token',
         logout: mockAuthLogout,
       };
-      const unauthorizedMessage = "Token expired";
-      projectApiService.getAllProjects.mockRejectedValue({
-        response: { status: 401, data: { message: unauthorizedMessage } },
-      });
+      const unauthorizedMessage =
+        'Your session has expired. Please log in again.';
+      const mockError = {
+        processedError: {
+          message: unauthorizedMessage,
+          severity: 'high',
+          shouldLogout: true,
+        },
+      };
+      projectApiService.getAllProjects.mockRejectedValue(mockError);
 
-      const consoleErrorSpy = jest
-        .spyOn(console, "error")
-        .mockImplementation(() => {});
       renderTestComponent(authValue);
-      await user.click(screen.getByTestId("fetch-projects-button"));
+      await user.click(screen.getByTestId('fetch-projects-button'));
 
       await waitFor(() => {
-        expect(screen.getByTestId("isLoading")).toHaveTextContent("false");
-        expect(screen.getByTestId("error")).toHaveTextContent(
+        expect(screen.getByTestId('isLoading')).toHaveTextContent('false');
+        expect(screen.getByTestId('error')).toHaveTextContent(
           unauthorizedMessage
         );
-        expect(mockAuthLogout).toHaveBeenCalledTimes(1);
+        expect(mockShowErrorToast).toHaveBeenCalledWith(
+          mockError.processedError
+        );
       });
-      consoleErrorSpy.mockRestore();
     });
   });
 
-  describe("addProject", () => {
-    const projectAlphaData = { name: "New Project Alpha" };
-    const projectAlphaResponse = { id: "newP1", ...projectAlphaData };
-    const projectBetaData = { name: "New Project Beta" };
-    const projectBetaResponse = { id: "newP2", ...projectBetaData };
+  describe('addProject', () => {
+    const projectAlphaData = { name: 'New Project Alpha' };
+    const projectAlphaResponse = { id: 'newP1', ...projectAlphaData };
+    const projectBetaData = { name: 'New Project Beta' };
+    const projectBetaResponse = { id: 'newP2', ...projectBetaData };
 
     let projectContextInstance;
     const ContextGrabber = () => {
@@ -255,19 +288,21 @@ describe("ProjectContext", () => {
 
     const setupAddProjectTest = (authValue) => {
       render(
-        <AuthContext.Provider value={authValue}>
-          <ProjectProvider>
-            <TestProjectConsumer />
-            <ContextGrabber />
-          </ProjectProvider>
-        </AuthContext.Provider>
+        <ErrorProvider>
+          <AuthContext.Provider value={authValue}>
+            <ProjectProvider>
+              <TestProjectConsumer />
+              <ContextGrabber />
+            </ProjectProvider>
+          </AuthContext.Provider>
+        </ErrorProvider>
       );
     };
 
-    test("adds a new project successfully via button click", async () => {
+    test('adds a new project successfully via button click', async () => {
       const authValue = {
         isAuthenticated: true,
-        token: "test-token",
+        token: 'test-token',
         logout: mockAuthLogout,
       };
       projectApiService.createProjectAPI.mockResolvedValue(
@@ -275,27 +310,26 @@ describe("ProjectContext", () => {
       );
       setupAddProjectTest(authValue);
 
-      await user.click(screen.getByTestId("add-project-button"));
+      await user.click(screen.getByTestId('add-project-button'));
 
       await waitFor(() => {
         expect(projectApiService.createProjectAPI).toHaveBeenCalledWith(
-          projectAlphaData,
-          authValue.token
+          projectAlphaData
         );
-        expect(screen.getByTestId("projects")).toHaveTextContent(
+        expect(screen.getByTestId('projects')).toHaveTextContent(
           JSON.stringify([projectAlphaResponse])
         );
-        expect(toast.success).toHaveBeenCalledWith(
-          "Project created successfully!"
+        expect(mockShowSuccess).toHaveBeenCalledWith(
+          'Project created successfully!'
         );
-        expect(screen.getByTestId("isLoading")).toHaveTextContent("false");
+        expect(screen.getByTestId('isLoading')).toHaveTextContent('false');
       });
     });
 
-    test("prepends multiple projects correctly", async () => {
+    test('prepends multiple projects correctly', async () => {
       const authValue = {
         isAuthenticated: true,
-        token: "test-token",
+        token: 'test-token',
         logout: mockAuthLogout,
       };
       setupAddProjectTest(authValue);
@@ -303,10 +337,10 @@ describe("ProjectContext", () => {
       projectApiService.createProjectAPI.mockResolvedValueOnce(
         projectAlphaResponse
       );
-      await user.click(screen.getByTestId("add-project-button")); // Adds Alpha
+      await user.click(screen.getByTestId('add-project-button')); // Adds Alpha
 
       await waitFor(() =>
-        expect(screen.getByTestId("projects")).toHaveTextContent(
+        expect(screen.getByTestId('projects')).toHaveTextContent(
           JSON.stringify([projectAlphaResponse])
         )
       );
@@ -320,45 +354,44 @@ describe("ProjectContext", () => {
       });
 
       await waitFor(() => {
-        expect(screen.getByTestId("projects")).toHaveTextContent(
+        expect(screen.getByTestId('projects')).toHaveTextContent(
           JSON.stringify([projectBetaResponse, projectAlphaResponse])
         );
-        expect(toast.success).toHaveBeenCalledTimes(2);
+        expect(mockShowSuccess).toHaveBeenCalledTimes(2);
       });
     });
 
-    test("handles error when adding project", async () => {
+    test('handles error when adding project', async () => {
       const authValue = {
         isAuthenticated: true,
-        token: "test-token",
+        token: 'test-token',
         logout: mockAuthLogout,
       };
-      const errorMessage = "Failed to create";
+      const fallbackMessage = 'Failed to create project.';
       projectApiService.createProjectAPI.mockRejectedValue(
-        new Error(errorMessage)
+        new Error('Failed to create')
       );
-      const consoleErrorSpy = jest
-        .spyOn(console, "error")
-        .mockImplementation(() => {});
       setupAddProjectTest(authValue);
 
-      await user.click(screen.getByTestId("add-project-button"));
+      await user.click(screen.getByTestId('add-project-button'));
 
       await waitFor(() => {
-        expect(screen.getByTestId("error")).toHaveTextContent(errorMessage);
-        expect(toast.error).toHaveBeenCalledWith(errorMessage);
-        expect(screen.getByTestId("projects")).toHaveTextContent(
+        expect(screen.getByTestId('error')).toHaveTextContent(fallbackMessage);
+        expect(mockShowErrorToast).toHaveBeenCalledWith({
+          message: fallbackMessage,
+          severity: 'medium',
+        });
+        expect(screen.getByTestId('projects')).toHaveTextContent(
           JSON.stringify([])
         ); // Projects list remains empty
       });
-      consoleErrorSpy.mockRestore();
     });
   });
 
-  describe("updateProject", () => {
-    const initialProject = { id: "p1", name: "Initial Project P1" };
-    const projectToUpdateData = { name: "Updated Project P1" };
-    const updatedProjectResponse = { id: "p1", ...projectToUpdateData };
+  describe('updateProject', () => {
+    const initialProject = { id: 'p1', name: 'Initial Project P1' };
+    const projectToUpdateData = { name: 'Updated Project P1' };
+    const updatedProjectResponse = { id: 'p1', ...projectToUpdateData };
 
     let projectContextInstance;
     const ContextGrabber = () => {
@@ -366,34 +399,23 @@ describe("ProjectContext", () => {
       return null;
     };
 
-    const setupUpdateProjectTest = (authValue, initialContextProjects = []) => {
-      // Allow pre-seeding context for update tests
+    const setupUpdateProjectTest = (authValue) => {
       render(
-        <AuthContext.Provider value={authValue}>
-          <ProjectProvider>
-            <TestProjectConsumer />
-            <ContextGrabber />
-          </ProjectProvider>
-        </AuthContext.Provider>
+        <ErrorProvider>
+          <AuthContext.Provider value={authValue}>
+            <ProjectProvider>
+              <TestProjectConsumer />
+              <ContextGrabber />
+            </ProjectProvider>
+          </AuthContext.Provider>
+        </ErrorProvider>
       );
-      // Manually set initial projects in context if needed, bypassing API for setup
-      if (initialContextProjects.length > 0 && projectContextInstance) {
-        act(() => {
-          // This direct manipulation is for test setup only.
-          // In a real scenario, projects are populated via fetch or add.
-          // We need to ensure 'projects' state in ProjectProvider is set.
-          // A more robust way would be to mock fetchProjects to set initial state.
-          // For now, we'll add them one by one if addProject is simple enough.
-          // Given addProject is now async and API-calling, this is tricky.
-          // Let's assume tests will add projects first if needed.
-        });
-      }
     };
 
-    test("updates an existing project successfully via button click", async () => {
+    test('updates an existing project successfully via button click', async () => {
       const authValue = {
         isAuthenticated: true,
-        token: "test-token",
+        token: 'test-token',
         logout: mockAuthLogout,
       };
       setupUpdateProjectTest(authValue);
@@ -401,95 +423,88 @@ describe("ProjectContext", () => {
       // First, add the project to be updated
       projectApiService.createProjectAPI.mockResolvedValueOnce(initialProject);
       await act(async () => {
-        // Wrap direct context call in act
         await projectContextInstance.addProject({ name: initialProject.name });
       });
       await waitFor(() =>
-        expect(screen.getByTestId("projects")).toHaveTextContent(
+        expect(screen.getByTestId('projects')).toHaveTextContent(
           JSON.stringify([initialProject])
         )
       );
-      toast.success.mockClear(); // Clear toast from addProject
+      mockShowSuccess.mockClear(); // Clear toast from addProject
 
       projectApiService.updateProjectAPI.mockResolvedValue(
         updatedProjectResponse
       );
-      await user.click(screen.getByTestId("update-project-button")); // Button updates "p1"
+      await user.click(screen.getByTestId('update-project-button')); // Button updates "p1"
 
       await waitFor(() => {
         expect(projectApiService.updateProjectAPI).toHaveBeenCalledWith(
           initialProject.id,
-          projectToUpdateData,
-          authValue.token
+          projectToUpdateData
         );
-        expect(screen.getByTestId("projects")).toHaveTextContent(
+        expect(screen.getByTestId('projects')).toHaveTextContent(
           JSON.stringify([updatedProjectResponse])
         );
-        expect(toast.success).toHaveBeenCalledWith(
-          "Project updated successfully!"
+        expect(mockShowSuccess).toHaveBeenCalledWith(
+          'Project updated successfully!'
         );
-        expect(screen.getByTestId("isLoading")).toHaveTextContent("false");
+        expect(screen.getByTestId('isLoading')).toHaveTextContent('false');
       });
     });
 
-    test("handles error when updating project", async () => {
+    test('handles error when updating project', async () => {
       const authValue = {
         isAuthenticated: true,
-        token: "test-token",
+        token: 'test-token',
         logout: mockAuthLogout,
       };
       setupUpdateProjectTest(authValue);
       projectApiService.createProjectAPI.mockResolvedValueOnce(initialProject);
       await act(async () => {
-        // Wrap direct context call in act
         await projectContextInstance.addProject({ name: initialProject.name });
       });
       await waitFor(() =>
-        expect(screen.getByTestId("projects")).toHaveTextContent(
+        expect(screen.getByTestId('projects')).toHaveTextContent(
           JSON.stringify([initialProject])
         )
       );
-      toast.success.mockClear();
-      toast.error.mockClear();
+      mockShowSuccess.mockClear();
+      mockShowErrorToast.mockClear();
 
-      const errorMessage = "Failed to update";
+      const fallbackMessage = 'Failed to update project.';
       projectApiService.updateProjectAPI.mockRejectedValue(
-        new Error(errorMessage)
+        new Error('Failed to update')
       );
-      const consoleErrorSpy = jest
-        .spyOn(console, "error")
-        .mockImplementation(() => {});
 
       // Attempt update via button
-      await user.click(screen.getByTestId("update-project-button"));
+      await user.click(screen.getByTestId('update-project-button'));
 
       await waitFor(() => {
-        expect(screen.getByTestId("error")).toHaveTextContent(errorMessage);
-        expect(toast.error).toHaveBeenCalledWith(errorMessage);
+        expect(screen.getByTestId('error')).toHaveTextContent(fallbackMessage);
+        expect(mockShowErrorToast).toHaveBeenCalledWith({
+          message: fallbackMessage,
+          severity: 'medium',
+        });
         // Projects list should remain as it was before the failed update
-        expect(screen.getByTestId("projects")).toHaveTextContent(
+        expect(screen.getByTestId('projects')).toHaveTextContent(
           JSON.stringify([initialProject])
         );
       });
-      consoleErrorSpy.mockRestore();
     });
 
-    test("does not change list if updating non-existent project (API error)", async () => {
+    test('does not change list if updating non-existent project (API error)', async () => {
       const authValue = {
         isAuthenticated: true,
-        token: "test-token",
+        token: 'test-token',
         logout: mockAuthLogout,
       };
       setupUpdateProjectTest(authValue); // Start with empty projects
-      const nonExistentId = "pNonExistent";
-      const nonExistentUpdateData = { name: "Non Existent" };
-      const errorMessage = "Project not found";
+      const nonExistentId = 'pNonExistent';
+      const nonExistentUpdateData = { name: 'Non Existent' };
+      const fallbackMessage = 'Failed to update project.';
       projectApiService.updateProjectAPI.mockRejectedValue(
-        new Error(errorMessage)
+        new Error('Project not found')
       );
-      const consoleErrorSpy = jest
-        .spyOn(console, "error")
-        .mockImplementation(() => {});
 
       let caughtError = null;
 
@@ -505,24 +520,25 @@ describe("ProjectContext", () => {
         }
       });
 
-      // Assert that an error was caught and it has the correct message.
-      expect(caughtError && caughtError.message).toBe(errorMessage);
+      // Assert that an error was caught
+      expect(caughtError).toBeTruthy();
 
       await waitFor(() => {
-        expect(screen.getByTestId("error")).toHaveTextContent(errorMessage);
-        expect(toast.error).toHaveBeenCalledWith(errorMessage);
-        expect(screen.getByTestId("projects")).toHaveTextContent(
+        expect(screen.getByTestId('error')).toHaveTextContent(fallbackMessage);
+        expect(mockShowErrorToast).toHaveBeenCalledWith({
+          message: fallbackMessage,
+          severity: 'medium',
+        });
+        expect(screen.getByTestId('projects')).toHaveTextContent(
           JSON.stringify([])
         ); // List remains empty
       });
-      expect.assertions(4); // 1 for rejection, 3 for state checks in waitFor
-      consoleErrorSpy.mockRestore();
     });
   });
 
-  describe("deleteProject", () => {
-    const project1ToDelete = { id: "p1", name: "Project One to Delete" };
-    const project2ToKeep = { id: "p2", name: "Project Two to Keep" };
+  describe('deleteProject', () => {
+    const project1ToDelete = { id: 'p1', name: 'Project One to Delete' };
+    const project2ToKeep = { id: 'p2', name: 'Project Two to Keep' };
 
     let projectContextInstance;
     const ContextGrabber = () => {
@@ -532,143 +548,149 @@ describe("ProjectContext", () => {
 
     const setupDeleteTest = async (authValue) => {
       render(
-        <AuthContext.Provider value={authValue}>
-          <ProjectProvider>
-            <TestProjectConsumer />
-            <ContextGrabber />
-          </ProjectProvider>
-        </AuthContext.Provider>
+        <ErrorProvider>
+          <AuthContext.Provider value={authValue}>
+            <ProjectProvider>
+              <TestProjectConsumer />
+              <ContextGrabber />
+            </ProjectProvider>
+          </AuthContext.Provider>
+        </ErrorProvider>
       );
       // Pre-populate projects
       projectApiService.createProjectAPI.mockResolvedValueOnce(project2ToKeep);
       await act(async () => {
-        // Wrap direct context call in act
         await projectContextInstance.addProject({ name: project2ToKeep.name });
       });
       projectApiService.createProjectAPI.mockResolvedValueOnce(
         project1ToDelete
       );
       await act(async () => {
-        // Wrap direct context call in act
         await projectContextInstance.addProject({
           name: project1ToDelete.name,
         });
       });
 
       await waitFor(() => {
-        expect(screen.getByTestId("projects")).toHaveTextContent(
+        expect(screen.getByTestId('projects')).toHaveTextContent(
           JSON.stringify([project1ToDelete, project2ToKeep]) // p1 added last, so it's first
         );
       });
-      toast.success.mockClear(); // Clear toasts from addProject calls
+      mockShowSuccess.mockClear(); // Clear toasts from addProject calls
     };
 
-    test("successfully deletes a project via button click", async () => {
+    test('successfully deletes a project via button click', async () => {
       const authValue = {
         isAuthenticated: true,
-        token: "test-token",
+        token: 'test-token',
         logout: mockAuthLogout,
       };
       await setupDeleteTest(authValue);
-      projectApiService.deleteProjectAPI.mockResolvedValue(undefined); // delete typically returns no content or a success message object
+      projectApiService.deleteProjectAPI.mockResolvedValue(undefined);
 
-      await user.click(screen.getByTestId("delete-project-button")); // Deletes "p1"
+      await user.click(screen.getByTestId('delete-project-button')); // Deletes "p1"
 
       await waitFor(() => {
         expect(projectApiService.deleteProjectAPI).toHaveBeenCalledWith(
-          project1ToDelete.id // Token is not passed directly
+          project1ToDelete.id
         );
-        expect(screen.getByTestId("isLoading")).toHaveTextContent("false");
-        expect(screen.getByTestId("projects")).toHaveTextContent(
+        expect(screen.getByTestId('isLoading')).toHaveTextContent('false');
+        expect(screen.getByTestId('projects')).toHaveTextContent(
           JSON.stringify([project2ToKeep]) // Only p2 remains
         );
-        expect(toast.success).toHaveBeenCalledWith(
-          "Project deleted successfully!"
+        expect(mockShowSuccess).toHaveBeenCalledWith(
+          'Project deleted successfully!'
         );
-        expect(screen.getByTestId("error")).toHaveTextContent("null");
+        expect(screen.getByTestId('error')).toHaveTextContent('null');
       });
     });
 
-    test("sets error on generic API failure during delete", async () => {
+    test('sets error on generic API failure during delete', async () => {
       const authValue = {
         isAuthenticated: true,
-        token: "test-token",
+        token: 'test-token',
         logout: mockAuthLogout,
       };
       await setupDeleteTest(authValue);
-      const errorMessage = "Network Error on delete";
+      const fallbackMessage = 'Failed to delete project.';
       projectApiService.deleteProjectAPI.mockRejectedValue(
-        new Error(errorMessage)
+        new Error('Network Error on delete')
       );
-      const consoleErrorSpy = jest
-        .spyOn(console, "error")
-        .mockImplementation(() => {});
 
-      await user.click(screen.getByTestId("delete-project-button"));
+      await user.click(screen.getByTestId('delete-project-button'));
 
       await waitFor(() => {
-        expect(screen.getByTestId("isLoading")).toHaveTextContent("false");
-        expect(screen.getByTestId("error")).toHaveTextContent(errorMessage);
-        expect(toast.error).toHaveBeenCalledWith(errorMessage);
+        expect(screen.getByTestId('isLoading')).toHaveTextContent('false');
+        expect(screen.getByTestId('error')).toHaveTextContent(fallbackMessage);
+        expect(mockShowErrorToast).toHaveBeenCalledWith({
+          message: fallbackMessage,
+          severity: 'medium',
+        });
         // Projects list should remain unchanged on error
-        expect(screen.getByTestId("projects")).toHaveTextContent(
+        expect(screen.getByTestId('projects')).toHaveTextContent(
           JSON.stringify([project1ToDelete, project2ToKeep])
         );
       });
-      consoleErrorSpy.mockRestore();
     });
 
-    test("sets error from err.response.data.message on API delete error", async () => {
+    test('sets error from err.processedError on API delete error', async () => {
       const authValue = {
         isAuthenticated: true,
-        token: "test-token",
+        token: 'test-token',
         logout: mockAuthLogout,
       };
       await setupDeleteTest(authValue);
-      const apiErrorMessage = "API specific delete error";
-      projectApiService.deleteProjectAPI.mockRejectedValue({
-        response: { data: { message: apiErrorMessage } },
-      });
-      const consoleErrorSpy = jest
-        .spyOn(console, "error")
-        .mockImplementation(() => {});
+      const processedErrorMessage = 'API specific delete error';
+      const mockError = {
+        processedError: {
+          message: processedErrorMessage,
+          severity: 'medium',
+        },
+      };
+      projectApiService.deleteProjectAPI.mockRejectedValue(mockError);
 
-      await user.click(screen.getByTestId("delete-project-button"));
+      await user.click(screen.getByTestId('delete-project-button'));
 
       await waitFor(() => {
-        expect(screen.getByTestId("isLoading")).toHaveTextContent("false");
-        expect(screen.getByTestId("error")).toHaveTextContent(apiErrorMessage);
-        expect(toast.error).toHaveBeenCalledWith(apiErrorMessage);
+        expect(screen.getByTestId('isLoading')).toHaveTextContent('false');
+        expect(screen.getByTestId('error')).toHaveTextContent(
+          processedErrorMessage
+        );
+        expect(mockShowErrorToast).toHaveBeenCalledWith(
+          mockError.processedError
+        );
       });
-      consoleErrorSpy.mockRestore();
     });
 
-    test("calls auth logout and sets error on 401 error during delete", async () => {
+    test('sets error on 401 error during delete', async () => {
       const authValue = {
         isAuthenticated: true,
-        token: "test-token",
+        token: 'test-token',
         logout: mockAuthLogout,
       };
       await setupDeleteTest(authValue);
-      const unauthorizedMessage = "Session expired on delete";
-      projectApiService.deleteProjectAPI.mockRejectedValue({
-        response: { status: 401, data: { message: unauthorizedMessage } },
-      });
-      const consoleErrorSpy = jest
-        .spyOn(console, "error")
-        .mockImplementation(() => {});
+      const unauthorizedMessage =
+        'Your session has expired. Please log in again.';
+      const mockError = {
+        processedError: {
+          message: unauthorizedMessage,
+          severity: 'high',
+          shouldLogout: true,
+        },
+      };
+      projectApiService.deleteProjectAPI.mockRejectedValue(mockError);
 
-      await user.click(screen.getByTestId("delete-project-button"));
+      await user.click(screen.getByTestId('delete-project-button'));
 
       await waitFor(() => {
-        expect(screen.getByTestId("isLoading")).toHaveTextContent("false");
-        expect(screen.getByTestId("error")).toHaveTextContent(
+        expect(screen.getByTestId('isLoading')).toHaveTextContent('false');
+        expect(screen.getByTestId('error')).toHaveTextContent(
           unauthorizedMessage
         );
-        expect(toast.error).toHaveBeenCalledWith(unauthorizedMessage);
-        expect(mockAuthLogout).toHaveBeenCalledTimes(1);
+        expect(mockShowErrorToast).toHaveBeenCalledWith(
+          mockError.processedError
+        );
       });
-      consoleErrorSpy.mockRestore();
     });
   });
 });

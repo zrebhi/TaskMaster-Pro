@@ -1,0 +1,107 @@
+import axios from 'axios';
+import { handleApiError } from '../utils/errorHandler';
+
+/**
+ * Centralized API client with global error handling
+ * This replaces individual axios instances in service files
+ */
+
+// Create the main API client
+const apiClient = axios.create({
+  baseURL: '/api',
+  timeout: 10000, // 10 second timeout
+});
+
+// Store auth context reference for token access and logout functionality
+let authContextRef = null;
+
+/**
+ * Set the auth context reference for token access and logout functionality
+ * This should be called from App.jsx or AuthProvider
+ */
+export const setAuthContext = (authContext) => {
+  authContextRef = authContext;
+};
+
+// Request interceptor - Add auth token
+apiClient.interceptors.request.use(
+  (config) => {
+    // Get token from auth context instead of directly from sessionStorage
+    const token = authContextRef?.token;
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// Response interceptor - Global error handling
+apiClient.interceptors.response.use(
+  (response) => {
+    // Success response - just return it
+    return response;
+  },
+  (error) => {
+    // Global error handling
+    const context = error.config?.metadata?.context || 'performing this action';
+    const errorResult = handleApiError(error, context, authContextRef?.logout);
+
+    // Attach processed error info to the error object
+    error.processedError = errorResult;
+
+    // Log for debugging (can be removed in production)
+    if (process.env.NODE_ENV === 'development') {
+      console.group(`🚨 API Error: ${context}`);
+      console.error('Original error:', error);
+      console.error('Processed error:', errorResult);
+      console.groupEnd();
+    }
+
+    return Promise.reject(error);
+  }
+);
+
+/**
+ * Enhanced API methods with context metadata
+ */
+export const api = {
+  get: (url, context = 'fetching data', config = {}) => {
+    return apiClient.get(url, {
+      ...config,
+      metadata: { context },
+    });
+  },
+
+  post: (url, data, context = 'creating data', config = {}) => {
+    return apiClient.post(url, data, {
+      ...config,
+      metadata: { context },
+    });
+  },
+
+  put: (url, data, context = 'updating data', config = {}) => {
+    return apiClient.put(url, data, {
+      ...config,
+      metadata: { context },
+    });
+  },
+
+  delete: (url, context = 'deleting data', config = {}) => {
+    return apiClient.delete(url, {
+      ...config,
+      metadata: { context },
+    });
+  },
+
+  patch: (url, data, context = 'updating data', config = {}) => {
+    return apiClient.patch(url, data, {
+      ...config,
+      metadata: { context },
+    });
+  },
+};
+
+export default apiClient;

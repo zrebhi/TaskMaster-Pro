@@ -1,8 +1,8 @@
 import { useState, useContext } from 'react';
-import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import AuthContext from '../../context/AuthContext.jsx';
-import { toast } from 'react-hot-toast';
+import { useError } from '../../context/ErrorContext';
+import { loginUser } from '../../services/authApiService';
 
 const LoginForm = () => {
   const [formData, setFormData] = useState({
@@ -13,6 +13,7 @@ const LoginForm = () => {
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const auth = useContext(AuthContext);
+  const { showErrorToast, showSuccess } = useError();
 
   const { identifier, password } = formData;
 
@@ -25,40 +26,29 @@ const LoginForm = () => {
     setIsLoading(true);
 
     try {
-      // Determine if the identifier is likely an email or username
       const isEmail = identifier.includes('@');
-
       const loginPayload = isEmail
         ? { email: identifier, password }
         : { username: identifier, password };
 
-      const response = await axios.post('/api/auth/login', loginPayload);
-
-      const data = response.data; // Axios puts response data in .data
-
-      // Axios throws for non-2xx, so no need for !response.ok check here
-
-      // Login successful, store the token and user data
-      // Ideally, store tokens as HttpOnly cookies set by the server
-      sessionStorage.setItem('token', data.token);
-      sessionStorage.setItem('user', JSON.stringify(data.user));
+      const data = await loginUser(loginPayload);
 
       // Update auth state for Context
       if (auth && auth.login) {
         auth.login(data.token, data.user);
       }
 
-      // Redirect to dashboard
       navigate('/dashboard');
-      toast.success('Login successful!');
+      showSuccess('Login successful!');
     } catch (err) {
-      // Axios errors have a response property with status and data
-      setError(
-        err.response?.data?.message ||
-          err.message ||
-          'Login failed. Please check your credentials.',
-      );
-      console.error('Login error:', err);
+      if (err.processedError) {
+        showErrorToast(err.processedError);
+        setError(err.processedError.message);
+      } else {
+        const fallbackMessage = 'Login failed. Please check your credentials.';
+        showErrorToast({ message: fallbackMessage, severity: 'medium' });
+        setError(fallbackMessage);
+      }
     } finally {
       setIsLoading(false);
     }

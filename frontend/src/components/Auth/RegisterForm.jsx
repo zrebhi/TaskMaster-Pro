@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import axios from 'axios';
-import { toast } from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
+import { useError } from '../../context/ErrorContext';
+import { registerUser } from '../../services/authApiService';
 
 const RegisterForm = () => {
   const [formData, setFormData] = useState({
@@ -14,10 +14,9 @@ const RegisterForm = () => {
   const [successMessage, setSuccessMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
+  const { showErrorToast, showSuccess } = useError();
 
-  const {
-    username, email, password, confirmPassword,
-  } = formData;
+  const { username, email, password, confirmPassword } = formData;
 
   const onChange = (e) =>
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -31,35 +30,40 @@ const RegisterForm = () => {
     // Basic client-side validation
     if (password !== confirmPassword) {
       setError('Passwords do not match.');
+      setIsLoading(false);
       return;
     }
     if (password.length < 6) {
       setError('Password must be at least 6 characters long.');
+      setIsLoading(false);
       return;
     }
 
-    // Basic username validation (no special characters except underscore and hyphen)
     const usernameRegex = /^[a-zA-Z0-9_-]+$/;
     if (!usernameRegex.test(username)) {
-      setError('Username can only contain letters, numbers, underscores, and hyphens.');
+      setError(
+        'Username can only contain letters, numbers, underscores, and hyphens.'
+      );
+      setIsLoading(false);
       return;
     }
 
     try {
-      const response = await axios.post('/api/auth/register', {
-        username,
-        email,
-        password,
-      });
-
-      // Axios automatically parses JSON and throws an error for non-2xx responses
-      setSuccessMessage(response.data.message || 'Registration successful! You can now log in.');
-      toast.success('Registration successful! You can now log in.');
+      const data = await registerUser({ username, email, password });
+      const successMsg =
+        data.message || 'Registration successful! You can now log in.';
+      setSuccessMessage(successMsg);
+      showSuccess(successMsg);
       navigate('/auth/login');
     } catch (err) {
-      // Axios errors have a response property with status and data
-      setError(err.response?.data?.message || err.message || 'Registration failed. Please try again.');
-      console.error('Registration error:', err);
+      if (err.processedError) {
+        showErrorToast(err.processedError);
+        setError(err.processedError.message);
+      } else {
+        const fallbackMessage = 'Registration failed. Please try again.';
+        showErrorToast({ message: fallbackMessage, severity: 'medium' });
+        setError(fallbackMessage);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -69,7 +73,9 @@ const RegisterForm = () => {
     <form onSubmit={onSubmit}>
       <h2>Register</h2>
       {error ? <p style={{ color: 'red' }}>{error}</p> : null}
-      {successMessage ? <p style={{ color: 'green' }}>{successMessage}</p> : null}
+      {successMessage ? (
+        <p style={{ color: 'green' }}>{successMessage}</p>
+      ) : null}
       <div>
         <label htmlFor="username">Username:</label>
         <input

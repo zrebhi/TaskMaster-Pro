@@ -1,24 +1,4 @@
-import axios from 'axios';
-
-const apiClient = axios.create({
-  baseURL: '/api',
-});
-
-// Interceptor to automatically add the Authorization header
-apiClient.interceptors.request.use(
-  (config) => {
-    // Get token from sessionStorage
-    const token = sessionStorage.getItem('token');
-
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
-  }
-);
+import { api } from './apiClient';
 
 /**
  * Fetches all projects for the authenticated user.
@@ -26,16 +6,8 @@ apiClient.interceptors.request.use(
  * @throws {Error} If the API call fails.
  */
 export const getAllProjects = async () => {
-  try {
-    const response = await apiClient.get('/projects');
-    return response.data?.projects || response.data; // Axios wraps response in 'data'
-  } catch (error) {
-    console.error(
-      'Error fetching projects:',
-      error.response?.data?.message || error.message
-    );
-    throw error.response?.data || error;
-  }
+  const response = await api.get('/projects', 'fetching projects');
+  return response.data?.projects || response.data;
 };
 
 /**
@@ -45,16 +17,8 @@ export const getAllProjects = async () => {
  * @throws {Error} If the API call fails.
  */
 export const createProjectAPI = async (projectData) => {
-  try {
-    const response = await apiClient.post('/projects', projectData);
-    return response.data?.project || response.data;
-  } catch (error) {
-    console.error(
-      'Error creating project:',
-      error.response?.data?.message || error.message
-    );
-    throw error.response?.data || error;
-  }
+  const response = await api.post('/projects', projectData, 'creating project');
+  return response.data?.project || response.data;
 };
 
 /**
@@ -65,16 +29,12 @@ export const createProjectAPI = async (projectData) => {
  * @throws {Error} If the API call fails.
  */
 export const updateProjectAPI = async (projectId, projectData) => {
-  try {
-    const response = await apiClient.put(`/projects/${projectId}`, projectData);
-    return response.data?.project || response.data;
-  } catch (error) {
-    console.error(
-      'Error updating project:',
-      error.response?.data?.message || error.message
-    );
-    throw error.response?.data || error;
-  }
+  const response = await api.put(
+    `/projects/${projectId}`,
+    projectData,
+    'updating project'
+  );
+  return response.data?.project || response.data;
 };
 
 /**
@@ -84,14 +44,9 @@ export const updateProjectAPI = async (projectId, projectData) => {
  * @throws {Error} If the API call fails.
  */
 export const deleteProjectAPI = async (projectId) => {
-  try {
-    const response = await apiClient.delete(`/projects/${projectId}`);
-    return response.data; // Or handle 204 No Content appropriately
-  } catch (error) {
-    console.error(
-      'Error deleting project:',
-      error.response?.data?.message || error.message
-    );
-    throw error.response?.data || error;
-  }
+  const response = await api.delete(
+    `/projects/${projectId}`,
+    'deleting project'
+  );
+  return response.data;
 };

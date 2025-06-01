@@ -1,11 +1,23 @@
-import {
-  render, screen, waitFor, within, act,
-} from '@testing-library/react';
+import { render, screen, waitFor, within, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
 import DashboardPage from '../DashboardPage';
 import ProjectContext from '../../context/ProjectContext';
+import TaskContext from '../../context/TaskContext';
 import AuthContext from '../../context/AuthContext';
+import { ErrorProvider } from '../../context/ErrorContext';
+
+// Mock API services
+jest.mock('../../services/projectApiService', () => ({
+  getAllProjects: jest.fn(),
+  createProjectAPI: jest.fn(),
+  updateProjectAPI: jest.fn(),
+  deleteProjectAPI: jest.fn(),
+}));
+
+jest.mock('../../services/taskApiService', () => ({
+  getTasksForProjectAPI: jest.fn(),
+}));
 
 // Mock child components to simplify testing DashboardPage logic
 jest.mock('../../components/Projects/AddProjectForm', () => ({
@@ -14,12 +26,7 @@ jest.mock('../../components/Projects/AddProjectForm', () => ({
 }));
 jest.mock('../../components/Projects/ProjectList', () => ({
   __esModule: true,
-  default: ({
-    projects,
-    onSelectProject,
-    onEditProject,
-    onDeleteProject,
-  }) => (
+  default: ({ projects, onSelectProject, onEditProject, onDeleteProject }) => (
     <div>
       ProjectList Mock
       {projects.map((project) => (
@@ -42,16 +49,16 @@ const mockEditModalPassedProps = {
 };
 
 jest.mock('../../components/Projects/EditProjectModal', () => {
-  jest.requireActual(
-    '../../components/Projects/EditProjectModal',
-  );
+  jest.requireActual('../../components/Projects/EditProjectModal');
   return {
     __esModule: true,
     default: jest.fn(({ isOpen, onClose, project }) => {
       mockEditModalPassedProps.onClose = onClose;
       mockEditModalPassedProps.project = project;
 
-      if (!isOpen || !project) {return null;}
+      if (!isOpen || !project) {
+        return null;
+      }
       return (
         <div data-testid="edit-project-modal-mock">
           <span>EditProjectModal Mock for {project.name}</span>
@@ -65,9 +72,7 @@ jest.mock('../../components/Projects/EditProjectModal', () => {
 
 jest.mock('../../components/Projects/DeleteProjectModal', () => ({
   __esModule: true,
-  default: ({
-    isOpen, onClose, onConfirm, title, message, isLoading,
-  }) =>
+  default: ({ isOpen, onClose, onConfirm, title, message, isLoading }) =>
     isOpen ? (
       <div data-testid="confirmation-modal">
         <h2>{title}</h2>
@@ -103,20 +108,39 @@ const mockAuthContext = {
   logout: jest.fn(),
 };
 
+const mockTaskContext = {
+  tasks: [],
+  isLoadingTasks: false,
+  taskError: null,
+  fetchTasks: jest.fn(),
+  clearTasks: jest.fn(),
+  currentProjectIdForTasks: null,
+  addTask: jest.fn(),
+  updateTask: jest.fn(),
+  deleteTask: jest.fn(),
+};
+
 const renderDashboard = (
   projectContextOverrides = {},
   authContextOverrides = {},
+  taskContextOverrides = {}
 ) => {
   return render(
-    <AuthContext.Provider
-      value={{ ...mockAuthContext, ...authContextOverrides }}
-    >
-      <ProjectContext.Provider
-        value={{ ...mockProjectContext, ...projectContextOverrides }}
+    <ErrorProvider>
+      <AuthContext.Provider
+        value={{ ...mockAuthContext, ...authContextOverrides }}
       >
-        <DashboardPage />
-      </ProjectContext.Provider>
-    </AuthContext.Provider>,
+        <ProjectContext.Provider
+          value={{ ...mockProjectContext, ...projectContextOverrides }}
+        >
+          <TaskContext.Provider
+            value={{ ...mockTaskContext, ...taskContextOverrides }}
+          >
+            <DashboardPage />
+          </TaskContext.Provider>
+        </ProjectContext.Provider>
+      </AuthContext.Provider>
+    </ErrorProvider>
   );
 };
 
@@ -146,8 +170,8 @@ describe('DashboardPage - Delete Project Logic', () => {
     expect(screen.getByText('Delete Project')).toBeInTheDocument();
     expect(
       screen.getByText(
-        'Are you sure you want to delete the project "Project One"? This will also delete all associated tasks.',
-      ),
+        'Are you sure you want to delete the project "Project One"? This will also delete all associated tasks.'
+      )
     ).toBeInTheDocument();
   });
 
@@ -166,7 +190,7 @@ describe('DashboardPage - Delete Project Logic', () => {
 
     await waitFor(() => {
       expect(
-        screen.queryByTestId('confirmation-modal'),
+        screen.queryByTestId('confirmation-modal')
       ).not.toBeInTheDocument();
     });
   });
@@ -187,13 +211,13 @@ describe('DashboardPage - Delete Project Logic', () => {
     // Expect deleteProject from ProjectContext to have been called with the correct project ID
     expect(mockProjectContext.deleteProject).toHaveBeenCalledTimes(1);
     expect(mockProjectContext.deleteProject).toHaveBeenCalledWith(
-      'project-1-id',
+      'project-1-id'
     );
 
     // Expect the modal to be closed
     await waitFor(() => {
       expect(
-        screen.queryByTestId('confirmation-modal'),
+        screen.queryByTestId('confirmation-modal')
       ).not.toBeInTheDocument();
     });
   });
@@ -222,7 +246,9 @@ describe('DashboardPage - Delete Project Logic', () => {
     // Expect the "Select a project..." message to appear, indicating activeProjectId was cleared
     await waitFor(() => {
       expect(
-        screen.getByText('Select a project to view its tasks.'),
+        screen.getByText(
+          'Select a project to view its tasks, or create a new project.'
+        )
       ).toBeInTheDocument();
     });
   });
@@ -240,7 +266,7 @@ describe('DashboardPage - Edit Project Logic', () => {
     await screen.findByText('ProjectList Mock'); // Ensure ProjectList is rendered
 
     const projectOneItem = screen.getByTestId(
-      `project-item-${projectToEdit.id}`,
+      `project-item-${projectToEdit.id}`
     );
     const editButton = within(projectOneItem).getByText('Edit', {
       selector: 'button',
@@ -254,11 +280,11 @@ describe('DashboardPage - Edit Project Logic', () => {
 
     // Check that the mock was called with the correct project prop
     expect(
-      require('../../components/Projects/EditProjectModal').default,
+      require('../../components/Projects/EditProjectModal').default
     ).toHaveBeenCalled();
     expect(mockEditModalPassedProps.project).toEqual(projectToEdit);
     expect(
-      screen.getByText(`EditProjectModal Mock for ${projectToEdit.name}`),
+      screen.getByText(`EditProjectModal Mock for ${projectToEdit.name}`)
     ).toBeInTheDocument();
   });
 
@@ -268,7 +294,7 @@ describe('DashboardPage - Edit Project Logic', () => {
 
     await screen.findByText('ProjectList Mock');
     const projectOneItem = screen.getByTestId(
-      `project-item-${projectToEdit.id}`,
+      `project-item-${projectToEdit.id}`
     );
     const editButton = within(projectOneItem).getByText('Edit', {
       selector: 'button',
@@ -289,7 +315,7 @@ describe('DashboardPage - Edit Project Logic', () => {
     // Modal should now be closed
     await waitFor(() => {
       expect(
-        screen.queryByTestId('edit-project-modal-mock'),
+        screen.queryByTestId('edit-project-modal-mock')
       ).not.toBeInTheDocument();
     });
   });
@@ -297,11 +323,16 @@ describe('DashboardPage - Edit Project Logic', () => {
   it('should call updateProject from ProjectContext and close modal when edit is confirmed (simulated)', async () => {
     renderDashboard();
     const projectToEdit = mockProjects[0]; // Project One
-    const updatedProjectData = { ...projectToEdit, name: 'Updated Project One Name' };
+    const updatedProjectData = {
+      ...projectToEdit,
+      name: 'Updated Project One Name',
+    };
 
     await screen.findByText('ProjectList Mock'); // Ensure ProjectList is rendered
 
-    const projectOneItem = screen.getByTestId(`project-item-${projectToEdit.id}`);
+    const projectOneItem = screen.getByTestId(
+      `project-item-${projectToEdit.id}`
+    );
     const editButton = within(projectOneItem).getByText('Edit', {
       selector: 'button',
     });
@@ -316,7 +347,9 @@ describe('DashboardPage - Edit Project Logic', () => {
     // Simulate the modal's internal logic calling updateProject and then onClose
     // This bypasses simulating form interaction within the mock modal
     act(() => {
-      mockProjectContext.updateProject(projectToEdit.id, { name: updatedProjectData.name });
+      mockProjectContext.updateProject(projectToEdit.id, {
+        name: updatedProjectData.name,
+      });
       mockEditModalPassedProps.onClose(); // Simulate modal closing after update
     });
 
@@ -324,12 +357,14 @@ describe('DashboardPage - Edit Project Logic', () => {
     expect(mockProjectContext.updateProject).toHaveBeenCalledTimes(1);
     expect(mockProjectContext.updateProject).toHaveBeenCalledWith(
       projectToEdit.id,
-      { name: updatedProjectData.name },
+      { name: updatedProjectData.name }
     );
 
     // Expect the modal to be closed
     await waitFor(() => {
-      expect(screen.queryByTestId('edit-project-modal-mock')).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId('edit-project-modal-mock')
+      ).not.toBeInTheDocument();
     });
   });
 });

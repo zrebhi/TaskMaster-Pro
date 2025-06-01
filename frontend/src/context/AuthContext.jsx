@@ -1,15 +1,16 @@
-import { createContext, useState, useEffect } from "react";
+import { createContext, useState, useEffect } from 'react';
+import { setAuthContext } from '../services/apiClient';
 
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
-  const [token, setToken] = useState(sessionStorage.getItem("token"));
+  const [token, setToken] = useState(sessionStorage.getItem('token'));
   const [user, setUser] = useState(() => {
     try {
-      const storedUser = sessionStorage.getItem("user");
+      const storedUser = sessionStorage.getItem('user');
       return storedUser ? JSON.parse(storedUser) : null;
     } catch (error) {
-      console.error("Error parsing user data from sessionStorage:", error);
+      console.error('Error parsing user data from sessionStorage:', error);
       return null;
     }
   });
@@ -17,8 +18,8 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     // This effect runs once on mount to initialize state from sessionStorage
-    const storedToken = sessionStorage.getItem("token");
-    const storedUser = sessionStorage.getItem("user");
+    const storedToken = sessionStorage.getItem('token');
+    const storedUser = sessionStorage.getItem('user');
     if (storedToken && storedUser) {
       setToken(storedToken);
       setUser(JSON.parse(storedUser));
@@ -26,17 +27,29 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
+  // Set auth context reference for apiClient whenever auth state changes
+  useEffect(() => {
+    const authContextValue = {
+      token,
+      user,
+      isAuthenticated,
+      login,
+      logout,
+    };
+    setAuthContext(authContextValue);
+  }, [token, user, isAuthenticated]);
+
   const login = (newToken, userData) => {
-    sessionStorage.setItem("token", newToken);
-    sessionStorage.setItem("user", JSON.stringify(userData));
+    sessionStorage.setItem('token', newToken);
+    sessionStorage.setItem('user', JSON.stringify(userData));
     setToken(newToken);
     setUser(userData);
     setIsAuthenticated(true);
   };
 
   const logout = () => {
-    sessionStorage.removeItem("token");
-    sessionStorage.removeItem("user");
+    sessionStorage.removeItem('token');
+    sessionStorage.removeItem('user');
     setToken(null);
     setUser(null);
     setIsAuthenticated(false);

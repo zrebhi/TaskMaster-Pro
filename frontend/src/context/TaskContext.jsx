@@ -1,7 +1,6 @@
-import { createContext, useState, useContext, useCallback } from 'react';
+import { createContext, useState, useCallback } from 'react';
 import { getTasksForProjectAPI } from '../services/taskApiService';
-import AuthContext from './AuthContext';
-import toast from 'react-hot-toast';
+import { useError } from './ErrorContext';
 
 const TaskContext = createContext(null);
 
@@ -12,7 +11,7 @@ export const TaskProvider = ({ children }) => {
   const [currentProjectIdForTasks, setCurrentProjectIdForTasks] =
     useState(null);
 
-  const { logout } = useContext(AuthContext);
+  const { showErrorToast } = useError();
 
   const fetchTasks = useCallback(
     async (projectId) => {
@@ -30,20 +29,20 @@ export const TaskProvider = ({ children }) => {
         const fetchedTasks = await getTasksForProjectAPI(projectId);
         setTasks(fetchedTasks);
       } catch (err) {
-        console.error('Error fetching tasks:', err);
-        const errorMessage =
-          err.message || 'Failed to fetch tasks for the project.';
-        setTaskError(errorMessage);
-        toast.error(errorMessage);
-        if (err.status === 401 || err.response?.status === 401) {
-          logout();
+        if (err.processedError) {
+          showErrorToast(err.processedError);
+          setTaskError(err.processedError.message);
+        } else {
+          const fallbackMessage = 'Failed to fetch tasks for the project.';
+          showErrorToast({ message: fallbackMessage, severity: 'medium' });
+          setTaskError(fallbackMessage);
         }
         setTasks([]);
       } finally {
         setIsLoadingTasks(false);
       }
     },
-    [logout]
+    [showErrorToast]
   );
 
   const clearTasks = useCallback(() => {
