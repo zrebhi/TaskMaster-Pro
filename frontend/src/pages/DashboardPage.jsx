@@ -1,17 +1,25 @@
-import {
-  useState, useEffect, useCallback, useContext,
-} from 'react';
+import { useState, useEffect, useCallback, useContext } from 'react';
 import AddProjectForm from '../components/Projects/AddProjectForm';
 import ProjectList from '../components/Projects/ProjectList';
 import ProjectContext from '../context/ProjectContext';
+import TaskContext from '../context/TaskContext';
 import EditProjectModal from '../components/Projects/EditProjectModal';
 import DeleteProjectModal from '../components/Projects/DeleteProjectModal.jsx';
+import TaskList from '../components/Tasks/TaskList';
 
 const DashboardPage = () => {
-  const {
-    projects, fetchProjects, deleteProject, isLoading, error,
-  } =
+  const { projects, fetchProjects, deleteProject, isLoading, error } =
     useContext(ProjectContext);
+
+  const {
+    tasks,
+    isLoadingTasks,
+    taskError,
+    fetchTasks,
+    clearTasks,
+    currentProjectIdForTasks,
+  } = useContext(TaskContext);
+
   const [activeProjectId, setActiveProjectId] = useState(null);
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -25,6 +33,15 @@ const DashboardPage = () => {
   useEffect(() => {
     fetchProjects();
   }, [fetchProjects]);
+
+  // Fetch tasks when activeProjectId changes
+  useEffect(() => {
+    if (activeProjectId) {
+      fetchTasks(activeProjectId);
+    } else {
+      clearTasks();
+    }
+  }, [activeProjectId, fetchTasks, clearTasks]);
 
   const handleSelectProject = useCallback((projectId) => {
     setActiveProjectId(projectId);
@@ -51,7 +68,9 @@ const DashboardPage = () => {
   }, []);
 
   const handleConfirmDelete = useCallback(async () => {
-    if (!projectToDelete) {return;}
+    if (!projectToDelete) {
+      return;
+    }
     setIsDeleting(true);
 
     try {
@@ -72,17 +91,18 @@ const DashboardPage = () => {
 
   return (
     <>
-      <div style={{ display: 'flex' }}>
+      <div style={{ display: 'flex', minHeight: 'calc(100vh - 60px)' }}>
         <aside
           style={{
             width: '30%',
-            padding: '10px',
+            padding: '20px',
             borderRight: '1px solid #eee',
+            backgroundColor: '#f9f9f9',
           }}
         >
-          <h2>Dashboard</h2>
+          <h2>Projects</h2>
           <AddProjectForm />
-          <hr />
+          <hr style={{ margin: '20px 0' }} />
           <h3>Your Projects</h3>
           {isLoading ? <p>Loading projects...</p> : null}
           {error ? <p style={{ color: 'red' }}>{error}</p> : null}
@@ -96,11 +116,31 @@ const DashboardPage = () => {
             />
           )}
         </aside>
-        <main style={{ width: '70%', padding: '10px' }}>
-          {activeProjectId ? (
-            <h3>Tasks for Project ID: {activeProjectId}</h3>
+        <main style={{ width: '70%', padding: '20px' }}>
+          {activeProjectId && projects.find((p) => p.id === activeProjectId) ? (
+            <>
+              <h2>
+                Tasks for:{' '}
+                {projects.find((p) => p.id === activeProjectId)?.name}
+              </h2>
+              {isLoadingTasks ? <p>Loading tasks...</p> : null}
+              {taskError ? <p style={{ color: 'red' }}>{taskError}</p> : null}
+              {!isLoadingTasks && !taskError && tasks.length > 0 && (
+                <TaskList tasks={tasks} />
+              )}
+              {!isLoadingTasks &&
+                !taskError &&
+                tasks.length === 0 &&
+                currentProjectIdForTasks === activeProjectId && (
+                  <p>No tasks in this project yet. Add one!</p>
+                )}
+            </>
           ) : (
-            <p>Select a project to view its tasks.</p>
+            <p
+              style={{ textAlign: 'center', marginTop: '50px', color: '#777' }}
+            >
+              Select a project to view its tasks, or create a new project.
+            </p>
           )}
         </main>
       </div>
