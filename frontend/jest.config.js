@@ -1,16 +1,45 @@
 export default {
-  testEnvironment: 'jsdom', // Use jsdom for React components
-  setupFilesAfterEnv: ['@testing-library/jest-dom', './jest.setup.js'], // Adds jest-dom's custom matchers and polyfills
+  testEnvironment: 'jsdom',
+  setupFilesAfterEnv: ['@testing-library/jest-dom', './jest.setup.js'],
+
+  // Test file patterns
+  testMatch: [
+    '<rootDir>/src/**/__tests__/**/*.(js|jsx|ts|tsx)',
+    '<rootDir>/src/**/*.(test|spec).(js|jsx|ts|tsx)',
+  ],
+
+  // Ignore test utility files
+  testPathIgnorePatterns: [
+    '/node_modules/',
+    '<rootDir>/src/__tests__/helpers/(?!.*\\.test\\.(js|jsx|ts|tsx)$).*\\.(js|jsx|ts|tsx)$',
+  ],
+
+  // Coverage configuration
+  collectCoverageFrom: [
+    'src/**/*.(js|jsx)',
+    '!src/**/*.test.(js|jsx)',
+    '!src/**/__tests__/**',
+    '!src/main.jsx',
+    '!src/**/*.mock.js',
+  ],
+
+  // Module name mapping
   moduleNameMapper: {
-    // Handle CSS imports (if you import CSS in your components)
     '\\.(css|less|scss|sass)$': 'identity-obj-proxy',
-    // Handle static asset imports (e.g., images)
-    // "\\.(jpg|jpeg|png|gif|webp|svg)$": "<rootDir>/__mocks__/fileMock.js",
+    '^@/(.*)$': '<rootDir>/src/$1',
+    '^@tests/(.*)$': '<rootDir>/src/__tests__/$1',
   },
+
+  // Test environment setup
+  testEnvironmentOptions: {
+    url: 'http://localhost:3000',
+  },
+
+  // Transform configuration
   transform: {
-    '^.+\\.(js|jsx|ts|tsx)$': 'babel-jest', // Use babel-jest to transpile tests
+    '^.+\\.(js|jsx|ts|tsx)$': 'babel-jest',
   },
-  // Ignore transformations for node_modules except for specific ES modules if needed
+
   transformIgnorePatterns: [
     '/node_modules/(?!(@testing-library|react-router-dom)).+\\.js$',
   ],

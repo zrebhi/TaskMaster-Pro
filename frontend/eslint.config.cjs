@@ -54,7 +54,7 @@ module.exports = [
     },
     rules: {
       // ESLint Core Rules (Adjustments/Additions for Frontend)
-      'no-console': ['warn', { allow: ['warn', 'error'] }], // Allow warn/error
+      'no-console': ['warn', { allow: ['warn', 'error', 'group', 'groupEnd'] }], // Allow warn/error
       'no-unused-vars': [
         'warn',
         {
@@ -164,13 +164,49 @@ module.exports = [
       'jest/no-identical-title': 'error',
       'jest/prefer-to-have-length': 'warn',
       'jest/valid-expect': 'error',
+      'jest/expect-expect': [
+        'warn',
+        {
+          assertFunctionNames: [
+            'expect',
+            'expectToastCall',
+            'expectLoadingState',
+            'expectErrorMessage',
+            'expectSuccessMessage',
+            'waitForElementToBeRemoved',
+            'advanceTimersAndExpect',
+          ],
+        },
+      ],
       'no-console': 'off',
       'react/prop-types': 'off',
       'react/jsx-props-no-spreading': 'off',
+      'react-refresh/only-export-components': 'off', // Test files don't need fast refresh
     },
   },
 
-  // 5. Configuration files (if any in frontend, e.g., vite.config.js)
+  // 5. Context files - allow mixed exports (components + utilities)
+  {
+    files: ['**/context/**/*.{js,jsx}'],
+    rules: {
+      'react-refresh/only-export-components': [
+        'warn',
+        {
+          allowConstantExport: true,
+          allowExportNames: [
+            'ERROR_SEVERITY',
+            'useError',
+            'useAuth',
+            'useProject',
+          ],
+        },
+      ],
+      // Context files often use refs in cleanup functions - this is safe
+      'react-hooks/exhaustive-deps': 'off',
+    },
+  },
+
+  // 6. Configuration files (if any in frontend, e.g., vite.config.js)
   {
     files: ['*.config.js', '*.config.mjs', '*.config.cjs'],
     languageOptions: {

@@ -1,6 +1,7 @@
-import { createContext, useState, useCallback } from 'react';
+import { createContext, useState, useCallback, useContext } from 'react';
 import { getTasksForProjectAPI } from '../services/taskApiService';
 import { useError } from './ErrorContext';
+import AuthContext from './AuthContext';
 
 const TaskContext = createContext(null);
 
@@ -12,10 +13,17 @@ export const TaskProvider = ({ children }) => {
     useState(null);
 
   const { showErrorToast } = useError();
+  const { token, isAuthenticated } = useContext(AuthContext);
 
   const fetchTasks = useCallback(
     async (projectId) => {
       if (!projectId) {
+        setTasks([]);
+        setCurrentProjectIdForTasks(null);
+        return;
+      }
+
+      if (!isAuthenticated || !token) {
         setTasks([]);
         setCurrentProjectIdForTasks(null);
         return;
@@ -42,7 +50,7 @@ export const TaskProvider = ({ children }) => {
         setIsLoadingTasks(false);
       }
     },
-    [showErrorToast]
+    [token, isAuthenticated, showErrorToast]
   );
 
   const clearTasks = useCallback(() => {

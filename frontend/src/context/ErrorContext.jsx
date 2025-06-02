@@ -1,4 +1,11 @@
-import React, { createContext, useState, useContext, useCallback } from 'react';
+import React, {
+  createContext,
+  useState,
+  useContext,
+  useCallback,
+  useRef,
+  useEffect,
+} from 'react';
 import toast from 'react-hot-toast';
 import { ERROR_SEVERITY } from '../utils/errorHandler';
 
@@ -7,6 +14,7 @@ const ErrorContext = createContext(null);
 export const ErrorProvider = ({ children }) => {
   const [globalErrors, setGlobalErrors] = useState([]);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const timeoutsRef = useRef(new Map());
 
   // Monitor network status
   React.useEffect(() => {
@@ -22,6 +30,14 @@ export const ErrorProvider = ({ children }) => {
     };
   }, []);
 
+  // Cleanup timeouts on unmount
+  useEffect(() => {
+    return () => {
+      timeoutsRef.current.forEach((timeoutId) => clearTimeout(timeoutId));
+      timeoutsRef.current.clear();
+    };
+  }, []);
+
   /**
    * Add a global error to the error list
    * @param {Object} errorInfo - Error information object
@@ -30,16 +46,20 @@ export const ErrorProvider = ({ children }) => {
     const error = {
       id: Date.now() + Math.random(),
       timestamp: new Date().toISOString(),
-      ...errorInfo
+      ...errorInfo,
     };
 
-    setGlobalErrors(prev => [...prev, error]);
+    setGlobalErrors((prev) => [...prev, error]);
 
     // Auto-remove error after timeout based on severity
     const timeout = getTimeoutBySeverity(error.severity);
-    setTimeout(() => {
-      removeError(error.id);
+    const timeoutId = setTimeout(() => {
+      setGlobalErrors((prev) => prev.filter((err) => err.id !== error.id));
+      timeoutsRef.current.delete(error.id);
     }, timeout);
+
+    // Store timeout ID for cleanup
+    timeoutsRef.current.set(error.id, timeoutId);
 
     return error.id;
   }, []);
@@ -49,13 +69,21 @@ export const ErrorProvider = ({ children }) => {
    * @param {string} errorId - Error ID to remove
    */
   const removeError = useCallback((errorId) => {
-    setGlobalErrors(prev => prev.filter(error => error.id !== errorId));
+    // Clear timeout if it exists
+    if (timeoutsRef.current.has(errorId)) {
+      clearTimeout(timeoutsRef.current.get(errorId));
+      timeoutsRef.current.delete(errorId);
+    }
+    setGlobalErrors((prev) => prev.filter((error) => error.id !== errorId));
   }, []);
 
   /**
    * Clear all errors
    */
   const clearAllErrors = useCallback(() => {
+    // Clear all timeouts
+    timeoutsRef.current.forEach((timeoutId) => clearTimeout(timeoutId));
+    timeoutsRef.current.clear();
     setGlobalErrors([]);
   }, []);
 
@@ -64,19 +92,25 @@ export const ErrorProvider = ({ children }) => {
    * @param {Object} errorResult - Error result from handleApiError
    * @param {Object} options - Toast options
    */
-  const showErrorToast = useCallback((errorResult, options = {}) => {
-    const toastOptions = {
-      duration: getTimeoutBySeverity(errorResult.severity),
-      style: getToastStyleBySeverity(errorResult.severity),
-      ...options
-    };
+  const showErrorToast = useCallback(
+    (errorResult, options = {}) => {
+      const toastOptions = {
+        duration: getTimeoutBySeverity(errorResult.severity),
+        style: getToastStyleBySeverity(errorResult.severity),
+        ...options,
+      };
 
-    if (errorResult.isNetworkError && !isOnline) {
-      toast.error('You appear to be offline. Please check your internet connection.', toastOptions);
-    } else {
-      toast.error(errorResult.message, toastOptions);
-    }
-  }, [isOnline]);
+      if (errorResult.isNetworkError && !isOnline) {
+        toast.error(
+          'You appear to be offline. Please check your internet connection.',
+          toastOptions
+        );
+      } else {
+        toast.error(errorResult.message, toastOptions);
+      }
+    },
+    [isOnline]
+  );
 
   /**
    * Show success notification
@@ -90,7 +124,7 @@ export const ErrorProvider = ({ children }) => {
         background: '#10b981',
         color: 'white',
       },
-      ...options
+      ...options,
     });
   }, []);
 
@@ -106,7 +140,7 @@ export const ErrorProvider = ({ children }) => {
         background: '#3b82f6',
         color: 'white',
       },
-      ...options
+      ...options,
     });
   }, []);
 

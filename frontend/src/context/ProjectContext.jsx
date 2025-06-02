@@ -54,12 +54,6 @@ export const ProjectProvider = ({ children }) => {
    */
   const addProject = useCallback(
     async (projectData) => {
-      if (!token) {
-        const errorMessage = 'Authentication required to add project.';
-        setError(errorMessage);
-        showErrorToast({ message: errorMessage, severity: 'medium' });
-        throw new Error(errorMessage);
-      }
       setIsLoading(true);
       setError(null);
       try {
@@ -82,7 +76,7 @@ export const ProjectProvider = ({ children }) => {
         setIsLoading(false);
       }
     },
-    [token, showErrorToast, showSuccess]
+    [showErrorToast, showSuccess]
   );
 
   /**
@@ -94,12 +88,6 @@ export const ProjectProvider = ({ children }) => {
    */
   const updateProject = useCallback(
     async (projectId, projectData) => {
-      if (!token) {
-        const errorMessage = 'Authentication required to update project.';
-        setError(errorMessage);
-        showErrorToast({ message: errorMessage, severity: 'medium' });
-        throw new Error(errorMessage);
-      }
       setIsLoading(true);
       setError(null);
       try {
@@ -130,7 +118,7 @@ export const ProjectProvider = ({ children }) => {
         setIsLoading(false);
       }
     },
-    [token, showErrorToast, showSuccess]
+    [showErrorToast, showSuccess]
   );
 
   /**
@@ -139,29 +127,32 @@ export const ProjectProvider = ({ children }) => {
    * @returns {Promise<void>} A promise that resolves when the deletion and state update are complete.
    * @throws {Error} If the API call fails.
    */
-  const deleteProject = async (projectId) => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      await deleteProjectAPI(projectId);
-      setProjects((prevProjects) =>
-        prevProjects.filter((p) => p.id !== projectId)
-      );
-      showSuccess('Project deleted successfully!');
-    } catch (err) {
-      if (err.processedError) {
-        showErrorToast(err.processedError);
-        setError(err.processedError.message);
-      } else {
-        const fallbackMessage = 'Failed to delete project.';
-        showErrorToast({ message: fallbackMessage, severity: 'medium' });
-        setError(fallbackMessage);
+  const deleteProject = useCallback(
+    async (projectId) => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        await deleteProjectAPI(projectId);
+        setProjects((prevProjects) =>
+          prevProjects.filter((p) => p.id !== projectId)
+        );
+        showSuccess('Project deleted successfully!');
+      } catch (err) {
+        if (err.processedError) {
+          showErrorToast(err.processedError);
+          setError(err.processedError.message);
+        } else {
+          const fallbackMessage = 'Failed to delete project.';
+          showErrorToast({ message: fallbackMessage, severity: 'medium' });
+          setError(fallbackMessage);
+        }
+        throw err;
+      } finally {
+        setIsLoading(false);
       }
-      throw err;
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    },
+    [showErrorToast, showSuccess]
+  );
 
   return (
     <ProjectContext.Provider

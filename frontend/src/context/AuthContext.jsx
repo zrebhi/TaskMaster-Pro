@@ -21,9 +21,16 @@ export const AuthProvider = ({ children }) => {
     const storedToken = sessionStorage.getItem('token');
     const storedUser = sessionStorage.getItem('user');
     if (storedToken && storedUser) {
-      setToken(storedToken);
-      setUser(JSON.parse(storedUser));
-      setIsAuthenticated(true);
+      try {
+        setToken(storedToken);
+        setUser(JSON.parse(storedUser));
+        setIsAuthenticated(true);
+      } catch (error) {
+        console.error('Error parsing user data from sessionStorage:', error);
+        setToken(storedToken);
+        setUser(null);
+        setIsAuthenticated(true);
+      }
     }
   }, []);
 

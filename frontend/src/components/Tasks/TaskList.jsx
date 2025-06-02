@@ -13,8 +13,8 @@ const TaskList = ({ tasks }) => {
 
   return (
     <ul style={listStyle}>
-      {tasks.map((task) => (
-        <TaskListItem key={task.id} task={task} />
+      {tasks.map((task, index) => (
+        <TaskListItem key={task.id || `task-fallback-${index}`} task={task} />
       ))}
     </ul>
   );
