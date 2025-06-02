@@ -1,9 +1,9 @@
 const {
   verifyProjectOwnership,
-} = require('../middleware/projectAuthMiddleware');
-const { Project } = require('../models');
+} = require('../../../middleware/projectAuthMiddleware');
+const { Project } = require('../../../models');
 
-jest.mock('../models', () => ({
+jest.mock('../../../models', () => ({
   Project: {
     findByPk: jest.fn(),
   },

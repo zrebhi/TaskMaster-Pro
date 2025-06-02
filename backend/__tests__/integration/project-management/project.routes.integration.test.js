@@ -1,9 +1,9 @@
 const request = require('supertest');
-const app = require('../server');
-const { User, Project } = require('../models');
+const app = require('../../../server');
+const { User, Project } = require('../../../models');
 const { v4: uuidv4 } = require('uuid');
-const databaseTestHelper = require('./helpers/database');
-const { createUser } = require('./helpers/testDataFactory');
+const databaseTestHelper = require('../../helpers/database');
+const { createUser } = require('../../helpers/testDataFactory');
 
 describe('Project Routes - /api/projects', () => {
   let testUser;

@@ -1,10 +1,10 @@
 const {
   createTask,
   getTasksForProject,
-} = require('../controllers/taskController');
-const { Task } = require('../models');
+} = require('../../../controllers/taskController');
+const { Task } = require('../../../models');
 
-jest.mock('../models', () => ({
+jest.mock('../../../models', () => ({
   Task: {
     create: jest.fn(),
     findAll: jest.fn(),

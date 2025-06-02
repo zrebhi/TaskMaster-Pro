@@ -1,10 +1,10 @@
 const request = require('supertest');
-const app = require('../server');
-const { User } = require('../models');
+const app = require('../../../server');
+const { User } = require('../../../models');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const databaseTestHelper = require('./helpers/database');
-const { createUser } = require('./helpers/testDataFactory');
+const databaseTestHelper = require('../../helpers/database');
+const { createUser } = require('../../helpers/testDataFactory');
 
 describe('Authentication Routes - /api/auth', () => {
   let testUser;

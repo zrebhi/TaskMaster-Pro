@@ -2,10 +2,10 @@ const {
   createProject,
   getProjects,
   updateProject,
-} = require('../controllers/projectController');
-const { Project } = require('../models');
+} = require('../../../controllers/projectController');
+const { Project } = require('../../../models');
 
-jest.mock('../models', () => ({
+jest.mock('../../../models', () => ({
   Project: {
     create: jest.fn(),
     findAll: jest.fn(),

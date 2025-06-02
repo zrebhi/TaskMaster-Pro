@@ -1,9 +1,9 @@
 const request = require('supertest');
-const app = require('../server');
-const { Project, Task } = require('../models');
+const app = require('../../../server');
+const { Project, Task } = require('../../../models');
 const { v4: uuidv4 } = require('uuid');
-const databaseTestHelper = require('./helpers/database');
-const { createUser } = require('./helpers/testDataFactory');
+const databaseTestHelper = require('../../helpers/database');
+const { createUser } = require('../../helpers/testDataFactory');
 
 describe('Task Routes - /api/projects/:projectId/tasks', () => {
   let testUser;
@@ -93,7 +93,9 @@ describe('Task Routes - /api/projects/:projectId/tasks', () => {
       const consoleErrorSpy = jest
         .spyOn(console, 'error')
         .mockImplementation(() => {});
+      // assertions
 
+      consoleErrorSpy.mockRestore();
       const res = await request(app)
         .post(`/api/projects/${testProject.id}/tasks`)
         .send({ title: 'Unauthorized Task' });
@@ -442,7 +444,9 @@ describe('Task Routes - /api/projects/:projectId/tasks', () => {
     });
 
     it('should return 400 for invalid data (invalid priority)', async () => {
-      jest.spyOn(console, 'error').mockImplementation(() => {});
+      const consoleErrorSpy = jest
+        .spyOn(console, 'error')
+        .mockImplementation(() => {});
       const updateData = {
         priority: 5, // Invalid: outside defined range 1-3
       };
@@ -456,6 +460,7 @@ describe('Task Routes - /api/projects/:projectId/tasks', () => {
       expect(res.body.message).toContain(
         'Priority must be 1 (Low), 2 (Medium), or 3 (High)'
       );
+      consoleErrorSpy.mockRestore();
     });
 
     it('should return 400 for invalid data (empty title)', async () => {
