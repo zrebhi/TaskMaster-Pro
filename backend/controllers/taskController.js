@@ -96,3 +96,33 @@ exports.updateTask = asyncHandler(async (req, res) => {
     task: task,
   });
 });
+
+/**
+ * @desc    Delete a specific task
+ * @route   DELETE /api/tasks/:taskId
+ * @access  Private (Task ownership verified through project ownership)
+ */
+exports.deleteTask = asyncHandler(async (req, res) => {
+  const { taskId } = req.params;
+
+  // Fetch the task with its associated project for authorization
+  const task = await Task.findByPk(taskId, {
+    include: [{ model: Project, as: 'Project' }],
+  });
+
+  if (!task) {
+    throw new NotFoundError('Task');
+  }
+
+  // Authorization check: verify user owns the project that contains this task
+  if (!req.user || task.Project.user_id !== req.user.userId) {
+    throw new AuthorizationError('User not authorized to delete this task.');
+  }
+
+  // Delete the task
+  await task.destroy();
+
+  return res.status(200).json({
+    message: 'Task deleted successfully.',
+  });
+});

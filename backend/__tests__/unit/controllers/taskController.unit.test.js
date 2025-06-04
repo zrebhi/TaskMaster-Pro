@@ -2,6 +2,7 @@ const {
   createTask,
   getTasksForProject,
   updateTask,
+  deleteTask,
 } = require('../../../controllers/taskController');
 const { Task, Project } = require('../../../models');
 const {
@@ -212,6 +213,57 @@ describe('Task Controller Unit Tests', () => {
 
       expect(mockTask.title).toBe(123);
       expect(mockTask.save).toHaveBeenCalled();
+    });
+  });
+
+  describe('deleteTask', () => {
+    beforeEach(() => {
+      mockReq.params = { taskId: 'task-123' };
+    });
+
+    it('should successfully delete a task', async () => {
+      const mockTask = createMockTask();
+
+      Task.findByPk.mockResolvedValue(mockTask);
+
+      await deleteTask(mockReq, mockRes, mockNext);
+
+      expect(Task.findByPk).toHaveBeenCalledWith('task-123', {
+        include: [{ model: Project, as: 'Project' }],
+      });
+      expect(mockTask.destroy).toHaveBeenCalled();
+      expect(mockRes.status).toHaveBeenCalledWith(200);
+      expect(mockRes.json).toHaveBeenCalledWith({
+        message: 'Task deleted successfully.',
+      });
+    });
+
+    it('should throw NotFoundError when task does not exist', async () => {
+      Task.findByPk.mockResolvedValue(null);
+
+      await expect(deleteTask(mockReq, mockRes, mockNext)).rejects.toThrow(
+        expect.objectContaining({
+          message: 'Task not found',
+          statusCode: 404,
+          errorCode: 'NOT_FOUND_ERROR',
+        })
+      );
+    });
+
+    it('should throw AuthorizationError when user does not own the project', async () => {
+      const mockTask = createMockTask({
+        Project: { user_id: 'different-user-123' },
+      });
+
+      Task.findByPk.mockResolvedValue(mockTask);
+
+      await expect(deleteTask(mockReq, mockRes, mockNext)).rejects.toThrow(
+        expect.objectContaining({
+          message: 'User not authorized to delete this task.',
+          statusCode: 403,
+          errorCode: 'AUTHORIZATION_ERROR',
+        })
+      );
     });
   });
 });

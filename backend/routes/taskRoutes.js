@@ -23,6 +23,6 @@ router.put('/:taskId', taskController.updateTask);
  * @desc    Delete a specific task
  * @access  Private (User must be authenticated and own the project containing the task)
  */
-// router.delete('/:taskId', taskController.deleteTask); // Will be implemented in next sub-feature
+router.delete('/:taskId', taskController.deleteTask);
 
 module.exports = router;

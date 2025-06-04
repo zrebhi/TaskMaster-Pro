@@ -59,27 +59,38 @@ class DatabaseError extends AppError {
  * @returns {AppError} Appropriate custom error
  */
 const createSequelizeError = (sequelizeError) => {
-  const validationMessages = sequelizeError.errors.map((e) => e.message);
-  const conflictMessages = sequelizeError.errors.map(
-    (e) => `${e.path} '${e.value}' already exists`
-  );
-
   switch (sequelizeError.name) {
     case 'SequelizeValidationError':
-      return new ValidationError(
-        validationMessages.join(' '),
-        sequelizeError.errors
-      );
+      if (sequelizeError.errors && Array.isArray(sequelizeError.errors)) {
+        const validationMessages = sequelizeError.errors.map((e) => e.message);
+        return new ValidationError(
+          validationMessages.join(' '),
+          sequelizeError.errors
+        );
+      }
+      return new ValidationError('Validation failed', sequelizeError);
 
     case 'SequelizeUniqueConstraintError':
-
-      return new ConflictError(conflictMessages.join(' '));
+      if (sequelizeError.errors && Array.isArray(sequelizeError.errors)) {
+        const conflictMessages = sequelizeError.errors.map(
+          (e) => `${e.path} '${e.value}' already exists`
+        );
+        return new ConflictError(conflictMessages.join(' '));
+      }
+      return new ConflictError('Unique constraint violation');
 
     case 'SequelizeForeignKeyConstraintError':
       return new ValidationError('Invalid reference to related resource');
 
     case 'SequelizeConnectionError':
     case 'SequelizeDatabaseError':
+      // Check if it's an invalid UUID error and return 400 instead of 500
+      if (
+        sequelizeError.message &&
+        sequelizeError.message.includes('invalid input syntax for type uuid')
+      ) {
+        return new ValidationError('Invalid ID format provided');
+      }
       return new DatabaseError('Database operation failed', sequelizeError);
 
     default:

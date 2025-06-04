@@ -45,6 +45,7 @@ const createMockTask = (overrides = {}) => ({
   createdAt: new Date(),
   updatedAt: new Date(),
   save: jest.fn(),
+  destroy: jest.fn(),
   Project: {
     id: 'project-123',
     user_id: 'user-123',

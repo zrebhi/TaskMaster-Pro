@@ -128,9 +128,6 @@ const globalErrorHandler = (err, req, res, next) => {
   err.statusCode = err.statusCode || 500;
   err.status = err.status || 'error';
 
-  // Log the error
-  logError(err, req);
-
   let error = { ...err };
   error.message = err.message;
 
@@ -158,6 +155,9 @@ const globalErrorHandler = (err, req, res, next) => {
   if (err.name === 'ValidationError' && err.errors) {
     error = handleValidationErrors(err.errors);
   }
+
+  // Log the error AFTER transformation to get correct status codes
+  logError(error, req);
 
   // Send error response based on environment
   if (process.env.NODE_ENV === 'development') {
