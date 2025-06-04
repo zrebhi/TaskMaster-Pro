@@ -35,7 +35,10 @@ module.exports = [
       ...pluginJs.configs.recommended.rules, // Base ESLint recommended rules
 
       // Consistent with frontend overrides/preferences where applicable
-      'no-console': ['warn', { allow: ['warn', 'error'] }],
+      'no-console': [
+        'warn',
+        { allow: ['warn', 'error', 'group', 'groupEnd', 'info'] },
+      ],
       'no-unused-vars': [
         'warn', // Consistent with frontend; 'error' is also common for backend
         {
@@ -81,6 +84,15 @@ module.exports = [
     files: ['**/middleware/**/*.js'],
     rules: {
       'consistent-return': 'off', // Middleware often has specific patterns (e.g. async functions, no return values)
+      'no-unused-vars': [
+        'warn',
+        {
+          argsIgnorePattern: '^_|next$', // Allow unused 'next' parameter in Express middleware
+          varsIgnorePattern: '^_',
+          caughtErrorsIgnorePattern: '^_',
+          ignoreRestSiblings: true,
+        },
+      ],
     },
   },
 

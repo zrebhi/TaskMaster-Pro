@@ -2,8 +2,13 @@ const {
   createProject,
   getProjects,
   updateProject,
+  deleteProject,
 } = require('../../../controllers/projectController');
 const { Project } = require('../../../models');
+const {
+  createMockProject,
+  createMockReqResNext,
+} = require('../../helpers/unitTestHelpers');
 
 jest.mock('../../../models', () => ({
   Project: {
@@ -12,153 +17,146 @@ jest.mock('../../../models', () => ({
   },
 }));
 
-describe('Project Controller', () => {
+jest.mock('../../../utils/customErrors', () => {
+  const actual = jest.requireActual('../../../utils/customErrors');
+  return {
+    ...actual,
+    asyncHandler: (fn) => fn,
+  };
+});
+
+describe('Project Controller Unit Tests', () => {
   let mockReq;
   let mockRes;
-  let consoleErrorSpy;
+  let mockNext;
 
   beforeEach(() => {
     jest.clearAllMocks();
-
-    mockReq = {
-      body: {},
-      user: { userId: 'test-user-id' },
-      project: null,
-    };
-
-    mockRes = {
-      status: jest.fn().mockReturnThis(),
-      json: jest.fn().mockReturnThis(),
-    };
-
-    consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    ({ mockReq, mockRes, mockNext } = createMockReqResNext());
   });
 
   afterEach(() => {
     jest.restoreAllMocks();
   });
 
+  const testProjectNameValidation = (controllerFn, setupFn = () => {}) => {
+    describe('project name validation', () => {
+      it('should throw ValidationError when name is missing', async () => {
+        mockReq.body = {};
+        setupFn();
+
+        await expect(controllerFn(mockReq, mockRes, mockNext)).rejects.toThrow(
+          expect.objectContaining({
+            message: 'Project name is required.',
+            statusCode: 400,
+            errorCode: 'VALIDATION_ERROR',
+          })
+        );
+      });
+
+      it('should throw ValidationError when name is too long', async () => {
+        mockReq.body = { name: 'a'.repeat(256) };
+        setupFn();
+
+        await expect(controllerFn(mockReq, mockRes, mockNext)).rejects.toThrow(
+          expect.objectContaining({
+            message: 'Project name is too long.',
+            statusCode: 400,
+            errorCode: 'VALIDATION_ERROR',
+          })
+        );
+      });
+    });
+  };
+
   describe('createProject', () => {
-    it('should handle Sequelize validation errors during project creation', async () => {
-      // Arrange
-      mockReq.body = { name: 'Valid Project Name' };
-      const validationError = {
-        name: 'SequelizeValidationError',
-        errors: [
-          { message: 'Name must be unique' },
-          { message: 'Name too long' },
-        ],
-      };
-      Project.create.mockRejectedValue(validationError);
+    it('should successfully create a new project', async () => {
+      mockReq.body = { name: 'Test Project' };
+      const mockProject = createMockProject();
 
-      // Act
-      await createProject(mockReq, mockRes);
+      Project.create.mockResolvedValue(mockProject);
 
-      // Assert
-      expect(mockRes.status).toHaveBeenCalledWith(400);
-      expect(mockRes.json).toHaveBeenCalledWith({
-        message: 'Name must be unique Name too long',
+      await createProject(mockReq, mockRes, mockNext);
+
+      expect(Project.create).toHaveBeenCalledWith({
+        name: 'Test Project',
+        user_id: 'user-123',
       });
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        'Create project error:',
-        validationError
-      );
+      expect(mockRes.status).toHaveBeenCalledWith(201);
+      expect(mockRes.json).toHaveBeenCalledWith({
+        message: 'Project created successfully.',
+        project: mockProject,
+      });
+      expect(mockNext).not.toHaveBeenCalled();
     });
 
-    it('should handle general database errors during project creation', async () => {
-      // Arrange
-      mockReq.body = { name: 'Valid Project Name' };
-      const dbError = new Error('Database connection failed');
-      Project.create.mockRejectedValue(dbError);
-
-      // Act
-      await createProject(mockReq, mockRes);
-
-      // Assert
-      expect(mockRes.status).toHaveBeenCalledWith(500);
-      expect(mockRes.json).toHaveBeenCalledWith({
-        message: 'Server error while creating project.',
-      });
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        'Create project error:',
-        dbError
-      );
-    });
+    testProjectNameValidation(createProject);
   });
 
   describe('getProjects', () => {
-    it('should handle database errors during project fetch', async () => {
-      // Arrange
-      const dbError = new Error('Database connection timeout');
-      Project.findAll.mockRejectedValue(dbError);
+    it('should successfully fetch all projects for authenticated user', async () => {
+      const mockProjects = [
+        createMockProject({ id: 'project-1', name: 'Project 1' }),
+        createMockProject({ id: 'project-2', name: 'Project 2' }),
+      ];
 
-      // Act
-      await getProjects(mockReq, mockRes);
+      Project.findAll.mockResolvedValue(mockProjects);
 
-      // Assert
-      expect(mockRes.status).toHaveBeenCalledWith(500);
-      expect(mockRes.json).toHaveBeenCalledWith({
-        message: 'Server error while fetching projects.',
+      await getProjects(mockReq, mockRes, mockNext);
+
+      expect(Project.findAll).toHaveBeenCalledWith({
+        where: { user_id: 'user-123' },
+        order: [['createdAt', 'DESC']],
       });
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        'Get projects error:',
-        dbError
-      );
+      expect(mockRes.status).toHaveBeenCalledWith(200);
+      expect(mockRes.json).toHaveBeenCalledWith({
+        message: 'Projects fetched successfully.',
+        count: 2,
+        projects: mockProjects,
+      });
+      expect(mockNext).not.toHaveBeenCalled();
     });
   });
 
   describe('updateProject', () => {
-    it('should handle Sequelize validation errors during project update', async () => {
-      // Arrange
-      mockReq.body = { name: 'Updated Project Name' };
-      const mockProject = {
-        name: 'Old Name',
-        save: jest.fn(),
-      };
-      mockReq.project = mockProject;
-      const validationError = {
-        name: 'SequelizeValidationError',
-        errors: [{ message: 'Name already exists' }],
-      };
-      mockProject.save.mockRejectedValue(validationError);
-
-      // Act
-      await updateProject(mockReq, mockRes);
-
-      // Assert
-      expect(mockRes.status).toHaveBeenCalledWith(400);
-      expect(mockRes.json).toHaveBeenCalledWith({
-        message: 'Name already exists',
-      });
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        'Update project error:',
-        validationError
-      );
+    beforeEach(() => {
+      mockReq.project = createMockProject();
     });
 
-    it('should handle general database errors during project update', async () => {
-      // Arrange
+    it('should successfully update project name', async () => {
       mockReq.body = { name: 'Updated Project Name' };
-      const mockProject = {
-        name: 'Old Name',
-        save: jest.fn(),
-      };
-      mockReq.project = mockProject;
-      const dbError = new Error('Database write failed');
-      mockProject.save.mockRejectedValue(dbError);
 
-      // Act
-      await updateProject(mockReq, mockRes);
+      await updateProject(mockReq, mockRes, mockNext);
 
-      // Assert
-      expect(mockRes.status).toHaveBeenCalledWith(500);
+      expect(mockReq.project.name).toBe('Updated Project Name');
+      expect(mockReq.project.save).toHaveBeenCalled();
+      expect(mockRes.status).toHaveBeenCalledWith(200);
       expect(mockRes.json).toHaveBeenCalledWith({
-        message: 'Server error while updating project.',
+        message: 'Project updated successfully.',
+        project: mockReq.project,
       });
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        'Update project error:',
-        dbError
-      );
+      expect(mockNext).not.toHaveBeenCalled();
+    });
+
+    testProjectNameValidation(updateProject, () => {
+      mockReq.project = createMockProject();
+    });
+  });
+
+  describe('deleteProject', () => {
+    beforeEach(() => {
+      mockReq.project = createMockProject();
+    });
+
+    it('should successfully delete a project', async () => {
+      await deleteProject(mockReq, mockRes, mockNext);
+
+      expect(mockReq.project.destroy).toHaveBeenCalled();
+      expect(mockRes.status).toHaveBeenCalledWith(200);
+      expect(mockRes.json).toHaveBeenCalledWith({
+        message: 'Project and associated tasks deleted successfully.',
+      });
+      expect(mockNext).not.toHaveBeenCalled();
     });
   });
 });

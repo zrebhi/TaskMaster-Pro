@@ -1,6 +1,10 @@
 const express = require('express');
 const dotenv = require('dotenv');
 const cors = require('cors');
+const {
+  globalErrorHandler,
+  notFoundHandler,
+} = require('./middleware/errorHandler');
 
 // Load environment variables from .env file
 dotenv.config();
@@ -27,6 +31,10 @@ app.use(validateRequestBody);
 app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/projects', require('./routes/projectRoutes'));
 app.use('/api/tasks', require('./routes/taskRoutes'));
+
+// Error handling middleware (must be last)
+app.use(notFoundHandler);
+app.use(globalErrorHandler);
 
 // Only start server if this file is run directly (not when imported for tests)
 if (require.main === module) {

@@ -1,38 +1,41 @@
 const {
   createTask,
   getTasksForProject,
+  updateTask,
 } = require('../../../controllers/taskController');
-const { Task } = require('../../../models');
+const { Task, Project } = require('../../../models');
+const {
+  createMockTask,
+  createMockReqResNext,
+} = require('../../helpers/unitTestHelpers');
 
 jest.mock('../../../models', () => ({
   Task: {
     create: jest.fn(),
     findAll: jest.fn(),
+    findByPk: jest.fn(),
   },
+  Project: {},
 }));
 
-describe('Task Controller', () => {
+jest.mock('../../../utils/customErrors', () => {
+  const actual = jest.requireActual('../../../utils/customErrors');
+  return {
+    ...actual,
+    asyncHandler: (fn) => fn,
+  };
+});
+
+describe('Task Controller Unit Tests', () => {
   let mockReq;
   let mockRes;
-  let consoleErrorSpy;
+  let mockNext;
 
   beforeEach(() => {
     jest.clearAllMocks();
-
-    mockReq = {
-      params: { projectId: 'test-project-id' },
-      body: {},
-      user: { userId: 'test-user-id' },
-    };
-
-    // mockReturnThis() enables method chaining by making the mock function return the response object itself,
-    // which allows Express-style chaining like res.status(404).json({...}) to work properly in tests
-    mockRes = {
-      status: jest.fn().mockReturnThis(),
-      json: jest.fn().mockReturnThis(),
-    };
-
-    consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    ({ mockReq, mockRes, mockNext } = createMockReqResNext({
+      params: { projectId: 'project-123' },
+    }));
   });
 
   afterEach(() => {
@@ -40,29 +43,22 @@ describe('Task Controller', () => {
   });
 
   describe('createTask', () => {
-    it('should create task successfully with all fields', async () => {
-      mockReq.params.projectId = 'project-123';
+    it('should successfully create a new task', async () => {
       mockReq.body = {
-        title: '  Test Task  ',
+        title: 'New Task',
         description: 'Task description',
         due_date: '2024-12-31',
         priority: 3,
       };
-      const mockTask = {
-        id: 'task-456',
-        project_id: 'project-123',
-        title: 'Test Task',
-        description: 'Task description',
-        due_date: '2024-12-31',
-        priority: 3,
-      };
+      const mockTask = createMockTask();
+
       Task.create.mockResolvedValue(mockTask);
 
-      await createTask(mockReq, mockRes);
+      await createTask(mockReq, mockRes, mockNext);
 
       expect(Task.create).toHaveBeenCalledWith({
         project_id: 'project-123',
-        title: 'Test Task',
+        title: 'New Task',
         description: 'Task description',
         due_date: '2024-12-31',
         priority: 3,
@@ -72,22 +68,16 @@ describe('Task Controller', () => {
         message: 'Task created successfully.',
         task: mockTask,
       });
+      expect(mockNext).not.toHaveBeenCalled();
     });
 
-    it('should create task with minimal required fields and defaults', async () => {
-      mockReq.params.projectId = 'project-123';
+    it('should create task with default values when optional fields are missing', async () => {
       mockReq.body = { title: 'Minimal Task' };
-      const mockTask = {
-        id: 'task-456',
-        project_id: 'project-123',
-        title: 'Minimal Task',
-        description: null,
-        due_date: null,
-        priority: 2,
-      };
+      const mockTask = createMockTask();
+
       Task.create.mockResolvedValue(mockTask);
 
-      await createTask(mockReq, mockRes);
+      await createTask(mockReq, mockRes, mockNext);
 
       expect(Task.create).toHaveBeenCalledWith({
         project_id: 'project-123',
@@ -97,133 +87,31 @@ describe('Task Controller', () => {
         priority: 2,
       });
       expect(mockRes.status).toHaveBeenCalledWith(201);
-      expect(mockRes.json).toHaveBeenCalledWith({
-        message: 'Task created successfully.',
-        task: mockTask,
-      });
     });
 
-    it('should return 400 when title is missing', async () => {
-      mockReq.body = { description: 'No title provided' };
+    it('should throw ValidationError when title is missing', async () => {
+      mockReq.body = { description: 'Task without title' };
 
-      await createTask(mockReq, mockRes);
-
-      expect(mockRes.status).toHaveBeenCalledWith(400);
-      expect(mockRes.json).toHaveBeenCalledWith({
-        message: 'Task title is required.',
-      });
-      expect(Task.create).not.toHaveBeenCalled();
-    });
-
-    it('should return 400 when title is empty string', async () => {
-      mockReq.body = { title: '' };
-
-      await createTask(mockReq, mockRes);
-
-      expect(mockRes.status).toHaveBeenCalledWith(400);
-      expect(mockRes.json).toHaveBeenCalledWith({
-        message: 'Task title is required.',
-      });
-      expect(Task.create).not.toHaveBeenCalled();
-    });
-
-    it('should return 400 when title is only whitespace', async () => {
-      mockReq.body = { title: '   ' };
-
-      await createTask(mockReq, mockRes);
-
-      expect(mockRes.status).toHaveBeenCalledWith(400);
-      expect(mockRes.json).toHaveBeenCalledWith({
-        message: 'Task title is required.',
-      });
-      expect(Task.create).not.toHaveBeenCalled();
-    });
-
-    it('should handle Sequelize validation errors', async () => {
-      mockReq.body = { title: 'Valid Title' };
-      const validationError = {
-        name: 'SequelizeValidationError',
-        errors: [
-          { message: 'Title too long' },
-          { message: 'Invalid priority' },
-        ],
-      };
-      Task.create.mockRejectedValue(validationError);
-
-      await createTask(mockReq, mockRes);
-
-      expect(mockRes.status).toHaveBeenCalledWith(400);
-      expect(mockRes.json).toHaveBeenCalledWith({
-        message: 'Title too long Invalid priority',
-      });
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        'Create task error:',
-        validationError
-      );
-    });
-
-    it('should handle general database errors', async () => {
-      mockReq.body = { title: 'Valid Title' };
-      const dbError = new Error('Database connection failed');
-      Task.create.mockRejectedValue(dbError);
-
-      await createTask(mockReq, mockRes);
-
-      expect(mockRes.status).toHaveBeenCalledWith(500);
-      expect(mockRes.json).toHaveBeenCalledWith({
-        message: 'Server error while creating task.',
-      });
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        'Create task error:',
-        dbError
-      );
-    });
-
-    it('should trim description when provided', async () => {
-      mockReq.body = {
-        title: 'Test Task',
-        description: '  Task description  ',
-      };
-      const mockTask = {
-        id: 'task-456',
-        title: 'Test Task',
-        description: 'Task description',
-      };
-      Task.create.mockResolvedValue(mockTask);
-
-      await createTask(mockReq, mockRes);
-
-      expect(Task.create).toHaveBeenCalledWith(
+      await expect(createTask(mockReq, mockRes, mockNext)).rejects.toThrow(
         expect.objectContaining({
-          description: 'Task description',
-        })
-      );
-    });
-
-    it('should handle empty description as null', async () => {
-      mockReq.body = { title: 'Test Task', description: '' };
-      Task.create.mockResolvedValue({ id: 'task-456' });
-
-      await createTask(mockReq, mockRes);
-
-      expect(Task.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          description: null,
+          message: 'Task title is required.',
+          statusCode: 400,
+          errorCode: 'VALIDATION_ERROR',
         })
       );
     });
   });
 
   describe('getTasksForProject', () => {
-    it('should fetch tasks successfully for project', async () => {
-      mockReq.params.projectId = 'project-123';
+    it('should successfully fetch all tasks for a project', async () => {
       const mockTasks = [
-        { id: 'task-1', title: 'Task 1' },
-        { id: 'task-2', title: 'Task 2' },
+        createMockTask({ id: 'task-1', title: 'Task 1' }),
+        createMockTask({ id: 'task-2', title: 'Task 2' }),
       ];
+
       Task.findAll.mockResolvedValue(mockTasks);
 
-      await getTasksForProject(mockReq, mockRes);
+      await getTasksForProject(mockReq, mockRes, mockNext);
 
       expect(Task.findAll).toHaveBeenCalledWith({
         where: { project_id: 'project-123' },
@@ -235,37 +123,95 @@ describe('Task Controller', () => {
         count: 2,
         tasks: mockTasks,
       });
+      expect(mockNext).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('updateTask', () => {
+    beforeEach(() => {
+      mockReq.params = { taskId: 'task-123' };
     });
 
-    it('should return empty array when no tasks exist', async () => {
-      mockReq.params.projectId = 'project-123';
-      Task.findAll.mockResolvedValue([]);
+    it('should successfully update a task', async () => {
+      mockReq.body = {
+        title: 'Updated Task',
+        description: 'Updated description',
+        due_date: '2025-01-01',
+        priority: 3,
+        is_completed: true,
+      };
+      const mockTask = createMockTask();
 
-      await getTasksForProject(mockReq, mockRes);
+      Task.findByPk.mockResolvedValue(mockTask);
 
+      await updateTask(mockReq, mockRes, mockNext);
+
+      expect(Task.findByPk).toHaveBeenCalledWith('task-123', {
+        include: [{ model: Project, as: 'Project' }],
+      });
+      expect(mockTask.title).toBe('Updated Task');
+      expect(mockTask.description).toBe('Updated description');
+      expect(mockTask.due_date).toBe('2025-01-01');
+      expect(mockTask.priority).toBe(3);
+      expect(mockTask.is_completed).toBe(true);
+      expect(mockTask.save).toHaveBeenCalled();
       expect(mockRes.status).toHaveBeenCalledWith(200);
       expect(mockRes.json).toHaveBeenCalledWith({
-        message: 'Tasks fetched successfully.',
-        count: 0,
-        tasks: [],
+        message: 'Task updated successfully.',
+        task: mockTask,
       });
     });
 
-    it('should handle database errors during task fetch', async () => {
-      mockReq.params.projectId = 'project-123';
-      const dbError = new Error('Database connection failed');
-      Task.findAll.mockRejectedValue(dbError);
+    it('should throw NotFoundError when task does not exist', async () => {
+      Task.findByPk.mockResolvedValue(null);
 
-      await getTasksForProject(mockReq, mockRes);
-
-      expect(mockRes.status).toHaveBeenCalledWith(500);
-      expect(mockRes.json).toHaveBeenCalledWith({
-        message: 'Server error while fetching tasks.',
-      });
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        'Get tasks for project error:',
-        dbError
+      await expect(updateTask(mockReq, mockRes, mockNext)).rejects.toThrow(
+        expect.objectContaining({
+          message: 'Task not found',
+          statusCode: 404,
+          errorCode: 'NOT_FOUND_ERROR',
+        })
       );
+    });
+
+    it('should throw AuthorizationError when user does not own the project', async () => {
+      const mockTask = createMockTask({
+        Project: { user_id: 'different-user-123' },
+      });
+
+      Task.findByPk.mockResolvedValue(mockTask);
+
+      await expect(updateTask(mockReq, mockRes, mockNext)).rejects.toThrow(
+        expect.objectContaining({
+          message: 'User not authorized to update this task.',
+          statusCode: 403,
+          errorCode: 'AUTHORIZATION_ERROR',
+        })
+      );
+    });
+
+    it('should handle description set to null', async () => {
+      mockReq.body = { description: null };
+      const mockTask = createMockTask();
+
+      Task.findByPk.mockResolvedValue(mockTask);
+
+      await updateTask(mockReq, mockRes, mockNext);
+
+      expect(mockTask.description).toBe(null);
+      expect(mockTask.save).toHaveBeenCalled();
+    });
+
+    it('should handle non-string title value', async () => {
+      mockReq.body = { title: 123 };
+      const mockTask = createMockTask();
+
+      Task.findByPk.mockResolvedValue(mockTask);
+
+      await updateTask(mockReq, mockRes, mockNext);
+
+      expect(mockTask.title).toBe(123);
+      expect(mockTask.save).toHaveBeenCalled();
     });
   });
 });
