@@ -6,6 +6,7 @@ import TaskContext from '../context/TaskContext';
 import EditProjectModal from '../components/Projects/EditProjectModal';
 import DeleteProjectModal from '../components/Projects/DeleteProjectModal.jsx';
 import TaskList from '../components/Tasks/TaskList';
+import AddTaskForm from '../components/Tasks/AddTaskForm';
 
 const DashboardPage = () => {
   const { projects, fetchProjects, deleteProject, isLoading, error } =
@@ -68,9 +69,6 @@ const DashboardPage = () => {
   }, []);
 
   const handleConfirmDelete = useCallback(async () => {
-    if (!projectToDelete) {
-      return;
-    }
     setIsDeleting(true);
 
     try {
@@ -123,6 +121,13 @@ const DashboardPage = () => {
                 Tasks for:{' '}
                 {projects.find((p) => p.id === activeProjectId)?.name}
               </h2>
+
+              <section style={{ marginBottom: '20px' }}>
+                <AddTaskForm projectId={activeProjectId} />
+              </section>
+
+              <hr style={{ margin: '20px 0' }} />
+
               {isLoadingTasks ? <p>Loading tasks...</p> : null}
               {taskError ? <p style={{ color: 'red' }}>{taskError}</p> : null}
               {!isLoadingTasks && !taskError && tasks.length > 0 && (

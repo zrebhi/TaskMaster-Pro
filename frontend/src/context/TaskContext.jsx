@@ -1,5 +1,8 @@
 import { createContext, useState, useCallback, useContext } from 'react';
-import { getTasksForProjectAPI } from '../services/taskApiService';
+import {
+  getTasksForProjectAPI,
+  createTaskInProjectAPI,
+} from '../services/taskApiService';
 import { useError } from './ErrorContext';
 import AuthContext from './AuthContext';
 
@@ -59,10 +62,44 @@ export const TaskProvider = ({ children }) => {
     setTaskError(null);
   }, []);
 
-  // Placeholder functions for future implementation
-  const addTask = async (_projectId, _taskData) => {
-    // To be implemented in next sub-feature
-  };
+  const addTask = useCallback(
+    async (projectId, taskData) => {
+      if (!projectId || !taskData) {
+        return;
+      }
+
+      if (!isAuthenticated || !token) {
+        const fallbackMessage = 'Authentication required to create tasks.';
+        showErrorToast({ message: fallbackMessage, severity: 'medium' });
+        return;
+      }
+
+      setIsLoadingTasks(true);
+      setTaskError(null);
+
+      try {
+        const newTask = await createTaskInProjectAPI(projectId, taskData);
+
+        // Optimistic update: add the new task to the current tasks if we're viewing the same project
+        if (currentProjectIdForTasks === projectId) {
+          setTasks((prevTasks) => [...prevTasks, newTask]);
+        }
+      } catch (err) {
+        if (err.processedError) {
+          showErrorToast(err.processedError);
+          setTaskError(err.processedError.message);
+        } else {
+          const fallbackMessage = 'Failed to create task. Please try again.';
+          showErrorToast({ message: fallbackMessage, severity: 'medium' });
+          setTaskError(fallbackMessage);
+        }
+        throw err; // Re-throw so the form can handle it
+      } finally {
+        setIsLoadingTasks(false);
+      }
+    },
+    [token, isAuthenticated, showErrorToast, currentProjectIdForTasks]
+  );
 
   const updateTask = async (_taskId, _taskData) => {
     // To be implemented in future sub-feature

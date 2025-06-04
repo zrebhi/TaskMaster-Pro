@@ -10,6 +10,7 @@ import { createMockTask, createMockApiError } from '../../helpers/test-utils';
 
 jest.mock('../../../services/taskApiService', () => ({
   getTasksForProjectAPI: jest.fn(),
+  createTaskInProjectAPI: jest.fn(),
 }));
 
 jest.mock('../../../context/ErrorContext', () => ({
@@ -24,7 +25,10 @@ jest.mock('../../../context/AuthContext', () => {
   };
 });
 
-const { getTasksForProjectAPI } = require('../../../services/taskApiService');
+const {
+  getTasksForProjectAPI,
+  createTaskInProjectAPI,
+} = require('../../../services/taskApiService');
 const { useError } = require('../../../context/ErrorContext');
 
 describe('TaskContext', () => {
@@ -127,9 +131,19 @@ describe('TaskContext', () => {
       expect(result.current.taskError).toBeNull();
     });
 
-    test('handles API error with processedError', async () => {
+    test.each([
+      [
+        'with processedError',
+        createMockApiError(404, 'Tasks not found', 'medium'),
+        'Tasks not found',
+      ],
+      [
+        'without processedError',
+        new Error('Raw API error'),
+        'Failed to fetch tasks for the project.',
+      ],
+    ])('handles API error %s', async (_, apiError, expectedTaskError) => {
       const projectId = 'project-123';
-      const apiError = createMockApiError(404, 'Tasks not found', 'medium');
       getTasksForProjectAPI.mockRejectedValue(apiError);
 
       const { result } = renderTaskContext();
@@ -142,34 +156,13 @@ describe('TaskContext', () => {
       expect(result.current.tasks).toEqual([]);
       expect(result.current.currentProjectIdForTasks).toBe(projectId);
       expect(result.current.isLoadingTasks).toBe(false);
-      expect(result.current.taskError).toBe('Tasks not found');
+      expect(result.current.taskError).toBe(expectedTaskError);
       expect(mockErrorContext.showErrorToast).toHaveBeenCalledWith(
-        apiError.processedError
+        apiError.processedError || {
+          message: 'Failed to fetch tasks for the project.',
+          severity: 'medium',
+        }
       );
-    });
-
-    test('handles API error without processedError', async () => {
-      const projectId = 'project-123';
-      const rawError = new Error('Raw API error');
-      getTasksForProjectAPI.mockRejectedValue(rawError);
-
-      const { result } = renderTaskContext();
-
-      await act(async () => {
-        await result.current.fetchTasks(projectId);
-      });
-
-      expect(getTasksForProjectAPI).toHaveBeenCalledWith(projectId);
-      expect(result.current.tasks).toEqual([]);
-      expect(result.current.currentProjectIdForTasks).toBe(projectId);
-      expect(result.current.isLoadingTasks).toBe(false);
-      expect(result.current.taskError).toBe(
-        'Failed to fetch tasks for the project.'
-      );
-      expect(mockErrorContext.showErrorToast).toHaveBeenCalledWith({
-        message: 'Failed to fetch tasks for the project.',
-        severity: 'medium',
-      });
     });
 
     test('manages loading state correctly during fetch', async () => {
@@ -250,16 +243,184 @@ describe('TaskContext', () => {
     });
   });
 
-  describe('Placeholder Functions', () => {
-    test('all placeholder functions exist and are callable', async () => {
+  describe('addTask Function', () => {
+    test('successfully creates task and updates state optimistically', async () => {
+      const projectId = 'project-123';
+      const taskData = { title: 'New Task', description: 'Task description' };
+      const newTask = createMockTask({
+        id: 'task-new',
+        title: 'New Task',
+        description: 'Task description',
+        projectId,
+      });
+
+      // Reset mocks to ensure clean state
+      getTasksForProjectAPI.mockResolvedValue([]);
+      createTaskInProjectAPI.mockResolvedValue(newTask);
+
       const { result } = renderTaskContext();
 
-      expect(typeof result.current.addTask).toBe('function');
+      // Set up initial state with current project
+      await act(async () => {
+        await result.current.fetchTasks(projectId);
+      });
+
+      const initialTaskCount = result.current.tasks.length;
+
+      await act(async () => {
+        await result.current.addTask(projectId, taskData);
+      });
+
+      expect(createTaskInProjectAPI).toHaveBeenCalledWith(projectId, taskData);
+      expect(result.current.tasks).toHaveLength(initialTaskCount + 1);
+      expect(result.current.tasks).toContainEqual(newTask);
+      expect(result.current.isLoadingTasks).toBe(false);
+      expect(result.current.taskError).toBeNull();
+      expect(mockErrorContext.showErrorToast).not.toHaveBeenCalled();
+    });
+
+    test.each([
+      ['empty projectId', '', { title: 'Task' }],
+      ['null projectId', null, { title: 'Task' }],
+      ['undefined projectId', undefined, { title: 'Task' }],
+      ['empty taskData', 'project-123', ''],
+      ['null taskData', 'project-123', null],
+      ['undefined taskData', 'project-123', undefined],
+    ])('does not call API when %s', async (_, projectId, taskData) => {
+      const { result } = renderTaskContext();
+
+      await act(async () => {
+        await result.current.addTask(projectId, taskData);
+      });
+
+      expect(createTaskInProjectAPI).not.toHaveBeenCalled();
+      expect(result.current.isLoadingTasks).toBe(false);
+      expect(mockErrorContext.showErrorToast).not.toHaveBeenCalled();
+    });
+
+    test('shows error and does not call API when unauthenticated', async () => {
+      const projectId = 'project-123';
+      const taskData = { title: 'New Task' };
+      const { result } = renderTaskContext(createUnauthenticatedContext());
+
+      await act(async () => {
+        await result.current.addTask(projectId, taskData);
+      });
+
+      expect(createTaskInProjectAPI).not.toHaveBeenCalled();
+      expect(result.current.isLoadingTasks).toBe(false);
+      expect(mockErrorContext.showErrorToast).toHaveBeenCalledWith({
+        message: 'Authentication required to create tasks.',
+        severity: 'medium',
+      });
+    });
+
+    test.each([
+      [
+        'with processedError',
+        createMockApiError(400, 'Task creation failed', 'medium'),
+      ],
+      ['without processedError', new Error('Raw API error')],
+    ])('handles API error %s', async (_, apiError) => {
+      const projectId = 'project-123';
+      const taskData = { title: 'New Task' };
+      createTaskInProjectAPI.mockRejectedValue(apiError);
+
+      const { result } = renderTaskContext();
+
+      // Test that the function throws the error
+      await expect(
+        act(async () => {
+          await result.current.addTask(projectId, taskData);
+        })
+      ).rejects.toThrow(apiError);
+
+      // Test that the API was called
+      expect(createTaskInProjectAPI).toHaveBeenCalledWith(projectId, taskData);
+
+      // Test that error toast was called
+      expect(mockErrorContext.showErrorToast).toHaveBeenCalledWith(
+        apiError.processedError || {
+          message: 'Failed to create task. Please try again.',
+          severity: 'medium',
+        }
+      );
+
+      // Test loading state is reset
+      expect(result.current.isLoadingTasks).toBe(false);
+    });
+
+    test('only updates tasks if current project matches', async () => {
+      const currentProjectId = 'project-123';
+      const differentProjectId = 'project-456';
+      const taskData = { title: 'New Task' };
+      const newTask = createMockTask({
+        id: 'task-new',
+        projectId: differentProjectId,
+      });
+
+      createTaskInProjectAPI.mockResolvedValue(newTask);
+
+      const { result } = renderTaskContext();
+
+      // Set up initial state with current project
+      await act(async () => {
+        await result.current.fetchTasks(currentProjectId);
+      });
+
+      const initialTaskCount = result.current.tasks.length;
+
+      // Add task to different project
+      await act(async () => {
+        await result.current.addTask(differentProjectId, taskData);
+      });
+
+      expect(createTaskInProjectAPI).toHaveBeenCalledWith(
+        differentProjectId,
+        taskData
+      );
+      expect(result.current.tasks).toHaveLength(initialTaskCount); // No change
+      expect(result.current.tasks).not.toContainEqual(newTask);
+      expect(result.current.currentProjectIdForTasks).toBe(currentProjectId);
+    });
+
+    test('manages loading state correctly during task creation', async () => {
+      const projectId = 'project-123';
+      const taskData = { title: 'New Task' };
+      const newTask = createMockTask();
+
+      let resolvePromise;
+      const promise = new Promise((resolve) => {
+        resolvePromise = resolve;
+      });
+      createTaskInProjectAPI.mockReturnValue(promise);
+
+      const { result } = renderTaskContext();
+
+      act(() => {
+        result.current.addTask(projectId, taskData);
+      });
+
+      expect(result.current.isLoadingTasks).toBe(true);
+      expect(result.current.taskError).toBeNull();
+
+      await act(async () => {
+        resolvePromise(newTask);
+        await promise;
+      });
+
+      expect(result.current.isLoadingTasks).toBe(false);
+    });
+  });
+
+  describe('Placeholder Functions', () => {
+    test('updateTask and deleteTask functions exist and are callable', async () => {
+      const { result } = renderTaskContext();
+
       expect(typeof result.current.updateTask).toBe('function');
       expect(typeof result.current.deleteTask).toBe('function');
 
       await act(async () => {
-        await result.current.addTask('project-123', { title: 'New Task' });
         await result.current.updateTask('task-123', { title: 'Updated Task' });
         await result.current.deleteTask('task-123');
       });
