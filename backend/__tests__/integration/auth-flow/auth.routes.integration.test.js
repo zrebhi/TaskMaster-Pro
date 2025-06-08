@@ -6,16 +6,20 @@ const jwt = require('jsonwebtoken');
 const databaseTestHelper = require('../../helpers/database');
 const { createUser } = require('../../helpers/testDataFactory');
 
-const withConsoleErrorSpy = (testFn) => {
+const withConsoleSpy = (testFn) => {
   return async () => {
     const consoleErrorSpy = jest
       .spyOn(console, 'error')
       .mockImplementation(() => {});
+      const consoleWarnSpy = jest
+        .spyOn(console, 'warn')
+        .mockImplementation(() => {});
 
     try {
       await testFn();
     } finally {
       consoleErrorSpy.mockRestore();
+      consoleWarnSpy.mockRestore();
     }
   };
 };
@@ -73,7 +77,7 @@ describe('Authentication Routes Integration - /api/auth', () => {
 
     test(
       'should handle database unique constraint violation for email',
-      withConsoleErrorSpy(async () => {
+      withConsoleSpy(async () => {
         const response = await request(app).post('/api/auth/register').send({
           username: 'newuser',
           email: testUser.email,
@@ -89,7 +93,7 @@ describe('Authentication Routes Integration - /api/auth', () => {
 
     test(
       'should handle database unique constraint violation for username',
-      withConsoleErrorSpy(async () => {
+      withConsoleSpy(async () => {
         const response = await request(app).post('/api/auth/register').send({
           username: testUser.username,
           email: 'another_unique_email@example.com',
@@ -178,7 +182,7 @@ describe('Authentication Routes Integration - /api/auth', () => {
 
     test(
       'should handle error propagation through middleware stack',
-      withConsoleErrorSpy(async () => {
+      withConsoleSpy(async () => {
         const response = await request(app).post('/api/auth/register').send({
           username: testUser.username,
           email: 'different@example.com',

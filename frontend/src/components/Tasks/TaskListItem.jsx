@@ -1,3 +1,6 @@
+import { useContext } from 'react';
+import TaskContext from '../../context/TaskContext';
+
 const listItemStyle = {
   padding: '10px 15px',
   border: '1px solid #ddd',
@@ -9,7 +12,31 @@ const listItemStyle = {
   alignItems: 'center',
 };
 
-const TaskListItem = ({ task }) => {
+const buttonStyle = {
+  padding: '4px 8px',
+  fontSize: '0.8em',
+  border: '1px solid #ccc',
+  borderRadius: '4px',
+  backgroundColor: '#fff',
+  cursor: 'pointer',
+  marginLeft: '5px',
+};
+
+const editButtonStyle = {
+  ...buttonStyle,
+  borderColor: '#007bff',
+  color: '#007bff',
+};
+
+const deleteButtonStyle = {
+  ...buttonStyle,
+  borderColor: '#dc3545',
+  color: '#dc3545',
+};
+
+const TaskListItem = ({ task, onEditClick, onDeleteClick }) => {
+  const { updateTask, isLoadingTasks } = useContext(TaskContext);
+
   if (!task) return null;
 
   const formatPriority = (priority) => {
@@ -29,19 +56,50 @@ const TaskListItem = ({ task }) => {
     }
   };
 
+  const handleToggleComplete = async () => {
+    try {
+      await updateTask(task.id, { is_completed: !task.is_completed });
+    } catch (err) {
+      // Error handling is done in the context
+      console.error('Failed to toggle task completion:', err);
+    }
+  };
+
   return (
     <li style={listItemStyle}>
-      <div style={{ display: 'flex', flexDirection: 'column', flexGrow: 1 }}>
-        <span style={{ fontWeight: 'bold', marginBottom: '4px' }}>
-          {task.title}
-        </span>
-        {task.description ? (
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <input
+          type="checkbox"
+          checked={task.is_completed || false}
+          onChange={handleToggleComplete}
+          disabled={isLoadingTasks}
+          style={{ cursor: 'pointer' }}
+          aria-label={`Mark "${task.title}" as ${task.is_completed ? 'incomplete' : 'complete'}`}
+        />
+        <div style={{ display: 'flex', flexDirection: 'column', flexGrow: 1 }}>
           <span
-            style={{ fontSize: '0.9em', color: '#666', marginBottom: '4px' }}
+            style={{
+              fontWeight: 'bold',
+              marginBottom: '4px',
+              textDecoration: task.is_completed ? 'line-through' : 'none',
+              color: task.is_completed ? '#888' : 'inherit',
+            }}
           >
-            {task.description}
+            {task.title}
           </span>
-        ) : null}
+          {task.description ? (
+            <span
+              style={{
+                fontSize: '0.9em',
+                color: task.is_completed ? '#aaa' : '#666',
+                marginBottom: '4px',
+                textDecoration: task.is_completed ? 'line-through' : 'none',
+              }}
+            >
+              {task.description}
+            </span>
+          ) : null}
+        </div>
       </div>
       <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
         {task.priority ? (
@@ -73,6 +131,24 @@ const TaskListItem = ({ task }) => {
             Due: {formatDate(task.due_date)}
           </span>
         ) : null}
+        <div style={{ display: 'flex', gap: '5px' }}>
+          <button
+            style={editButtonStyle}
+            onClick={() => onEditClick && onEditClick(task)}
+            disabled={isLoadingTasks}
+            aria-label={`Edit task "${task.title}"`}
+          >
+            Edit
+          </button>
+          <button
+            style={deleteButtonStyle}
+            onClick={() => onDeleteClick && onDeleteClick(task)}
+            disabled={isLoadingTasks}
+            aria-label={`Delete task "${task.title}"`}
+          >
+            Delete
+          </button>
+        </div>
       </div>
     </li>
   );

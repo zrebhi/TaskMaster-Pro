@@ -6,7 +6,7 @@ const listStyle = {
   marginTop: '20px',
 };
 
-const TaskList = ({ tasks }) => {
+const TaskList = ({ tasks, onEditTask, onDeleteTask }) => {
   if (!tasks || tasks.length === 0) {
     return null;
   }
@@ -14,7 +14,12 @@ const TaskList = ({ tasks }) => {
   return (
     <ul style={listStyle}>
       {tasks.map((task, index) => (
-        <TaskListItem key={task.id || `task-fallback-${index}`} task={task} />
+        <TaskListItem
+          key={task.id || `task-fallback-${index}`}
+          task={task}
+          onEditClick={onEditTask}
+          onDeleteClick={onDeleteTask}
+        />
       ))}
     </ul>
   );

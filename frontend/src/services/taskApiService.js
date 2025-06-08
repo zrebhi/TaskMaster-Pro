@@ -29,3 +29,26 @@ export const createTaskInProjectAPI = async (projectId, taskData) => {
   );
   return response.data?.task || response.data;
 };
+
+/**
+ * Updates an existing task.
+ * @param {string} taskId - The ID of the task to update.
+ * @param {object} taskData - The updated data for the task (e.g., { title, description, priority, is_completed, ... }).
+ * @returns {Promise<object>} A promise that resolves with the updated task data.
+ * @throws {Error} If the API call fails.
+ */
+export const updateTaskDetails = async (taskId, taskData) => {
+  const response = await api.put(`/tasks/${taskId}`, taskData, 'updating task');
+  return response.data?.task || response.data;
+};
+
+/**
+ * Deletes a task by its ID.
+ * @param {string} taskId - The ID of the task to delete.
+ * @returns {Promise<object>} A promise that resolves with the deletion response.
+ * @throws {Error} If the API call fails.
+ */
+export const deleteTaskById = async (taskId) => {
+  const response = await api.delete(`/tasks/${taskId}`, 'deleting task');
+  return response.data;
+};

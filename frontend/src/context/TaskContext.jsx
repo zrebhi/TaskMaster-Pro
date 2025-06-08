@@ -2,6 +2,8 @@ import { createContext, useState, useCallback, useContext } from 'react';
 import {
   getTasksForProjectAPI,
   createTaskInProjectAPI,
+  updateTaskDetails,
+  deleteTaskById,
 } from '../services/taskApiService';
 import { useError } from './ErrorContext';
 import AuthContext from './AuthContext';
@@ -101,13 +103,83 @@ export const TaskProvider = ({ children }) => {
     [token, isAuthenticated, showErrorToast, currentProjectIdForTasks]
   );
 
-  const updateTask = async (_taskId, _taskData) => {
-    // To be implemented in future sub-feature
-  };
+  const updateTask = useCallback(
+    async (taskId, taskData) => {
+      if (!taskId || !taskData) {
+        return;
+      }
 
-  const deleteTask = async (_taskId) => {
-    // To be implemented in future sub-feature
-  };
+      if (!isAuthenticated || !token) {
+        const fallbackMessage = 'Authentication required to update tasks.';
+        showErrorToast({ message: fallbackMessage, severity: 'medium' });
+        return;
+      }
+
+      setIsLoadingTasks(true);
+      setTaskError(null);
+
+      try {
+        const updatedTask = await updateTaskDetails(taskId, taskData);
+
+        // Update the task in local state
+        setTasks((prevTasks) =>
+          prevTasks.map((task) =>
+            task.id === taskId ? { ...task, ...updatedTask } : task
+          )
+        );
+      } catch (err) {
+        if (err.processedError) {
+          showErrorToast(err.processedError);
+          setTaskError(err.processedError.message);
+        } else {
+          const fallbackMessage = 'Failed to update task. Please try again.';
+          showErrorToast({ message: fallbackMessage, severity: 'medium' });
+          setTaskError(fallbackMessage);
+        }
+        throw err; // Re-throw so the component can handle it
+      } finally {
+        setIsLoadingTasks(false);
+      }
+    },
+    [token, isAuthenticated, showErrorToast]
+  );
+
+  const deleteTask = useCallback(
+    async (taskId) => {
+      if (!taskId) {
+        return;
+      }
+
+      if (!isAuthenticated || !token) {
+        const fallbackMessage = 'Authentication required to delete tasks.';
+        showErrorToast({ message: fallbackMessage, severity: 'medium' });
+        return;
+      }
+
+      setIsLoadingTasks(true);
+      setTaskError(null);
+
+      try {
+        await deleteTaskById(taskId);
+
+        // Remove the task from local state
+        setTasks((prevTasks) => prevTasks.filter((task) => task.id !== taskId));
+      } catch (err) {
+        if (err.processedError) {
+          showErrorToast(err.processedError);
+          setTaskError(err.processedError.message);
+        } else {
+          const fallbackMessage = 'Failed to delete task. Please try again.';
+          showErrorToast({ message: fallbackMessage, severity: 'medium' });
+          setTaskError(fallbackMessage);
+        }
+        throw err; // Re-throw so the component can handle it
+      } finally {
+        setIsLoadingTasks(false);
+      }
+    },
+    [token, isAuthenticated, showErrorToast]
+  );
 
   return (
     <TaskContext.Provider

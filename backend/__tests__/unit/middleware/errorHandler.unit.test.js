@@ -162,8 +162,15 @@ describe('Error Handler Middleware', () => {
   });
 
   describe('globalErrorHandler', () => {
+    let originalEnv;
+
     beforeEach(() => {
+      originalEnv = process.env.NODE_ENV;
       process.env.NODE_ENV = 'development';
+    });
+
+    afterAll(() => {
+      process.env.NODE_ENV = originalEnv;
     });
 
     test('handles AppError in development mode', () => {

@@ -4,7 +4,11 @@ module.exports = {
   testEnvironment: 'node',
   maxWorkers: 1,
   testTimeout: 10000,
-  testPathIgnorePatterns: ['/node_modules/', '/__tests__/helpers/'],
+  testPathIgnorePatterns: [
+    '/node_modules/',
+    '/__tests__/helpers/',
+    '/__tests__/scripts/',
+  ],
   collectCoverageFrom: [
     'controllers/**/*.js',
     'middleware/**/*.js',

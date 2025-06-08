@@ -17,7 +17,10 @@ const {
  * @returns {Promise<void>}
  */
 exports.registerUser = asyncHandler(async (req, res) => {
-  const { username, email, password } = req.body;
+  let { username = '', email = '', password = '' } = req.body;
+  username = username.trim();
+  email = email.trim().toLowerCase();
+  password = password.trim();
 
   // Validate input: username, email, and password are required
   if (!username || !email || !password) {

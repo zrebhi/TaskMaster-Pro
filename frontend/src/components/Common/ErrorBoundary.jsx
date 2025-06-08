@@ -89,8 +89,11 @@ class ErrorBoundary extends React.Component {
                   color: '#c92a2a',
                 }}
               >
-                {this.state.error ? this.state.error.toString() : null}
-                {this.state.errorInfo.componentStack}
+                {this.state.error
+                  ? this.state.error.toString()
+                  : 'No error details'}
+                {this.state.errorInfo?.componentStack ||
+                  'No component stack available'}
               </pre>
             </details>
           )}

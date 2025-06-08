@@ -29,11 +29,22 @@ class DatabaseTestHelper {
   }
 
   async truncateAllTables() {
-    const models = Object.keys(sequelize.models);
+    const transaction = await sequelize.transaction();
+    try {
+      const models = Object.keys(sequelize.models);
 
-    for (const modelName of models) {
-      const model = sequelize.models[modelName];
-      await model.destroy({ where: {}, truncate: { cascade: true } });
+      for (const modelName of models) {
+        const model = sequelize.models[modelName];
+        await model.destroy({
+          where: {},
+          truncate: { cascade: true },
+          transaction,
+        });
+      }
+      await transaction.commit();
+    } catch (error) {
+      await transaction.rollback();
+      throw error;
     }
   }
 }

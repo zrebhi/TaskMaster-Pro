@@ -39,7 +39,7 @@ const ProjectListItem = ({
             e.stopPropagation();
             onEditClick(project);
           }}
-          style={{ marginLeft: "10px" }}
+          style={{ marginLeft: "10px", marginBottom: "5px" }}
         >
           Edit
         </button>

@@ -11,6 +11,8 @@ import { createMockTask, createMockApiError } from '../../helpers/test-utils';
 jest.mock('../../../services/taskApiService', () => ({
   getTasksForProjectAPI: jest.fn(),
   createTaskInProjectAPI: jest.fn(),
+  updateTaskDetails: jest.fn(),
+  deleteTaskById: jest.fn(),
 }));
 
 jest.mock('../../../context/ErrorContext', () => ({
@@ -28,6 +30,8 @@ jest.mock('../../../context/AuthContext', () => {
 const {
   getTasksForProjectAPI,
   createTaskInProjectAPI,
+  updateTaskDetails,
+  deleteTaskById,
 } = require('../../../services/taskApiService');
 const { useError } = require('../../../context/ErrorContext');
 
@@ -413,17 +417,275 @@ describe('TaskContext', () => {
     });
   });
 
-  describe('Placeholder Functions', () => {
-    test('updateTask and deleteTask functions exist and are callable', async () => {
+  describe('updateTask Function', () => {
+    test('successfully updates task and updates state', async () => {
+      const projectId = 'project-123';
+      const taskId = 'task-123';
+      const taskData = {
+        title: 'Updated Task',
+        description: 'Updated description',
+      };
+      const existingTask = createMockTask({
+        id: taskId,
+        title: 'Original Task',
+        projectId,
+      });
+      const updatedTask = createMockTask({
+        id: taskId,
+        title: 'Updated Task',
+        description: 'Updated description',
+        projectId,
+      });
+
+      // Set up mocks
+      getTasksForProjectAPI.mockResolvedValue([existingTask]);
+      updateTaskDetails.mockResolvedValue(updatedTask);
+
       const { result } = renderTaskContext();
 
-      expect(typeof result.current.updateTask).toBe('function');
-      expect(typeof result.current.deleteTask).toBe('function');
+      // Set up initial state with existing task
+      await act(async () => {
+        await result.current.fetchTasks(projectId);
+      });
+
+      expect(result.current.tasks).toHaveLength(1);
+      expect(result.current.tasks[0].title).toBe('Original Task');
 
       await act(async () => {
-        await result.current.updateTask('task-123', { title: 'Updated Task' });
-        await result.current.deleteTask('task-123');
+        await result.current.updateTask(taskId, taskData);
       });
+
+      expect(updateTaskDetails).toHaveBeenCalledWith(taskId, taskData);
+      expect(result.current.tasks).toHaveLength(1);
+      expect(result.current.tasks[0]).toEqual(
+        expect.objectContaining({
+          id: taskId,
+          title: 'Updated Task',
+          description: 'Updated description',
+        })
+      );
+      expect(result.current.isLoadingTasks).toBe(false);
+      expect(result.current.taskError).toBeNull();
+      expect(mockErrorContext.showErrorToast).not.toHaveBeenCalled();
+    });
+
+    test.each([
+      ['empty taskId', '', { title: 'Updated Task' }],
+      ['null taskId', null, { title: 'Updated Task' }],
+      ['undefined taskId', undefined, { title: 'Updated Task' }],
+      ['empty taskData', 'task-123', ''],
+      ['null taskData', 'task-123', null],
+      ['undefined taskData', 'task-123', undefined],
+    ])('does not call API when %s', async (_, taskId, taskData) => {
+      const { result } = renderTaskContext();
+
+      await act(async () => {
+        await result.current.updateTask(taskId, taskData);
+      });
+
+      expect(updateTaskDetails).not.toHaveBeenCalled();
+      expect(result.current.isLoadingTasks).toBe(false);
+      expect(mockErrorContext.showErrorToast).not.toHaveBeenCalled();
+    });
+
+    test('shows error and does not call API when unauthenticated', async () => {
+      const taskId = 'task-123';
+      const taskData = { title: 'Updated Task' };
+      const { result } = renderTaskContext(createUnauthenticatedContext());
+
+      await act(async () => {
+        await result.current.updateTask(taskId, taskData);
+      });
+
+      expect(updateTaskDetails).not.toHaveBeenCalled();
+      expect(result.current.isLoadingTasks).toBe(false);
+      expect(mockErrorContext.showErrorToast).toHaveBeenCalledWith({
+        message: 'Authentication required to update tasks.',
+        severity: 'medium',
+      });
+    });
+
+    test.each([
+      [
+        'with processedError',
+        createMockApiError(400, 'Task update failed', 'medium'),
+      ],
+      ['without processedError', new Error('Raw API error')],
+    ])('handles API error %s', async (_, apiError) => {
+      const projectId = 'project-123';
+      const taskId = 'task-123';
+      const taskData = { title: 'Updated Task' };
+      const existingTask = createMockTask({ id: taskId, projectId });
+
+      getTasksForProjectAPI.mockResolvedValue([existingTask]);
+      updateTaskDetails.mockRejectedValue(apiError);
+
+      const { result } = renderTaskContext();
+
+      // Set up initial state
+      await act(async () => {
+        await result.current.fetchTasks(projectId);
+      });
+
+      // Test that the function throws the error
+      await expect(
+        act(async () => {
+          await result.current.updateTask(taskId, taskData);
+        })
+      ).rejects.toThrow(apiError);
+
+      expect(updateTaskDetails).toHaveBeenCalledWith(taskId, taskData);
+      expect(mockErrorContext.showErrorToast).toHaveBeenCalledWith(
+        apiError.processedError || {
+          message: 'Failed to update task. Please try again.',
+          severity: 'medium',
+        }
+      );
+      expect(result.current.isLoadingTasks).toBe(false);
+    });
+
+    test('updates only the matching task and leaves others unchanged', async () => {
+      const projectId = 'project-123';
+      const taskId = 'task-123';
+      const otherTaskId = 'task-456';
+      const taskData = { title: 'Updated Task' };
+
+      const existingTasks = [
+        createMockTask({ id: taskId, title: 'Original Task', projectId }),
+        createMockTask({ id: otherTaskId, title: 'Other Task', projectId }),
+      ];
+      const updatedTask = createMockTask({
+        id: taskId,
+        title: 'Updated Task',
+        projectId,
+      });
+
+      getTasksForProjectAPI.mockResolvedValue(existingTasks);
+      updateTaskDetails.mockResolvedValue(updatedTask);
+
+      const { result } = renderTaskContext();
+
+      // Set up initial state with existing tasks
+      await act(async () => {
+        await result.current.fetchTasks(projectId);
+      });
+
+      expect(result.current.tasks).toHaveLength(2);
+
+      await act(async () => {
+        await result.current.updateTask(taskId, taskData);
+      });
+
+      expect(result.current.tasks).toHaveLength(2);
+      expect(result.current.tasks.find((t) => t.id === taskId).title).toBe(
+        'Updated Task'
+      );
+      expect(result.current.tasks.find((t) => t.id === otherTaskId).title).toBe(
+        'Other Task'
+      );
+    });
+  });
+
+  describe('deleteTask Function', () => {
+    test('successfully deletes task and removes from state', async () => {
+      const projectId = 'project-123';
+      const taskId = 'task-123';
+      const existingTask = createMockTask({ id: taskId, projectId });
+
+      // Set up mocks
+      getTasksForProjectAPI.mockResolvedValue([existingTask]);
+      deleteTaskById.mockResolvedValue({
+        message: 'Task deleted successfully',
+      });
+
+      const { result } = renderTaskContext();
+
+      // Set up initial state with existing task
+      await act(async () => {
+        await result.current.fetchTasks(projectId);
+      });
+
+      expect(result.current.tasks).toHaveLength(1);
+
+      await act(async () => {
+        await result.current.deleteTask(taskId);
+      });
+
+      expect(deleteTaskById).toHaveBeenCalledWith(taskId);
+      expect(result.current.tasks).toHaveLength(0);
+      expect(result.current.isLoadingTasks).toBe(false);
+      expect(result.current.taskError).toBeNull();
+      expect(mockErrorContext.showErrorToast).not.toHaveBeenCalled();
+    });
+
+    test.each([
+      ['empty taskId', ''],
+      ['null taskId', null],
+      ['undefined taskId', undefined],
+    ])('does not call API when %s', async (_, taskId) => {
+      const { result } = renderTaskContext();
+
+      await act(async () => {
+        await result.current.deleteTask(taskId);
+      });
+
+      expect(deleteTaskById).not.toHaveBeenCalled();
+      expect(result.current.isLoadingTasks).toBe(false);
+      expect(mockErrorContext.showErrorToast).not.toHaveBeenCalled();
+    });
+
+    test('shows error and does not call API when unauthenticated', async () => {
+      const taskId = 'task-123';
+      const { result } = renderTaskContext(createUnauthenticatedContext());
+
+      await act(async () => {
+        await result.current.deleteTask(taskId);
+      });
+
+      expect(deleteTaskById).not.toHaveBeenCalled();
+      expect(result.current.isLoadingTasks).toBe(false);
+      expect(mockErrorContext.showErrorToast).toHaveBeenCalledWith({
+        message: 'Authentication required to delete tasks.',
+        severity: 'medium',
+      });
+    });
+
+    test.each([
+      [
+        'with processedError',
+        createMockApiError(404, 'Task not found', 'medium'),
+      ],
+      ['without processedError', new Error('Raw API error')],
+    ])('handles API error %s', async (_, apiError) => {
+      const projectId = 'project-123';
+      const taskId = 'task-123';
+      const existingTask = createMockTask({ id: taskId, projectId });
+
+      getTasksForProjectAPI.mockResolvedValue([existingTask]);
+      deleteTaskById.mockRejectedValue(apiError);
+
+      const { result } = renderTaskContext();
+
+      // Set up initial state
+      await act(async () => {
+        await result.current.fetchTasks(projectId);
+      });
+
+      // Test that the function throws the error
+      await expect(
+        act(async () => {
+          await result.current.deleteTask(taskId);
+        })
+      ).rejects.toThrow(apiError);
+
+      expect(deleteTaskById).toHaveBeenCalledWith(taskId);
+      expect(mockErrorContext.showErrorToast).toHaveBeenCalledWith(
+        apiError.processedError || {
+          message: 'Failed to delete task. Please try again.',
+          severity: 'medium',
+        }
+      );
+      expect(result.current.isLoadingTasks).toBe(false);
     });
   });
 });

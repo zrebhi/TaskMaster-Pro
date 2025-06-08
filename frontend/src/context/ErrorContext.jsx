@@ -13,7 +13,9 @@ const ErrorContext = createContext(null);
 
 export const ErrorProvider = ({ children }) => {
   const [globalErrors, setGlobalErrors] = useState([]);
-  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [isOnline, setIsOnline] = useState(
+    typeof navigator !== 'undefined' ? navigator.onLine : true
+  );
   const timeoutsRef = useRef(new Map());
 
   // Monitor network status

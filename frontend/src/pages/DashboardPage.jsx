@@ -4,9 +4,10 @@ import ProjectList from '../components/Projects/ProjectList';
 import ProjectContext from '../context/ProjectContext';
 import TaskContext from '../context/TaskContext';
 import EditProjectModal from '../components/Projects/EditProjectModal';
-import DeleteProjectModal from '../components/Projects/DeleteProjectModal.jsx';
 import TaskList from '../components/Tasks/TaskList';
 import AddTaskForm from '../components/Tasks/AddTaskForm';
+import EditTaskModal from '../components/Tasks/EditTaskModal';
+import ConfirmationModal from '../components/Common/ConfirmationModal';
 
 const DashboardPage = () => {
   const { projects, fetchProjects, deleteProject, isLoading, error } =
@@ -19,6 +20,7 @@ const DashboardPage = () => {
     fetchTasks,
     clearTasks,
     currentProjectIdForTasks,
+    deleteTask,
   } = useContext(TaskContext);
 
   const [activeProjectId, setActiveProjectId] = useState(null);
@@ -29,6 +31,12 @@ const DashboardPage = () => {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [projectToDelete, setProjectToDelete] = useState(null); // Store {id, name}
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Task modal states
+  const [isEditTaskModalOpen, setIsEditTaskModalOpen] = useState(false);
+  const [taskToEdit, setTaskToEdit] = useState(null);
+  const [isDeleteTaskModalOpen, setIsDeleteTaskModalOpen] = useState(false);
+  const [taskToDelete, setTaskToDelete] = useState(null);
 
   // Fetch initial projects when the component mounts
   useEffect(() => {
@@ -87,6 +95,37 @@ const DashboardPage = () => {
     }
   }, [projectToDelete, deleteProject, activeProjectId, handleCloseDeleteModal]);
 
+  // Task modal handlers
+  const handleEditTask = useCallback((task) => {
+    setTaskToEdit(task);
+    setIsEditTaskModalOpen(true);
+  }, []);
+
+  const handleCloseEditTaskModal = useCallback(() => {
+    setIsEditTaskModalOpen(false);
+    setTaskToEdit(null);
+  }, []);
+
+  const handleDeleteTask = useCallback((task) => {
+    setTaskToDelete(task);
+    setIsDeleteTaskModalOpen(true);
+  }, []);
+
+  const handleCloseDeleteTaskModal = useCallback(() => {
+    setIsDeleteTaskModalOpen(false);
+    setTaskToDelete(null);
+  }, []);
+
+  const handleConfirmDeleteTask = useCallback(async () => {
+    try {
+      await deleteTask(taskToDelete.id);
+      handleCloseDeleteTaskModal();
+    } catch (err) {
+      console.error('Delete task error:', err);
+      handleCloseDeleteTaskModal();
+    }
+  }, [taskToDelete, deleteTask, handleCloseDeleteTaskModal]);
+
   return (
     <>
       <div style={{ display: 'flex', minHeight: 'calc(100vh - 60px)' }}>
@@ -131,7 +170,11 @@ const DashboardPage = () => {
               {isLoadingTasks ? <p>Loading tasks...</p> : null}
               {taskError ? <p style={{ color: 'red' }}>{taskError}</p> : null}
               {!isLoadingTasks && !taskError && tasks.length > 0 && (
-                <TaskList tasks={tasks} />
+                <TaskList
+                  tasks={tasks}
+                  onEditTask={handleEditTask}
+                  onDeleteTask={handleDeleteTask}
+                />
               )}
               {!isLoadingTasks &&
                 !taskError &&
@@ -154,13 +197,32 @@ const DashboardPage = () => {
         isOpen={isEditModalOpen}
         onClose={handleCloseEditModal}
       />
-      <DeleteProjectModal
+      <ConfirmationModal
         isOpen={isDeleteModalOpen}
         onClose={handleCloseDeleteModal}
         onConfirm={handleConfirmDelete}
         title="Delete Project"
         message={`Are you sure you want to delete the project "${projectToDelete?.name}"? This will also delete all associated tasks.`}
         isLoading={isDeleting}
+        confirmText="Delete"
+        loadingText="Deleting..."
+        confirmButtonStyle="danger"
+      />
+      <EditTaskModal
+        task={taskToEdit}
+        isOpen={isEditTaskModalOpen}
+        onClose={handleCloseEditTaskModal}
+      />
+      <ConfirmationModal
+        isOpen={isDeleteTaskModalOpen}
+        onClose={handleCloseDeleteTaskModal}
+        onConfirm={handleConfirmDeleteTask}
+        title="Delete Task"
+        message={`Are you sure you want to delete the task "${taskToDelete?.title}"?`}
+        isLoading={isLoadingTasks}
+        confirmText="Delete"
+        loadingText="Deleting..."
+        confirmButtonStyle="danger"
       />
     </>
   );

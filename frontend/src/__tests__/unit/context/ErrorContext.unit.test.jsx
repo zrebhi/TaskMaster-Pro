@@ -58,6 +58,37 @@ const advanceTimersAndExpect = (time, expectation) => {
   expectation();
 };
 
+// Helper for testing toast functions with custom options
+const testToastWithCustomOptions = (
+  toastFn,
+  message,
+  customOptions,
+  expectedToastMock
+) => {
+  const { result } = renderErrorHook();
+
+  act(() => {
+    result.current[toastFn](message, customOptions);
+  });
+
+  expect(expectedToastMock).toHaveBeenCalledWith(message, customOptions);
+};
+
+// Helper for adding multiple errors to test state
+const addMultipleErrors = (result, errorCount = 2) => {
+  const errorIds = [];
+  act(() => {
+    for (let i = 1; i <= errorCount; i++) {
+      const errorId = result.current.addError({
+        message: `Error ${i}`,
+        severity: i === 1 ? ERROR_SEVERITY.LOW : ERROR_SEVERITY.MEDIUM,
+      });
+      errorIds.push(errorId);
+    }
+  });
+  return errorIds;
+};
+
 describe('ErrorContext', () => {
   let testSetup;
 
@@ -83,6 +114,18 @@ describe('ErrorContext', () => {
       expect(typeof result.current.showErrorToast).toBe('function');
       expect(typeof result.current.showSuccess).toBe('function');
       expect(typeof result.current.showInfo).toBe('function');
+    });
+
+    test('initializes with isOnline true when navigator is undefined (SSR)', () => {
+      const originalNavigator = global.navigator;
+      delete global.navigator;
+
+      const { result } = renderErrorHook();
+
+      expect(result.current.isOnline).toBe(true);
+
+      // Restore navigator
+      global.navigator = originalNavigator;
     });
   });
 
@@ -149,21 +192,9 @@ describe('ErrorContext', () => {
     });
 
     test('removeError removes specific error by id', () => {
-      const { result } = renderHook(() => useError(), {
-        wrapper: ErrorProvider,
-      });
+      const { result } = renderErrorHook();
 
-      let errorId1, errorId2;
-      act(() => {
-        errorId1 = result.current.addError({
-          message: 'Error 1',
-          severity: ERROR_SEVERITY.LOW,
-        });
-        errorId2 = result.current.addError({
-          message: 'Error 2',
-          severity: ERROR_SEVERITY.MEDIUM,
-        });
-      });
+      const [errorId1, errorId2] = addMultipleErrors(result);
 
       expect(result.current.globalErrors).toHaveLength(2);
 
@@ -175,21 +206,39 @@ describe('ErrorContext', () => {
       expect(result.current.globalErrors[0].id).toBe(errorId2);
     });
 
-    test('clearAllErrors removes all errors', () => {
-      const { result } = renderHook(() => useError(), {
-        wrapper: ErrorProvider,
-      });
+    test('removeError handles non-existent error id gracefully', () => {
+      const { result } = renderErrorHook();
 
+      let errorId;
       act(() => {
-        result.current.addError({
-          message: 'Error 1',
+        errorId = result.current.addError({
+          message: 'Test error',
           severity: ERROR_SEVERITY.LOW,
         });
-        result.current.addError({
-          message: 'Error 2',
-          severity: ERROR_SEVERITY.MEDIUM,
-        });
       });
+
+      expect(result.current.globalErrors).toHaveLength(1);
+
+      // Remove the error first
+      act(() => {
+        result.current.removeError(errorId);
+      });
+
+      expect(result.current.globalErrors).toHaveLength(0);
+
+      // Try to remove the same error again (timeout already cleared)
+      act(() => {
+        result.current.removeError(errorId);
+      });
+
+      // Should not throw error and state should remain unchanged
+      expect(result.current.globalErrors).toHaveLength(0);
+    });
+
+    test('clearAllErrors removes all errors', () => {
+      const { result } = renderErrorHook();
+
+      addMultipleErrors(result);
 
       expect(result.current.globalErrors).toHaveLength(2);
 
@@ -201,9 +250,7 @@ describe('ErrorContext', () => {
     });
 
     test('addError uses default timeout for invalid severity', () => {
-      const { result } = renderHook(() => useError(), {
-        wrapper: ErrorProvider,
-      });
+      const { result } = renderErrorHook();
 
       act(() => {
         result.current.addError({
@@ -215,11 +262,25 @@ describe('ErrorContext', () => {
       expect(result.current.globalErrors).toHaveLength(1);
 
       // Should use default timeout of 5000ms
-      act(() => {
-        jest.advanceTimersByTime(5000);
+      advanceTimersAndExpect(5000, () => {
+        expect(result.current.globalErrors).toHaveLength(0);
       });
+    });
 
-      expect(result.current.globalErrors).toHaveLength(0);
+    test('cleans up timeouts on unmount', () => {
+      const clearTimeoutSpy = jest.spyOn(global, 'clearTimeout');
+
+      const { result, unmount } = renderErrorHook();
+
+      addMultipleErrors(result);
+
+      expect(result.current.globalErrors).toHaveLength(2);
+
+      // Unmount should clear all timeouts
+      unmount();
+
+      expect(clearTimeoutSpy).toHaveBeenCalledTimes(2);
+      clearTimeoutSpy.mockRestore();
     });
   });
 
@@ -273,6 +334,12 @@ describe('ErrorContext', () => {
         expectedStyle: { background: '#f59e0b', color: 'white' },
       },
       {
+        severity: ERROR_SEVERITY.HIGH,
+        message: 'High priority error',
+        expectedDuration: 8000,
+        expectedStyle: { background: '#ef4444', color: 'white' },
+      },
+      {
         severity: ERROR_SEVERITY.CRITICAL,
         message: 'Critical system failure',
         expectedDuration: 10000,
@@ -313,9 +380,7 @@ describe('ErrorContext', () => {
     test('showErrorToast shows network message when offline and network error', () => {
       navigator.onLine = false;
 
-      const { result } = renderHook(() => useError(), {
-        wrapper: ErrorProvider,
-      });
+      const { result } = renderErrorHook();
 
       const errorResult = {
         message: 'Test error message',
@@ -406,6 +471,57 @@ describe('ErrorContext', () => {
             color: 'white',
           },
         }
+      );
+    });
+
+    test('showErrorToast allows custom options override', () => {
+      const { result } = renderErrorHook();
+      const errorResult = {
+        message: 'Test error',
+        severity: ERROR_SEVERITY.MEDIUM,
+        isNetworkError: false,
+      };
+
+      const customOptions = {
+        duration: 1000,
+        style: { background: 'red' },
+      };
+
+      act(() => {
+        result.current.showErrorToast(errorResult, customOptions);
+      });
+
+      expect(toast.error).toHaveBeenCalledWith('Test error', {
+        duration: 1000,
+        style: { background: 'red' },
+      });
+    });
+
+    test('showSuccess allows custom options override', () => {
+      const customOptions = {
+        duration: 1000,
+        style: { background: 'green' },
+      };
+
+      testToastWithCustomOptions(
+        'showSuccess',
+        'Success message',
+        customOptions,
+        toast.success
+      );
+    });
+
+    test('showInfo allows custom options override', () => {
+      const customOptions = {
+        duration: 1000,
+        style: { background: 'blue' },
+      };
+
+      testToastWithCustomOptions(
+        'showInfo',
+        'Info message',
+        customOptions,
+        toast
       );
     });
   });

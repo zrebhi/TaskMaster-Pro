@@ -24,6 +24,7 @@ export const ProjectProvider = ({ children }) => {
   const fetchProjects = useCallback(async () => {
     if (!isAuthenticated || !token) {
       setProjects([]);
+      setIsLoading(false); // ensure loading state is reset
       return;
     }
 

@@ -227,9 +227,13 @@ export const waitForElementToBeRemoved = async (queryFn, options = {}) => {
  */
 export const fillForm = async (user, formData) => {
   for (const [label, value] of Object.entries(formData)) {
-    const input = screen.getByLabelText(new RegExp(label, 'i'));
-    await user.clear(input);
-    await user.type(input, value);
+    try {
+      const input = screen.getByLabelText(new RegExp(label, 'i'));
+      await user.clear(input);
+      await user.type(input, value);
+    } catch (error) {
+      throw new Error(`Failed to fill form field "${label}": ${error.message}`);
+    }
   }
 };
 

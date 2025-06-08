@@ -22,7 +22,7 @@ const mockAxiosInstance = {
   },
 };
 
-// Simple helper functions (only what we need)
+// Helper functions for interceptor access
 const getRequestInterceptor = () =>
   mockAxiosInstance.interceptors.request.use.mock.calls[0]?.[0];
 
@@ -139,106 +139,76 @@ describe('API Client Unit Tests', () => {
   });
 
   describe('Enhanced API Methods', () => {
-    test('api.get calls axios with correct parameters and metadata', () => {
-      // Arrange
-      const url = '/test-endpoint';
-      const context = 'fetching test data';
-      const config = { headers: { Custom: 'header' } };
+    describe('HTTP methods with custom context', () => {
+      test('api.get with custom context and config', () => {
+        const url = '/test-endpoint';
+        const context = 'fetching test data';
+        const config = { headers: { Custom: 'header' } };
 
-      // Act
-      api.get(url, context, config);
+        api.get(url, context, config);
 
-      // Assert
-      expect(mockAxiosInstance.get).toHaveBeenCalledWith(url, {
-        ...config,
-        metadata: { context },
+        expect(mockAxiosInstance.get).toHaveBeenCalledWith(url, {
+          ...config,
+          metadata: { context },
+        });
+      });
+
+      test.each([
+        ['post', { name: 'test' }, 'creating test data'],
+        ['put', { name: 'updated' }, 'updating test data'],
+        ['patch', { name: 'patched' }, 'patching test data'],
+      ])('api.%s with custom context', (method, data, context) => {
+        const url = '/test-endpoint';
+
+        api[method](url, data, context);
+
+        expect(mockAxiosInstance[method]).toHaveBeenCalledWith(url, data, {
+          metadata: { context },
+        });
+      });
+
+      test('api.delete with custom context', () => {
+        const url = '/test-endpoint';
+        const context = 'deleting test data';
+
+        api.delete(url, context);
+
+        expect(mockAxiosInstance.delete).toHaveBeenCalledWith(url, {
+          metadata: { context },
+        });
       });
     });
 
-    test('api.get uses default context when not provided', () => {
-      // Arrange
-      const url = '/test-endpoint';
+    describe('HTTP methods with default context', () => {
+      test.each([
+        ['get', 'fetching data'],
+        ['delete', 'deleting data'],
+      ])('api.%s uses default context (no data)', (method, expectedContext) => {
+        const url = '/test-endpoint';
 
-      // Act
-      api.get(url);
+        api[method](url);
 
-      // Assert
-      expect(mockAxiosInstance.get).toHaveBeenCalledWith(url, {
-        metadata: { context: 'fetching data' },
+        expect(mockAxiosInstance[method]).toHaveBeenCalledWith(url, {
+          metadata: { context: expectedContext },
+        });
       });
-    });
 
-    test('api.post calls axios with correct parameters and metadata', () => {
-      // Arrange
-      const url = '/test-endpoint';
-      const data = { name: 'test' };
-      const context = 'creating test data';
+      test.each([
+        ['post', { name: 'test' }, 'creating data'],
+        ['put', { name: 'updated' }, 'updating data'],
+        ['patch', { name: 'patched' }, 'updating data'],
+      ])(
+        'api.%s uses default context (with data)',
+        (method, data, expectedContext) => {
+          const url = '/test-endpoint';
 
-      // Act
-      api.post(url, data, context);
+          api[method](url, data);
 
-      // Assert
-      expect(mockAxiosInstance.post).toHaveBeenCalledWith(url, data, {
-        metadata: { context },
-      });
-    });
-
-    test('api.post uses default context when not provided', () => {
-      // Arrange
-      const url = '/test-endpoint';
-      const data = { name: 'test' };
-
-      // Act
-      api.post(url, data);
-
-      // Assert
-      expect(mockAxiosInstance.post).toHaveBeenCalledWith(url, data, {
-        metadata: { context: 'creating data' },
-      });
-    });
-
-    test('api.put calls axios with correct parameters and metadata', () => {
-      // Arrange
-      const url = '/test-endpoint';
-      const data = { name: 'updated' };
-      const context = 'updating test data';
-
-      // Act
-      api.put(url, data, context);
-
-      // Assert
-      expect(mockAxiosInstance.put).toHaveBeenCalledWith(url, data, {
-        metadata: { context },
-      });
-    });
-
-    test('api.delete calls axios with correct parameters and metadata', () => {
-      // Arrange
-      const url = '/test-endpoint';
-      const context = 'deleting test data';
-
-      // Act
-      api.delete(url, context);
-
-      // Assert
-      expect(mockAxiosInstance.delete).toHaveBeenCalledWith(url, {
-        metadata: { context },
-      });
-    });
-
-    test('api.patch calls axios with correct parameters and metadata', () => {
-      // Arrange
-      const url = '/test-endpoint';
-      const data = { name: 'patched' };
-      const context = 'patching test data';
-
-      // Act
-      api.patch(url, data, context);
-
-      // Assert
-      expect(mockAxiosInstance.patch).toHaveBeenCalledWith(url, data, {
-        metadata: { context },
-      });
+          expect(mockAxiosInstance[method]).toHaveBeenCalledWith(url, data, {
+            metadata: { context: expectedContext },
+          });
+        }
+      );
     });
   });
 
@@ -255,9 +225,17 @@ describe('API Client Unit Tests', () => {
   });
 
   describe('Development Environment Logging', () => {
+    let originalEnv;
+
+    beforeEach(() => {
+      originalEnv = process.env.NODE_ENV;
+    });
+
+    afterEach(() => {
+      process.env.NODE_ENV = originalEnv;
+    });
+
     test('logs errors to console in development environment', () => {
-      // Arrange
-      const originalEnv = process.env.NODE_ENV;
       process.env.NODE_ENV = 'development';
       const consoleSpy = jest.spyOn(console, 'group').mockImplementation();
       const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
@@ -271,10 +249,8 @@ describe('API Client Unit Tests', () => {
         config: { metadata: { context: 'test operation' } },
       };
 
-      // Act
       responseErrorHandler(error).catch(() => {});
 
-      // Assert
       expect(consoleSpy).toHaveBeenCalledWith('🚨 API Error: test operation');
       expect(consoleErrorSpy).toHaveBeenCalledWith('Original error:', error);
       expect(consoleErrorSpy).toHaveBeenCalledWith(
@@ -283,16 +259,12 @@ describe('API Client Unit Tests', () => {
       );
       expect(consoleGroupEndSpy).toHaveBeenCalled();
 
-      // Cleanup
-      process.env.NODE_ENV = originalEnv;
       consoleSpy.mockRestore();
       consoleErrorSpy.mockRestore();
       consoleGroupEndSpy.mockRestore();
     });
 
     test('does not log to console in production environment', () => {
-      // Arrange
-      const originalEnv = process.env.NODE_ENV;
       process.env.NODE_ENV = 'production';
       const consoleSpy = jest.spyOn(console, 'group').mockImplementation();
 
@@ -301,14 +273,9 @@ describe('API Client Unit Tests', () => {
         response: { status: 500, data: { message: 'Server Error' } },
       };
 
-      // Act
       responseErrorHandler(error).catch(() => {});
 
-      // Assert
       expect(consoleSpy).not.toHaveBeenCalled();
-
-      // Cleanup
-      process.env.NODE_ENV = originalEnv;
       consoleSpy.mockRestore();
     });
   });

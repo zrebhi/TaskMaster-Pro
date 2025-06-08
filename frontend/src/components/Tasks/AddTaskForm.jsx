@@ -79,7 +79,7 @@ const AddTaskForm = ({ projectId }) => {
   return (
     <form onSubmit={handleSubmit}>
       <h4>Create New Task</h4>
-      {error ? <p style={{ color: 'red' }}>{error}</p> : null}
+      {error ? <p id="error-message" style={{ color: 'red' }}>{error}</p> : null}
 
       <div>
         <label htmlFor="taskTitle">Task Title:</label>

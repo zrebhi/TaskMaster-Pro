@@ -21,6 +21,12 @@ async function createUser(options = {}) {
     password_hash: hashedPassword,
   });
 
+  if (!process.env.JWT_SECRET) {
+    throw new Error(
+      'JWT_SECRET environment variable is required for test token generation'
+    );
+  }
+
   const token = jwt.sign(
     { userId: user.id, email: user.email },
     process.env.JWT_SECRET,

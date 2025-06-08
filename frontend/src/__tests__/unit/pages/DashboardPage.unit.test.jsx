@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
 import DashboardPage from '../../../pages/DashboardPage';
@@ -67,20 +67,22 @@ jest.mock('../../../components/Projects/EditProjectModal', () => {
   };
 });
 
-jest.mock('../../../components/Projects/DeleteProjectModal', () => {
-  return function MockDeleteProjectModal({
+jest.mock('../../../components/Common/ConfirmationModal', () => {
+  return function MockConfirmationModal({
     isOpen,
     onClose,
     onConfirm,
     message,
     isLoading,
+    confirmText,
+    loadingText,
   }) {
     return isOpen ? (
       <div data-testid="delete-project-modal">
         <span>{message}</span>
         <button onClick={onClose}>Cancel</button>
         <button onClick={onConfirm} disabled={isLoading}>
-          {isLoading ? 'Deleting...' : 'Confirm'}
+          {isLoading ? loadingText : confirmText}
         </button>
       </div>
     ) : null;
@@ -88,12 +90,14 @@ jest.mock('../../../components/Projects/DeleteProjectModal', () => {
 });
 
 jest.mock('../../../components/Tasks/TaskList', () => {
-  return function MockTaskList({ tasks }) {
+  return function MockTaskList({ tasks, onEditTask, onDeleteTask }) {
     return (
       <div data-testid="task-list">
         {tasks.map((task) => (
           <div key={task.id} data-testid={`task-${task.id}`}>
-            {task.title}
+            <span>{task.title}</span>
+            <button onClick={() => onEditTask(task)}>Edit Task</button>
+            <button onClick={() => onDeleteTask(task)}>Delete Task</button>
           </div>
         ))}
       </div>
@@ -104,6 +108,17 @@ jest.mock('../../../components/Tasks/TaskList', () => {
 jest.mock('../../../components/Tasks/AddTaskForm', () => {
   return function MockAddTaskForm({ projectId }) {
     return <div data-testid="add-task-form">Add Task Form for {projectId}</div>;
+  };
+});
+
+jest.mock('../../../components/Tasks/EditTaskModal', () => {
+  return function MockEditTaskModal({ task, isOpen, onClose }) {
+    return isOpen ? (
+      <div data-testid="edit-task-modal">
+        <span>Edit Task: {task?.title}</span>
+        <button onClick={onClose}>Close</button>
+      </div>
+    ) : null;
   };
 });
 
@@ -295,7 +310,8 @@ describe('DashboardPage Unit Tests', () => {
 
       await openModalAndVerify('Delete', 'delete-project-modal');
 
-      const confirmButton = screen.getByText('Confirm');
+      const modal = screen.getByTestId('delete-project-modal');
+      const confirmButton = within(modal).getByText('Delete');
       await user.click(confirmButton);
 
       expect(mockDeleteProject).toHaveBeenCalledWith('proj1');
@@ -319,7 +335,8 @@ describe('DashboardPage Unit Tests', () => {
       // Then delete it
       await openModalAndVerify('Delete', 'delete-project-modal');
 
-      const confirmButton = screen.getByText('Confirm');
+      const modal = screen.getByTestId('delete-project-modal');
+      const confirmButton = within(modal).getByText('Delete');
       await user.click(confirmButton);
 
       await waitFor(() => {
@@ -345,7 +362,8 @@ describe('DashboardPage Unit Tests', () => {
 
       await openModalAndVerify('Delete', 'delete-project-modal');
 
-      const confirmButton = screen.getByText('Confirm');
+      const modal = screen.getByTestId('delete-project-modal');
+      const confirmButton = within(modal).getByText('Delete');
       await user.click(confirmButton);
 
       await waitFor(() => {
@@ -381,7 +399,8 @@ describe('DashboardPage Unit Tests', () => {
 
       await openModalAndVerify('Delete', 'delete-project-modal');
 
-      const confirmButton = screen.getByText('Confirm');
+      const modal = screen.getByTestId('delete-project-modal');
+      const confirmButton = within(modal).getByText('Delete');
       await user.click(confirmButton);
 
       // Should show loading state
@@ -465,6 +484,103 @@ describe('DashboardPage Unit Tests', () => {
       expect(
         screen.getByText(/no tasks in this project yet/i)
       ).toBeInTheDocument();
+    });
+  });
+
+  describe('Task Modal Management', () => {
+    const setupTaskScenario = () => {
+      const task = createMockTask({
+        id: 'task1',
+        title: 'Test Task',
+        projectId: 'proj1',
+      });
+      const { projectContext } = createSingleProjectScenario();
+      const taskContext = createTaskContextWithTasks([task], {
+        currentProjectIdForTasks: 'proj1',
+      });
+      return { task, projectContext, taskContext };
+    };
+
+    // Helper for task modal tests (used 3+ times)
+    const setupTaskModalTest = async (taskContextOverrides = {}) => {
+      const { projectContext, taskContext } = setupTaskScenario();
+      renderDashboardPage(projectContext, {
+        ...taskContext,
+        ...taskContextOverrides,
+      });
+
+      const selectButton = screen.getByText('Select');
+      await user.click(selectButton);
+    };
+
+    test('opens and closes edit task modal', async () => {
+      await setupTaskModalTest();
+
+      await openModalAndVerify(
+        'Edit Task',
+        'edit-task-modal',
+        'Edit Task: Test Task'
+      );
+      await closeModalAndVerify('Close', 'edit-task-modal');
+
+      expect(screen.queryByTestId('edit-task-modal')).not.toBeInTheDocument();
+    });
+
+    test('opens and closes delete task modal', async () => {
+      await setupTaskModalTest();
+
+      await openModalAndVerify(
+        'Delete Task',
+        'delete-project-modal',
+        /are you sure you want to delete the task "test task"/i
+      );
+      await closeModalAndVerify('Cancel', 'delete-project-modal');
+
+      expect(
+        screen.queryByTestId('delete-project-modal')
+      ).not.toBeInTheDocument();
+    });
+
+    test('calls deleteTask when confirm button is clicked', async () => {
+      const mockDeleteTask = jest.fn().mockResolvedValue();
+      await setupTaskModalTest({ deleteTask: mockDeleteTask });
+
+      await openModalAndVerify('Delete Task', 'delete-project-modal');
+
+      const modal = screen.getByTestId('delete-project-modal');
+      const confirmButton = within(modal).getByText('Delete');
+      await user.click(confirmButton);
+
+      expect(mockDeleteTask).toHaveBeenCalledWith('task1');
+    });
+
+    test('handles delete task error gracefully', async () => {
+      const { consoleSpy } = setupTest();
+      const mockDeleteTask = jest
+        .fn()
+        .mockRejectedValue(new Error('Delete task failed'));
+      await setupTaskModalTest({ deleteTask: mockDeleteTask });
+
+      await openModalAndVerify('Delete Task', 'delete-project-modal');
+
+      const modal = screen.getByTestId('delete-project-modal');
+      const confirmButton = within(modal).getByText('Delete');
+      await user.click(confirmButton);
+
+      await waitFor(() => {
+        expect(mockDeleteTask).toHaveBeenCalledWith('task1');
+      });
+
+      expect(consoleSpy).toHaveBeenCalledWith(
+        'Delete task error:',
+        expect.any(Error)
+      );
+
+      await waitForElementToBeRemoved(() =>
+        screen.queryByTestId('delete-project-modal')
+      );
+
+      consoleSpy.mockRestore();
     });
   });
 });
