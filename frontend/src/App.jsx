@@ -12,9 +12,10 @@ import { ProjectProvider } from './context/ProjectContext';
 import { TaskProvider } from './context/TaskContext';
 import { ErrorProvider } from './context/ErrorContext';
 import ErrorBoundary from './components/Common/ErrorBoundary';
-import Navbar from './components/Layout/Navbar';
+import Layout from './components/Layout/Layout';
 import { Toaster } from 'react-hot-toast';
 import ProtectedRoute from './components/Routing/ProtectedRoute';
+import AddTaskForm from './components/Tasks/AddTaskForm';
 
 // Component to handle redirection based on authentication state
 const RootRedirect = () => {
@@ -38,25 +39,26 @@ function App() {
           <AuthProvider>
             <ProjectProvider>
               <TaskProvider>
-                <Navbar />
-                <Routes>
-                  {/* Public Routes */}
-                  <Route path="/auth" element={<AuthPage />} />
-                  <Route path="/auth/login" element={<AuthPage />} />
-                  <Route path="/auth/register" element={<AuthPage />} />
+                <Layout>
+                  <Routes>
+                    {/* Public Routes */}
+                    <Route path="/auth" element={<AuthPage />} />
+                    <Route path="/auth/login" element={<AuthPage />} />
+                    <Route path="/auth/register" element={<AuthPage />} />
 
-                  {/* Protected Routes */}
-                  <Route element={<ProtectedRoute />}>
-                    <Route path="/dashboard" element={<DashboardPage />} />
-                    <Route path="/projects" element={<DashboardPage />} />
-                  </Route>
+                    {/* Protected Routes */}
+                    <Route element={<ProtectedRoute />}>
+                      <Route path="/dashboard" element={<DashboardPage />} />
+                      <Route path="/projects" element={<DashboardPage />} />
+                    </Route>
 
-                  {/* Redirect from root */}
-                  <Route path="/" element={<RootRedirect />} />
+                    {/* Redirect from root */}
+                    <Route path="/" element={<RootRedirect />} />
 
-                  {/* Catch-all redirect */}
-                  <Route path="*" element={<Navigate to="/" replace />} />
-                </Routes>
+                    {/* Catch-all redirect */}
+                    <Route path="*" element={<Navigate to="/" replace />} />
+                  </Routes>
+                </Layout>
               </TaskProvider>
             </ProjectProvider>
           </AuthProvider>

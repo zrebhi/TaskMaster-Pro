@@ -2,8 +2,19 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useError } from '../../context/ErrorContext';
 import { registerUser } from '../../services/authApiService';
+import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
-const RegisterForm = () => {
+const RegisterForm = ({ className, ...props }) => {
   const [formData, setFormData] = useState({
     username: '',
     email: '',
@@ -70,60 +81,85 @@ const RegisterForm = () => {
   };
 
   return (
-    <form onSubmit={onSubmit}>
-      <h2>Register</h2>
-      {error ? <p style={{ color: 'red' }}>{error}</p> : null}
-      {successMessage ? (
-        <p style={{ color: 'green' }}>{successMessage}</p>
-      ) : null}
-      <div>
-        <label htmlFor="username">Username:</label>
-        <input
-          type="text"
-          name="username"
-          id="username"
-          value={username}
-          onChange={onChange}
-          required
-        />
-      </div>
-      <div>
-        <label htmlFor="email">Email:</label>
-        <input
-          type="email"
-          name="email"
-          id="email"
-          value={email}
-          onChange={onChange}
-          required
-        />
-      </div>
-      <div>
-        <label htmlFor="password">Password:</label>
-        <input
-          type="password"
-          name="password"
-          id="password"
-          value={password}
-          onChange={onChange}
-          required
-        />
-      </div>
-      <div>
-        <label htmlFor="confirmPassword">Confirm Password:</label>
-        <input
-          type="password"
-          name="confirmPassword"
-          id="confirmPassword"
-          value={confirmPassword}
-          onChange={onChange}
-          required
-        />
-      </div>
-      <button type="submit" disabled={isLoading}>
-        {isLoading ? 'Registering...' : 'Register'}
-      </button>
-    </form>
+    <Card className={cn('w-full max-w-sm', className)} {...props}>
+      <CardHeader>
+        <CardTitle>Register</CardTitle>
+        <CardDescription>
+          Enter your information below to create your account
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={onSubmit}>
+          <div className="flex flex-col gap-6">
+            {error && (
+              <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">
+                {error}
+              </div>
+            )}
+            {successMessage && (
+              <div className="text-sm text-green-600 bg-green-50 p-3 rounded-md">
+                {successMessage}
+              </div>
+            )}
+            <div className="grid gap-3">
+              <Label htmlFor="username">Username:</Label>
+              <Input
+                id="username"
+                name="username"
+                type="text"
+                placeholder="Enter your username"
+                value={username}
+                onChange={onChange}
+                required
+                disabled={isLoading}
+              />
+            </div>
+            <div className="grid gap-3">
+              <Label htmlFor="email">Email:</Label>
+              <Input
+                id="email"
+                name="email"
+                type="email"
+                placeholder="Enter your email"
+                value={email}
+                onChange={onChange}
+                required
+                disabled={isLoading}
+              />
+            </div>
+            <div className="grid gap-3">
+              <Label htmlFor="password">Password:</Label>
+              <Input
+                id="password"
+                name="password"
+                type="password"
+                placeholder="Enter your password"
+                value={password}
+                onChange={onChange}
+                required
+                disabled={isLoading}
+              />
+            </div>
+            <div className="grid gap-3">
+              <Label htmlFor="confirmPassword">Confirm Password:</Label>
+              <Input
+                id="confirmPassword"
+                name="confirmPassword"
+                type="password"
+                placeholder="Confirm your password"
+                value={confirmPassword}
+                onChange={onChange}
+                required
+                disabled={isLoading}
+              />
+            </div>
+            <Button type="submit" className="w-full" disabled={isLoading}>
+              {isLoading ? 'Registering...' : 'Register'}
+            </Button>
+          </div>
+        </form>
+      </CardContent>
+    </Card>
   );
 };
 

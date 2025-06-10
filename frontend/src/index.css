@@ -1,6 +1,5 @@
 @import 'tailwindcss';
 
-/* Base theme variables - ready for future theme switching */
 @layer base {
   :root {
     /* Core colors */
@@ -36,6 +35,12 @@
     --input: 214.3 31.8% 91.4%;
     --ring: 222.2 84% 4.9%;
 
+    /* --- THIS IS THE FIX --- */
+    /* Popover colors (for dropdowns, tooltips, etc.) */
+    --popover: 0 0% 100%; /* PURE WHITE BACKGROUND */
+    --popover-foreground: 222.2 84% 4.9%; /* DARK TEXT COLOR */
+    /* --- END OF FIX --- */
+
     /* Border radius */
     --radius: 0.5rem;
   }
@@ -60,6 +65,8 @@
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
     --ring: 212.7 26.8% 83.9%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
   }
   */
 }
@@ -75,5 +82,35 @@
     font-feature-settings:
       'rlig' 1,
       'calt' 1;
+  }
+}
+
+/* Layout utilities */
+@layer components {
+  /* Full screen layout accounting for navbar */
+  .min-h-screen-minus-nav {
+    min-height: calc(100vh - 4rem); /* 4rem = 64px navbar height */
+  }
+
+  /* Navbar fixed height */
+  .navbar-height {
+    height: 4rem; /* 64px */
+  }
+
+  /* Ensure buttons have proper styling */
+  .bg-primary {
+    background-color: hsl(var(--primary)) !important;
+  }
+
+  .text-primary-foreground {
+    color: hsl(var(--primary-foreground)) !important;
+  }
+
+  .text-destructive {
+    color: hsl(var(--destructive)) !important;
+  }
+
+  .solid-popover-bg {
+    background-color: #ffffff; /* Pure White */
   }
 }
