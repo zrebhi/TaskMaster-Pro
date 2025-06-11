@@ -37,7 +37,7 @@ const AuthPage = () => {
         <div className="text-center text-sm">
           {isLoginView ? (
             <>
-              Don't have an account?{' '}
+              Don{'\''}t have an account?{' '}
               <Link
                 to="/auth/register"
                 className="font-medium text-primary hover:text-primary/90 underline underline-offset-4"

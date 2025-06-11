@@ -175,6 +175,7 @@ module.exports = [
             'expectSuccessMessage',
             'waitForElementToBeRemoved',
             'advanceTimersAndExpect',
+            'testToastWithCustomOptions',
           ],
         },
       ],
@@ -206,7 +207,31 @@ module.exports = [
     },
   },
 
-  // 6. Configuration files (if any in frontend, e.g., vite.config.js)
+  // 6. Shadcn UI components - relax rules for generated components
+  {
+    files: ['**/components/ui/**/*.{js,jsx}'],
+    rules: {
+      // Shadcn components rely on prop spreading for composability
+      'react/jsx-props-no-spreading': 'off',
+      // Allow mixed exports (components + utility functions like buttonVariants)
+      'react-refresh/only-export-components': 'off',
+    },
+  },
+
+  // 7. Form components - allow prop spreading for composable form components
+  {
+    files: [
+      '**/components/Auth/**/*.{js,jsx}',
+      '**/components/Projects/**/*.{js,jsx}',
+      '**/components/Tasks/**/*.{js,jsx}',
+    ],
+    rules: {
+      // Form components often forward props to shadcn Card/Dialog components for composability
+      'react/jsx-props-no-spreading': 'off',
+    },
+  },
+
+  // 8. Configuration files (if any in frontend, e.g., vite.config.js)
   {
     files: ['*.config.js', '*.config.mjs', '*.config.cjs'],
     languageOptions: {

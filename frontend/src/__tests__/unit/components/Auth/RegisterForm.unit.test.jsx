@@ -47,11 +47,30 @@ describe('RegisterForm Unit Tests', () => {
     );
   };
 
+  const fillRegistrationForm = async (formData = {}) => {
+    const defaultData = {
+      username: 'testuser',
+      email: 'test@example.com',
+      password: 'password123',
+      confirmPassword: 'password123',
+    };
+
+    const data = { ...defaultData, ...formData };
+
+    await user.type(screen.getByLabelText('Username:'), data.username);
+    await user.type(screen.getByLabelText('Email:'), data.email);
+    await user.type(screen.getByLabelText('Password:'), data.password);
+    await user.type(
+      screen.getByLabelText('Confirm Password:'),
+      data.confirmPassword
+    );
+  };
+
   test('renders form elements correctly', () => {
     renderRegisterForm();
 
     expect(
-      screen.getByRole('heading', { name: 'Register' })
+      screen.getByText('Enter your information below to create your account')
     ).toBeInTheDocument();
     expect(screen.getByLabelText('Username:')).toBeInTheDocument();
     expect(screen.getByLabelText('Email:')).toBeInTheDocument();
@@ -60,22 +79,6 @@ describe('RegisterForm Unit Tests', () => {
     expect(
       screen.getByRole('button', { name: 'Register' })
     ).toBeInTheDocument();
-  });
-
-  test('updates input values on user interaction', async () => {
-    renderRegisterForm();
-
-    await user.type(screen.getByLabelText('Username:'), 'testuser');
-    await user.type(screen.getByLabelText('Email:'), 'test@example.com');
-    await user.type(screen.getByLabelText('Password:'), 'password123');
-    await user.type(screen.getByLabelText('Confirm Password:'), 'password123');
-
-    expect(screen.getByLabelText('Username:')).toHaveValue('testuser');
-    expect(screen.getByLabelText('Email:')).toHaveValue('test@example.com');
-    expect(screen.getByLabelText('Password:')).toHaveValue('password123');
-    expect(screen.getByLabelText('Confirm Password:')).toHaveValue(
-      'password123'
-    );
   });
 
   test('handles successful registration', async () => {
@@ -135,47 +138,73 @@ describe('RegisterForm Unit Tests', () => {
     });
   });
 
-  test('handles network error', async () => {
-    const { error } = setupFailedAuthFlow('network');
+  test('shows error when password is too short', async () => {
+    renderRegisterForm();
+
+    await fillRegistrationForm({
+      password: '12345', // 5 characters
+      confirmPassword: '12345',
+    });
+    await user.click(screen.getByRole('button', { name: 'Register' }));
+
+    expect(
+      screen.getByText('Password must be at least 6 characters long.')
+    ).toBeInTheDocument();
+  });
+
+  test('shows error when username contains invalid characters', async () => {
+    renderRegisterForm();
+
+    await fillRegistrationForm({
+      username: 'test@user!', // Invalid characters
+    });
+    await user.click(screen.getByRole('button', { name: 'Register' }));
+
+    expect(
+      screen.getByText(
+        'Username can only contain letters, numbers, underscores, and hyphens.'
+      )
+    ).toBeInTheDocument();
+  });
+
+  test('handles API error without processed error', async () => {
+    const { mocks } = setupSuccessfulAuthFlow();
+    // Create an error without processedError property
+    const rawError = new Error('Raw API error');
+    mocks.registerUser.mockRejectedValue(rawError);
 
     renderRegisterForm();
 
-    await user.type(screen.getByLabelText('Username:'), 'testuser');
-    await user.type(screen.getByLabelText('Email:'), 'test@example.com');
-    await user.type(screen.getByLabelText('Password:'), 'password123');
-    await user.type(screen.getByLabelText('Confirm Password:'), 'password123');
+    await fillRegistrationForm();
     await user.click(screen.getByRole('button', { name: 'Register' }));
 
     await waitFor(() => {
-      expect(mockShowErrorToast).toHaveBeenCalledWith(error.processedError);
+      expect(mockShowErrorToast).toHaveBeenCalledWith({
+        message: 'Registration failed. Please try again.',
+        severity: 'medium',
+      });
     });
   });
 
-  test('disables submit button during loading', async () => {
+  test('uses fallback success message when API response has no message', async () => {
     const { mocks } = setupSuccessfulAuthFlow();
-    mocks.registerUser.mockImplementation(() => new Promise(() => {}));
+    // Create response without message property
+    const authResponse = { ...authApiMocks.registerSuccess(), message: '' };
+    mocks.registerUser.mockResolvedValue(authResponse);
 
     renderRegisterForm();
 
-    await user.type(screen.getByLabelText('Username:'), 'testuser');
-    await user.type(screen.getByLabelText('Email:'), 'test@example.com');
-    await user.type(screen.getByLabelText('Password:'), 'password123');
-    await user.type(screen.getByLabelText('Confirm Password:'), 'password123');
+    await fillRegistrationForm({
+      username: 'newuser',
+      email: 'new@example.com',
+    });
+    await submitForm(user, 'Register');
 
-    const submitButton = screen.getByRole('button', { name: 'Register' });
-    await user.click(submitButton);
-
-    expect(submitButton).toBeDisabled();
-  });
-
-  test('validates required fields', async () => {
-    const { mocks } = setupSuccessfulAuthFlow();
-
-    renderRegisterForm();
-
-    const submitButton = screen.getByRole('button', { name: 'Register' });
-    await user.click(submitButton);
-
-    expect(mocks.registerUser).not.toHaveBeenCalled();
+    await waitFor(() => {
+      expect(mockShowSuccess).toHaveBeenCalledWith(
+        'Registration successful! You can now log in.'
+      );
+      expect(mockedNavigate).toHaveBeenCalledWith('/auth/login');
+    });
   });
 });

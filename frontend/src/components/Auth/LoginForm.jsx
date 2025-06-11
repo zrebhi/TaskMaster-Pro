@@ -78,11 +78,9 @@ export function LoginForm({ className, ...props }) {
         <form onSubmit={onSubmit}>
           <div className="flex flex-col gap-6">
             {/* Your existing error message display, now styled within the card */}
-            {error && (
-              <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">
+            {error ? <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">
                 {error}
-              </div>
-            )}
+              </div> : null}
             <div className="grid gap-3">
               <Label htmlFor="identifier">Email or Username</Label>
               <Input

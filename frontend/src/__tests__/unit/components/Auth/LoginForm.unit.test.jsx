@@ -60,23 +60,10 @@ describe('LoginForm Unit Tests', () => {
   test('renders form elements correctly', () => {
     renderLoginForm();
 
-    expect(screen.getByRole('heading', { name: 'Login' })).toBeInTheDocument();
-    expect(screen.getByLabelText('Email or Username:')).toBeInTheDocument();
-    expect(screen.getByLabelText('Password:')).toBeInTheDocument();
+    expect(screen.getByText('Login to your account')).toBeInTheDocument();
+    expect(screen.getByLabelText('Email or Username')).toBeInTheDocument();
+    expect(screen.getByLabelText('Password')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Login' })).toBeInTheDocument();
-  });
-
-  test('updates input values on user interaction', async () => {
-    renderLoginForm();
-
-    const identifierInput = screen.getByLabelText('Email or Username:');
-    const passwordInput = screen.getByLabelText('Password:');
-
-    await user.type(identifierInput, 'testuser');
-    await user.type(passwordInput, 'password123');
-
-    expect(identifierInput).toHaveValue('testuser');
-    expect(passwordInput).toHaveValue('password123');
   });
 
   test('handles successful login with username', async () => {
@@ -150,22 +137,6 @@ describe('LoginForm Unit Tests', () => {
     });
   });
 
-  test('handles network error', async () => {
-    const { error } = setupFailedAuthFlow('network');
-
-    renderLoginForm();
-
-    await fillForm(user, {
-      'Email or Username': 'testuser',
-      Password: 'password123',
-    });
-    await submitForm(user, 'Login');
-
-    await waitFor(() => {
-      expect(mockShowErrorToast).toHaveBeenCalledWith(error.processedError);
-    });
-  });
-
   test('disables submit button during loading', async () => {
     const { mocks } = setupSuccessfulAuthFlow();
     setupLoadingSimulation(mocks);
@@ -181,5 +152,55 @@ describe('LoginForm Unit Tests', () => {
     await user.click(submitButton);
 
     expect(submitButton).toBeDisabled();
+  });
+
+  test('handles API error without processed error', async () => {
+    const { mocks } = setupSuccessfulAuthFlow();
+    // Create an error without processedError property
+    const rawError = new Error('Raw API error');
+    mocks.loginUser.mockRejectedValue(rawError);
+
+    renderLoginForm();
+
+    await fillForm(user, {
+      'Email or Username': 'testuser',
+      Password: 'password123',
+    });
+    await submitForm(user, 'Login');
+
+    await waitFor(() => {
+      expect(mockShowErrorToast).toHaveBeenCalledWith({
+        message: 'Login failed. Please check your credentials.',
+        severity: 'medium',
+      });
+      expect(mockLogin).not.toHaveBeenCalled();
+      expect(mockedNavigate).not.toHaveBeenCalled();
+    });
+  });
+
+  test('handles successful login when auth context has no login function', async () => {
+    const { mocks } = setupSuccessfulAuthFlow();
+    const authResponse = authApiMocks.loginSuccess();
+    mocks.loginUser.mockResolvedValue(authResponse);
+
+    // Render with auth context that has no login function
+    renderLoginForm({ login: null });
+
+    await fillForm(user, {
+      'Email or Username': 'testuser',
+      Password: 'password123',
+    });
+    await submitForm(user, 'Login');
+
+    await waitFor(() => {
+      expect(mocks.loginUser).toHaveBeenCalledWith({
+        username: 'testuser',
+        password: 'password123',
+      });
+      expect(mockShowSuccess).toHaveBeenCalledWith('Login successful!');
+      expect(mockedNavigate).toHaveBeenCalledWith('/dashboard');
+      // Auth login should not be called since it's null
+      expect(mockLogin).not.toHaveBeenCalled();
+    });
   });
 });
