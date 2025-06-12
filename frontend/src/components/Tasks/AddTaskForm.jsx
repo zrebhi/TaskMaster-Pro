@@ -1,7 +1,26 @@
 import { useState, useContext } from 'react';
 import TaskContext from '../../context/TaskContext';
+import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
-const AddTaskForm = ({ projectId }) => {
+const AddTaskForm = ({ projectId, className, ...props }) => {
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -15,6 +34,10 @@ const AddTaskForm = ({ projectId }) => {
 
   const onChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const onSelectChange = (value) => {
+    setFormData({ ...formData, priority: parseInt(value) });
   };
 
   const validateForm = () => {
@@ -77,70 +100,82 @@ const AddTaskForm = ({ projectId }) => {
   };
 
   return (
-    <form onSubmit={handleSubmit}>
-      <h4>Create New Task</h4>
-      {error ? <p id="error-message" style={{ color: 'red' }}>{error}</p> : null}
-
-      <div>
-        <label htmlFor="taskTitle">Task Title:</label>
-        <input
-          type="text"
-          id="taskTitle"
-          name="title"
-          value={title}
-          onChange={onChange}
-          placeholder="e.g., Review project proposal, Fix login bug"
-          required
-          disabled={isLoadingTasks}
-          maxLength={255}
-        />
-      </div>
-
-      <div>
-        <label htmlFor="taskDescription">Description (optional):</label>
-        <textarea
-          id="taskDescription"
-          name="description"
-          value={description}
-          onChange={onChange}
-          placeholder="Add more details about this task..."
-          disabled={isLoadingTasks}
-          rows={3}
-          style={{ width: '100%', resize: 'vertical' }}
-        />
-      </div>
-
-      <div>
-        <label htmlFor="taskDueDate">Due Date (optional):</label>
-        <input
-          type="date"
-          id="taskDueDate"
-          name="due_date"
-          value={due_date}
-          onChange={onChange}
-          disabled={isLoadingTasks}
-        />
-      </div>
-
-      <div>
-        <label htmlFor="taskPriority">Priority:</label>
-        <select
-          id="taskPriority"
-          name="priority"
-          value={priority}
-          onChange={onChange}
-          disabled={isLoadingTasks}
-        >
-          <option value={1}>Low</option>
-          <option value={2}>Medium</option>
-          <option value={3}>High</option>
-        </select>
-      </div>
-
-      <button type="submit" disabled={isLoadingTasks}>
-        {isLoadingTasks ? 'Creating...' : 'Create Task'}
-      </button>
-    </form>
+    <Card className={cn('w-full max-w-md relative', className)} {...props}>
+      <CardHeader>
+        <CardTitle>Create New Task</CardTitle>
+        <CardDescription>
+          Add a new task to your project with details and priority
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={handleSubmit}>
+          <div className="flex flex-col gap-6">
+            {error ? <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">
+                {error}
+              </div> : null}
+            <div className="grid gap-3">
+              <Label htmlFor="taskTitle">Task Title</Label>
+              <Input
+                id="taskTitle"
+                name="title"
+                type="text"
+                placeholder="e.g., Review project proposal, Fix login bug"
+                value={title}
+                onChange={onChange}
+                required
+                disabled={isLoadingTasks}
+                maxLength={255}
+              />
+            </div>
+            <div className="grid gap-3">
+              <Label htmlFor="taskDueDate">Due Date (optional)</Label>
+              <Input
+                id="taskDueDate"
+                name="due_date"
+                type="date"
+                value={due_date}
+                onChange={onChange}
+                disabled={isLoadingTasks}
+              />
+            </div>
+            <div className="grid gap-3">
+              <Label htmlFor="taskDescription">Description (optional)</Label>
+              <Textarea
+                id="taskDescription"
+                name="description"
+                placeholder="Add more details about this task..."
+                value={description}
+                onChange={onChange}
+                disabled={isLoadingTasks}
+                rows={3}
+                className="resize-y"
+              />
+            </div>
+            <div className="grid gap-3">
+              <Label htmlFor="taskPriority">Priority</Label>
+              {/* <CustomSelect /> */}
+              <Select
+                value={priority.toString()}
+                onValueChange={onSelectChange}
+                disabled={isLoadingTasks}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select priority" />
+                </SelectTrigger>
+                <SelectContent className="solid-popover-bg">
+                  <SelectItem value="1">Low</SelectItem>
+                  <SelectItem value="2">Medium</SelectItem>
+                  <SelectItem value="3">High</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <Button type="submit" className="w-full" disabled={isLoadingTasks}>
+              {isLoadingTasks ? 'Creating...' : 'Create Task'}
+            </Button>
+          </div>
+        </form>
+      </CardContent>
+    </Card>
   );
 };
 

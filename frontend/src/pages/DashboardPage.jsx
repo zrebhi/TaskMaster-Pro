@@ -128,7 +128,7 @@ const DashboardPage = () => {
 
   return (
     <>
-      <div style={{ display: 'flex', minHeight: 'calc(100vh - 60px)' }}>
+      <div className="flex min-h-full">
         <aside
           style={{
             width: '30%',

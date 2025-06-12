@@ -9,7 +9,12 @@ This ensures only authenticated users can access task-specific functionalities. 
 router.use(protect);
 
 /* --- Task-specific Routes ---
-These routes operate on individual tasks identified by :taskId */
+These routes operate on individual tasks identified by :taskId
+
+NOTE: Task creation and fetching routes are located in projectRoutes.js
+as they operate within the context of a specific project:
+- POST /api/projects/:projectId/tasks (create task for project)
+- GET /api/projects/:projectId/tasks (get all tasks for project) */
 
 /**
  * @route   PUT /api/tasks/:taskId
