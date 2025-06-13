@@ -7,8 +7,25 @@ import {
   fillForm,
   submitForm,
   expectErrorMessage,
+  createDateOffset,
 } from '../../../helpers/test-utils';
 import { TestTaskProvider } from '../../../helpers/mock-providers';
+
+// Fix for Radix UI components in JSDOM environment.
+beforeAll(() => {
+  // JSDOM doesn't implement `hasPointerCapture`, which Radix uses for some pointer event handling.
+  window.HTMLElement.prototype.hasPointerCapture = jest.fn();
+
+  // JSDOM doesn't implement `ResizeObserver`, which Radix uses for positioning its popovers.
+  global.ResizeObserver = jest.fn().mockImplementation(() => ({
+    observe: jest.fn(),
+    unobserve: jest.fn(),
+    disconnect: jest.fn(),
+  }));
+
+  // JSDOM doesn't implement `scrollIntoView`, which Radix uses for focus management.
+  window.HTMLElement.prototype.scrollIntoView = jest.fn();
+});
 
 describe('AddTaskForm Unit Tests', () => {
   let user;
@@ -19,13 +36,6 @@ describe('AddTaskForm Unit Tests', () => {
     user = userEvent.setup();
     mockAddTask = jest.fn();
   });
-
-  // Helper function for date creation (WET principle - appears 3+ times)
-  const createDateOffset = (days) => {
-    const date = new Date();
-    date.setDate(date.getDate() + days);
-    return date.toISOString().split('T')[0];
-  };
 
   const renderAddTaskForm = (taskValue = {}, projectId = 'project-123') => {
     const defaultTaskValue = {
@@ -46,9 +56,8 @@ describe('AddTaskForm Unit Tests', () => {
       renderAddTaskForm();
 
       // Check all form elements are present
-      expect(
-        screen.getByRole('heading', { name: /create new task/i })
-      ).toBeInTheDocument();
+      // ShadCN CardTitle renders a div, not a semantic heading, so we query by text.
+      expect(screen.getByText(/create new task/i)).toBeInTheDocument();
       expect(screen.getByLabelText(/task title/i)).toBeInTheDocument();
       expect(screen.getByLabelText(/description/i)).toBeInTheDocument();
       expect(screen.getByLabelText(/due date/i)).toBeInTheDocument();
@@ -61,7 +70,9 @@ describe('AddTaskForm Unit Tests', () => {
       expect(screen.getByLabelText(/task title/i)).toHaveValue('');
       expect(screen.getByLabelText(/description/i)).toHaveValue('');
       expect(screen.getByLabelText(/due date/i)).toHaveValue('');
-      expect(screen.getByLabelText(/priority/i)).toHaveValue('2'); // Medium
+      expect(
+        screen.getByRole('combobox', { name: /priority/i })
+      ).toHaveTextContent('Medium');
     });
   });
 
@@ -144,8 +155,12 @@ describe('AddTaskForm Unit Tests', () => {
         'due date': futureDate,
       });
 
-      // Change priority to High
-      await user.selectOptions(screen.getByLabelText(/priority/i), '3');
+      // Change priority to High using shadCN Select
+      // First, click the trigger to open the dropdown.
+      await user.click(screen.getByRole('combobox', { name: /priority/i }));
+      // Then, wait for the option to appear (it's in a portal) and click it.
+      const highOption = await screen.findByRole('option', { name: 'High' });
+      await user.click(highOption);
 
       await submitForm(user, /create task/i);
 
@@ -173,7 +188,9 @@ describe('AddTaskForm Unit Tests', () => {
         expect(screen.getByLabelText(/task title/i)).toHaveValue('');
         expect(screen.getByLabelText(/description/i)).toHaveValue('');
         expect(screen.getByLabelText(/due date/i)).toHaveValue('');
-        expect(screen.getByLabelText(/priority/i)).toHaveValue('2');
+        expect(
+          screen.getByRole('combobox', { name: /priority/i })
+        ).toHaveTextContent('Medium');
       });
     });
   });
@@ -185,7 +202,7 @@ describe('AddTaskForm Unit Tests', () => {
       expect(screen.getByLabelText(/task title/i)).toBeDisabled();
       expect(screen.getByLabelText(/description/i)).toBeDisabled();
       expect(screen.getByLabelText(/due date/i)).toBeDisabled();
-      expect(screen.getByLabelText(/priority/i)).toBeDisabled();
+      expect(screen.getByRole('combobox', { name: /priority/i })).toBeDisabled();
       expect(
         screen.getByRole('button', { name: /creating.../i })
       ).toBeDisabled();

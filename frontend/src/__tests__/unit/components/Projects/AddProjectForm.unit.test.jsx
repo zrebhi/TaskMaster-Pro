@@ -36,10 +36,25 @@ describe('AddProjectForm Unit Tests', () => {
   test('renders form elements correctly', () => {
     renderAddProjectForm();
 
+    // Check for CardTitle
     expect(
-      screen.getByRole('heading', { name: /create new project/i })
+      screen.getByText(/create new project/i)
     ).toBeInTheDocument();
-    expect(screen.getByLabelText(/project name/i)).toBeInTheDocument();
+
+    // Check for CardDescription
+    expect(
+      screen.getByText(/Enter a name for your new project below/i)
+    ).toBeInTheDocument();
+
+    // Check for Label and Input
+    const projectNameInput = screen.getByLabelText(/project name/i);
+    expect(projectNameInput).toBeInTheDocument();
+    expect(projectNameInput).toHaveAttribute(
+      'placeholder',
+      'e.g., Work Tasks, Home Renovation'
+    );
+
+    // Check for Button
     expect(
       screen.getByRole('button', { name: /create project/i })
     ).toBeInTheDocument();
@@ -59,11 +74,10 @@ describe('AddProjectForm Unit Tests', () => {
 
   test('shows validation error for empty project name', async () => {
     jest.spyOn(console, 'error').mockImplementation(() => {});
-    renderAddProjectForm();
+    const { container } = renderAddProjectForm();
 
-    const form = screen
-      .getByRole('heading', { name: /create new project/i })
-      .closest('form');
+    const form = container.querySelector('form');
+    expect(form).toBeInTheDocument(); // Ensure form is found
     fireEvent.submit(form);
 
     expect(

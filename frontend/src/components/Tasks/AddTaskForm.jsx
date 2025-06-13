@@ -152,14 +152,14 @@ const AddTaskForm = ({ projectId, className, ...props }) => {
               />
             </div>
             <div className="grid gap-3">
-              <Label htmlFor="taskPriority">Priority</Label>
+              <Label id="taskPriority" htmlFor="taskPriority">Priority</Label>
               {/* <CustomSelect /> */}
               <Select
                 value={priority.toString()}
                 onValueChange={onSelectChange}
                 disabled={isLoadingTasks}
               >
-                <SelectTrigger>
+                <SelectTrigger aria-labelledby="taskPriority">
                   <SelectValue placeholder="Select priority" />
                 </SelectTrigger>
                 <SelectContent className="solid-popover-bg">

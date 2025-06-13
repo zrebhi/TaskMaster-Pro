@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
 import EditTaskModal from '../../../../components/Tasks/EditTaskModal';
@@ -19,12 +19,18 @@ describe('EditTaskModal Unit Tests', () => {
 
   beforeEach(() => {
     cleanupMocks();
-    user = userEvent.setup();
+    user = userEvent.setup({ delay: null }); // Disable delay for faster tests
     mockUpdateTask = jest.fn();
     mockOnClose = jest.fn();
+    jest.useFakeTimers(); // Use fake timers for consistent async behavior
   });
 
-  // Helper function for date creation (WET principle - appears 3+ times)
+  afterEach(() => {
+    jest.runOnlyPendingTimers(); // Ensure all timers are cleared
+    jest.useRealTimers(); // Restore real timers
+  });
+
+  // Helper function for date creation
   const createDateOffset = (days) => {
     const date = new Date();
     date.setDate(date.getDate() + days);
@@ -80,7 +86,9 @@ describe('EditTaskModal Unit Tests', () => {
         'Test Description'
       );
       expect(screen.getByLabelText(/due date/i)).toHaveValue('2024-12-31');
-      expect(screen.getByLabelText(/priority/i)).toHaveValue('3');
+      expect(
+        screen.getByRole('combobox', { name: /priority/i })
+      ).toHaveTextContent('High');
     });
 
     test('does not render when isOpen is false', () => {
@@ -103,7 +111,9 @@ describe('EditTaskModal Unit Tests', () => {
       expect(screen.getByLabelText(/description/i)).toHaveValue(
         'Initial Description'
       );
-      expect(screen.getByLabelText(/priority/i)).toHaveValue('1');
+      expect(
+        screen.getByRole('combobox', { name: /priority/i })
+      ).toHaveTextContent('Low');
 
       // Change the task prop
       const updatedTask = createMockTask({
@@ -129,7 +139,9 @@ describe('EditTaskModal Unit Tests', () => {
       expect(screen.getByLabelText(/description/i)).toHaveValue(
         'Updated Description'
       );
-      expect(screen.getByLabelText(/priority/i)).toHaveValue('3');
+      expect(
+        screen.getByRole('combobox', { name: /priority/i })
+      ).toHaveTextContent('High');
     });
 
     test('handles task with falsy properties (null, undefined, empty strings)', () => {
@@ -146,7 +158,9 @@ describe('EditTaskModal Unit Tests', () => {
       expect(screen.getByLabelText(/task title/i)).toHaveValue('');
       expect(screen.getByLabelText(/description/i)).toHaveValue('');
       expect(screen.getByLabelText(/due date/i)).toHaveValue('');
-      expect(screen.getByLabelText(/priority/i)).toHaveValue('2'); // Default fallback
+      expect(
+        screen.getByRole('combobox', { name: /priority/i })
+      ).toHaveTextContent('Medium'); // Default fallback
     });
 
     test('useEffect handles task changing to null', () => {
@@ -160,7 +174,8 @@ describe('EditTaskModal Unit Tests', () => {
       // Verify initial values
       expect(screen.getByLabelText(/task title/i)).toHaveValue('Initial Task');
 
-      // Change task to null - this should trigger useEffect but not update form since task is falsy
+      // Change task to null - the form should retain its previous values
+      // as the useEffect only updates if 'task' is truthy.
       rerender(
         <TestTaskProvider
           value={{ updateTask: mockUpdateTask, isLoadingTasks: false }}
@@ -169,13 +184,22 @@ describe('EditTaskModal Unit Tests', () => {
         </TestTaskProvider>
       );
 
-      // Component should not render when task is null
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+      // The modal should still be open if isOpen is true
+      expect(screen.getByRole('dialog')).toBeInTheDocument();
+      // The form fields should retain their previous values, not reset
+      expect(screen.getByLabelText(/task title/i)).toHaveValue('Initial Task');
+      expect(screen.getByLabelText(/description/i)).toHaveValue(
+        'Test task description'
+      );
+      expect(screen.getByLabelText(/due date/i)).toHaveValue('');
+      expect(
+        screen.getByRole('combobox', { name: /priority/i })
+      ).toHaveTextContent('Low');
     });
   });
 
   describe('Modal Behavior', () => {
-    test('calls onClose when cancel button is clicked', async () => {
+    it('calls onClose when cancel button is clicked', async () => {
       renderEditTaskModal();
 
       const cancelButton = screen.getByRole('button', { name: /cancel/i });
@@ -184,43 +208,31 @@ describe('EditTaskModal Unit Tests', () => {
       expect(mockOnClose).toHaveBeenCalledTimes(1);
     });
 
-    test('calls onClose when overlay is clicked', async () => {
+    it('calls onClose when escape key is pressed', async () => {
       renderEditTaskModal();
 
-      const overlay = screen.getByLabelText(/close dialog/i);
-      await user.click(overlay);
-
-      expect(mockOnClose).toHaveBeenCalledTimes(1);
-    });
-
-    test('calls onClose when escape key is pressed', async () => {
-      renderEditTaskModal();
-
-      const overlay = screen.getByLabelText(/close dialog/i);
-      overlay.focus();
+      // The Dialog component's content is the element that receives focus for escape key
+      const dialogContent = screen.getByRole('dialog');
+      dialogContent.focus();
       await user.keyboard('{Escape}');
 
       expect(mockOnClose).toHaveBeenCalledTimes(1);
     });
 
-    test('does not close when overlay is clicked or escape is pressed during loading', async () => {
+    it('does not close when escape is pressed during loading', async () => {
       renderEditTaskModal({ isLoadingTasks: true });
 
-      const overlay = screen.getByLabelText(/close dialog/i);
-
-      // Test overlay click
-      await user.click(overlay);
-      expect(mockOnClose).not.toHaveBeenCalled();
-
       // Test escape key
-      overlay.focus();
+      const dialogContent = screen.getByRole('dialog');
+      dialogContent.focus();
       await user.keyboard('{Escape}');
+      // Expect onClose not to be called if isLoadingTasks is true
       expect(mockOnClose).not.toHaveBeenCalled();
     });
   });
 
   describe('Form Validation', () => {
-    test('HTML5 validation prevents empty title submission', async () => {
+    it('HTML5 validation prevents empty title submission', async () => {
       const task = createMockTask({ title: 'Original Title' });
       renderEditTaskModal({}, task);
 
@@ -238,7 +250,7 @@ describe('EditTaskModal Unit Tests', () => {
       expect(mockUpdateTask).not.toHaveBeenCalled();
     });
 
-    test('shows error for whitespace-only title', async () => {
+    it('shows error for whitespace-only title', async () => {
       const task = createMockTask({ title: 'Original Title' });
       renderEditTaskModal({}, task);
 
@@ -249,7 +261,7 @@ describe('EditTaskModal Unit Tests', () => {
       expect(mockUpdateTask).not.toHaveBeenCalled();
     });
 
-    test('HTML5 maxLength prevents typing beyond 255 characters', async () => {
+    it('HTML5 maxLength prevents typing beyond 255 characters', async () => {
       const task = createMockTask();
       renderEditTaskModal({}, task);
 
@@ -263,7 +275,7 @@ describe('EditTaskModal Unit Tests', () => {
       expect(titleInput.value).toHaveLength(255);
     });
 
-    test('shows error for past due date', async () => {
+    it('shows error for past due date', async () => {
       const task = createMockTask();
       renderEditTaskModal({}, task);
       const pastDate = createDateOffset(-1);
@@ -280,7 +292,7 @@ describe('EditTaskModal Unit Tests', () => {
   });
 
   describe('Form Submission', () => {
-    test('submits form with minimal data (title only)', async () => {
+    it('submits form with minimal data (title only)', async () => {
       const task = createMockTask({
         id: 'task-123',
         title: 'Original Title',
@@ -308,7 +320,7 @@ describe('EditTaskModal Unit Tests', () => {
       expect(mockOnClose).toHaveBeenCalledTimes(1);
     });
 
-    test('submits form with all fields filled', async () => {
+    it('submits form with all fields filled', async () => {
       const task = createMockTask({ id: 'task-456' });
       mockUpdateTask.mockResolvedValue({ id: 'task-456' });
       renderEditTaskModal({}, task);
@@ -321,9 +333,19 @@ describe('EditTaskModal Unit Tests', () => {
         'due date': futureDate,
       });
 
-      // Change priority to High
-      await user.selectOptions(screen.getByLabelText(/priority/i), '3');
+      // Change priority to High using shadCN Select interaction
+      // Using fireEvent to avoid 'target.hasPointerCapture' error with Radix UI components
+      fireEvent.click(screen.getByRole('combobox', { name: /priority/i })); // Open the select dropdown
 
+      jest.runAllTimers(); // Flush timers for Radix UI animations/transitions
+
+      await waitFor(() =>
+        expect(
+          screen.getByRole('option', { name: /high/i })
+        ).toBeInTheDocument()
+      );
+      await user.click(screen.getByRole('option', { name: /high/i })); // Select 'High'
+      jest.runAllTimers(); // Flush timers after selection
       await submitForm(user, /save changes/i);
 
       await waitFor(() => {
@@ -338,7 +360,7 @@ describe('EditTaskModal Unit Tests', () => {
       expect(mockOnClose).toHaveBeenCalledTimes(1);
     });
 
-    test('trims whitespace from title and description', async () => {
+    it('trims whitespace from title and description', async () => {
       const task = createMockTask({
         id: 'task-789',
         priority: 2,
@@ -362,7 +384,7 @@ describe('EditTaskModal Unit Tests', () => {
       });
     });
 
-    test('converts empty description to null', async () => {
+    it('converts empty description to null', async () => {
       const task = createMockTask({
         id: 'task-empty',
         priority: 2,
@@ -392,21 +414,24 @@ describe('EditTaskModal Unit Tests', () => {
   });
 
   describe('Loading States', () => {
-    test('disables form elements during loading', () => {
+    it('disables form elements during loading', () => {
       const task = createMockTask();
       renderEditTaskModal({ isLoadingTasks: true }, task);
 
       expect(screen.getByLabelText(/task title/i)).toBeDisabled();
       expect(screen.getByLabelText(/description/i)).toBeDisabled();
       expect(screen.getByLabelText(/due date/i)).toBeDisabled();
-      expect(screen.getByLabelText(/priority/i)).toBeDisabled();
+      // For shadCN Select, check the combobox (trigger) and the hidden input
+      expect(
+        screen.getByRole('combobox', { name: /priority/i })
+      ).toBeDisabled();
       expect(screen.getByRole('button', { name: /saving.../i })).toBeDisabled();
       expect(screen.getByRole('button', { name: /cancel/i })).toBeDisabled();
     });
   });
 
   describe('Error Handling', () => {
-    test('shows error when updateTask fails', async () => {
+    it('shows error when updateTask fails', async () => {
       const consoleSpy = jest
         .spyOn(console, 'error')
         .mockImplementation(() => {});
@@ -431,7 +456,7 @@ describe('EditTaskModal Unit Tests', () => {
       consoleSpy.mockRestore();
     });
 
-    test('clears error when form is resubmitted', async () => {
+    it('clears error when form is resubmitted', async () => {
       const consoleSpy = jest
         .spyOn(console, 'error')
         .mockImplementation(() => {});

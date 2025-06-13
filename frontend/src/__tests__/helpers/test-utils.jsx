@@ -249,6 +249,17 @@ export const submitForm = async (user, buttonText = 'Submit') => {
   await user.click(submitButton);
 };
 
+/**
+ * Helper function for date creation
+ * @param {number} days - Number of days to offset from current date
+ * @returns {string} Date in YYYY-MM-DD format
+ */
+export const createDateOffset = (days) => {
+  const date = new Date();
+  date.setDate(date.getDate() + days);
+  return date.toISOString().split('T')[0];
+};
+
 // Cleanup Utilities
 
 /**

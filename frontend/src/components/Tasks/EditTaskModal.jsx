@@ -1,32 +1,24 @@
 import { useState, useEffect, useContext } from 'react';
 import TaskContext from '../../context/TaskContext';
-
-const modalStyle = {
-  position: 'fixed',
-  top: '50%',
-  left: '50%',
-  transform: 'translate(-50%, -50%)',
-  backgroundColor: 'white',
-  padding: '20px',
-  zIndex: 1000,
-  border: '1px solid #ccc',
-  borderRadius: '8px',
-  boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
-  minWidth: '400px',
-  maxWidth: '90%',
-  maxHeight: '90vh',
-  overflow: 'auto',
-};
-
-const overlayStyle = {
-  position: 'fixed',
-  top: 0,
-  left: 0,
-  right: 0,
-  bottom: 0,
-  backgroundColor: 'rgba(0,0,0,0.5)',
-  zIndex: 999,
-};
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 const EditTaskModal = ({ task, isOpen, onClose }) => {
   const [formData, setFormData] = useState({
@@ -49,10 +41,6 @@ const EditTaskModal = ({ task, isOpen, onClose }) => {
       });
     }
   }, [task]);
-
-  if (!isOpen || !task) {
-    return null;
-  }
 
   const validateForm = () => {
     // Whitespace-only title validation
@@ -107,109 +95,102 @@ const EditTaskModal = ({ task, isOpen, onClose }) => {
     });
   };
 
+  const onSelectChange = (value) => {
+    setFormData({ ...formData, priority: parseInt(value) });
+  };
+
   return (
-    <>
-      <div
-        style={overlayStyle}
-        onClick={(e) => {
-          if (e.target === e.currentTarget && !isLoadingTasks) {
-            onClose();
-          }
-        }}
-        onKeyDown={(e) => {
-          if (e.key === 'Escape' && !isLoadingTasks) {
-            onClose();
-          }
-        }}
-        role="button"
-        tabIndex={0}
-        aria-label="Close dialog"
-      />
-      <div
-        style={modalStyle}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="edit-task-modal-title"
-      >
-        <h3 id="edit-task-modal-title">Edit Task</h3>
+    <Dialog open={isOpen} onOpenChange={(open) => !isLoadingTasks && onClose(open)}>
+      <DialogContent className="sm:max-w-[425px] solid-popover-bg">
+        <DialogHeader>
+          <DialogTitle>Edit Task</DialogTitle>
+          <DialogDescription>
+            Make changes to your task here. Click save when you{'\''}re done.
+          </DialogDescription>
+        </DialogHeader>
         <form onSubmit={handleSubmit}>
-          {error ? <p style={{ color: 'red' }}>{error}</p> : null}
+          <div className="flex flex-col gap-6 py-4">
+            {error ? (
+              <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">
+                {error}
+              </div>
+            ) : null}
 
-          <div style={{ marginBottom: '15px' }}>
-            <label htmlFor="editTaskTitle">Task Title:</label>
-            <input
-              type="text"
-              id="editTaskTitle"
-              name="title"
-              value={formData.title}
-              onChange={handleChange}
-              placeholder="e.g., Review project proposal, Fix login bug"
-              required
-              disabled={isLoadingTasks}
-              maxLength={255}
-              style={{ width: '100%', padding: '8px', marginTop: '5px' }}
-            />
+            <div className="grid gap-3">
+              <Label htmlFor="editTaskTitle">Task Title</Label>
+              <Input
+                id="editTaskTitle"
+                name="title"
+                type="text"
+                value={formData.title}
+                onChange={handleChange}
+                placeholder="e.g., Review project proposal, Fix login bug"
+                required
+                disabled={isLoadingTasks}
+                maxLength={255}
+              />
+            </div>
+
+            <div className="grid gap-3">
+              <Label htmlFor="editTaskDescription">Description (optional)</Label>
+              <Textarea
+                id="editTaskDescription"
+                name="description"
+                value={formData.description}
+                onChange={handleChange}
+                placeholder="Add more details about this task..."
+                disabled={isLoadingTasks}
+                rows={3}
+                className="resize-y"
+              />
+            </div>
+
+            <div className="grid gap-3">
+              <Label htmlFor="editTaskDueDate">Due Date (optional)</Label>
+              <Input
+                id="editTaskDueDate"
+                name="due_date"
+                type="date"
+                value={formData.due_date}
+                onChange={handleChange}
+                disabled={isLoadingTasks}
+              />
+            </div>
+
+            <div className="grid gap-3">
+              <Label htmlFor="editTaskPriority">Priority</Label>
+              <Select
+                value={formData.priority.toString()}
+                onValueChange={onSelectChange}
+                disabled={isLoadingTasks}
+              >
+                <SelectTrigger aria-label="Priority">
+                  <SelectValue placeholder="Select priority" />
+                </SelectTrigger>
+                <SelectContent className="solid-popover-bg">
+                  <SelectItem value="1">Low</SelectItem>
+                  <SelectItem value="2">Medium</SelectItem>
+                  <SelectItem value="3">High</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
-
-          <div style={{ marginBottom: '15px' }}>
-            <label htmlFor="editTaskDescription">Description (optional):</label>
-            <textarea
-              id="editTaskDescription"
-              name="description"
-              value={formData.description}
-              onChange={handleChange}
-              placeholder="Add more details about this task..."
-              disabled={isLoadingTasks}
-              rows={3}
-              style={{ width: '100%', resize: 'vertical', padding: '8px', marginTop: '5px' }}
-            />
-          </div>
-
-          <div style={{ marginBottom: '15px' }}>
-            <label htmlFor="editTaskDueDate">Due Date (optional):</label>
-            <input
-              type="date"
-              id="editTaskDueDate"
-              name="due_date"
-              value={formData.due_date}
-              onChange={handleChange}
-              disabled={isLoadingTasks}
-              style={{ width: '100%', padding: '8px', marginTop: '5px' }}
-            />
-          </div>
-
-          <div style={{ marginBottom: '15px' }}>
-            <label htmlFor="editTaskPriority">Priority:</label>
-            <select
-              id="editTaskPriority"
-              name="priority"
-              value={formData.priority}
-              onChange={handleChange}
-              disabled={isLoadingTasks}
-              style={{ width: '100%', padding: '8px', marginTop: '5px' }}
-            >
-              <option value={1}>Low</option>
-              <option value={2}>Medium</option>
-              <option value={3}>High</option>
-            </select>
-          </div>
-
-          <div style={{ marginTop: '20px', textAlign: 'right' }}>
-            <button type="submit" disabled={isLoadingTasks}>
+          <DialogFooter>
+            <Button type="submit" disabled={isLoadingTasks}>
               {isLoadingTasks ? 'Saving...' : 'Save Changes'}
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
+              variant="outline"
               onClick={onClose}
-              style={{ marginLeft: '10px' }}
               disabled={isLoadingTasks}
             >
               Cancel
-            </button>
-          </div>
+            </Button>
+          </DialogFooter>
         </form>
-      </div>
-    </>
+      </DialogContent>
+    </Dialog>
   );
 };
 
