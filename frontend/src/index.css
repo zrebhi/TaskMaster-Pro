@@ -110,6 +110,10 @@
     color: hsl(var(--destructive)) !important;
   }
 
+  .background-destructive {
+    background-color: hsl(var(--destructive)) !important;
+  }
+
   .solid-popover-bg {
     background-color: #ffffff; /* Pure White */
   }

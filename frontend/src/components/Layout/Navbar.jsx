@@ -30,9 +30,6 @@ const Navbar = () => {
         {auth && auth.isAuthenticated ? (
           <>
             <li>
-              <span>Welcome, {auth.user?.username || 'User'} !</span>
-            </li>
-            <li>
               <button
                 onClick={handleLogout}
                 className="bg-primary text-primary-foreground px-3 py-1 rounded"

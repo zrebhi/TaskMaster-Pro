@@ -20,7 +20,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 
-const AddTaskForm = ({ projectId, className, ...props }) => {
+const AddTaskForm = ({ projectId, className, onTaskAdded, ...props }) => {
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -94,6 +94,9 @@ const AddTaskForm = ({ projectId, className, ...props }) => {
         due_date: '',
         priority: 2,
       });
+      if (onTaskAdded) {
+        onTaskAdded();
+      }
     } catch {
       setError('Failed to create task. Please try again.');
     }

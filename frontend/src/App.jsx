@@ -6,7 +6,8 @@ import {
   Navigate,
 } from 'react-router-dom';
 import AuthPage from './pages/AuthPage';
-import DashboardPage from './pages/DashboardPage';
+import ProjectListPage from './pages/ProjectListPage';
+import ProjectTasksPage from './pages/ProjectTasksPage';
 import AuthContext, { AuthProvider } from './context/AuthContext';
 import { ProjectProvider } from './context/ProjectContext';
 import { TaskProvider } from './context/TaskContext';
@@ -15,7 +16,6 @@ import ErrorBoundary from './components/Common/ErrorBoundary';
 import Layout from './components/Layout/Layout';
 import { Toaster } from 'react-hot-toast';
 import ProtectedRoute from './components/Routing/ProtectedRoute';
-import AddTaskForm from './components/Tasks/AddTaskForm';
 
 // Component to handle redirection based on authentication state
 const RootRedirect = () => {
@@ -25,7 +25,7 @@ const RootRedirect = () => {
     return <div>Loading...</div>;
   }
   return auth.isAuthenticated ? (
-    <Navigate to="/dashboard" replace />
+    <Navigate to="/projects" replace />
   ) : (
     <Navigate to="/auth" replace />
   );
@@ -48,8 +48,12 @@ function App() {
 
                     {/* Protected Routes */}
                     <Route element={<ProtectedRoute />}>
-                      <Route path="/dashboard" element={<DashboardPage />} />
-                      <Route path="/projects" element={<DashboardPage />} />
+                      {/* <Route path="/dashboard" element={<DashboardPage />} /> */}
+                      <Route path="/projects" element={<ProjectListPage />} />
+                      <Route
+                        path="/projects/:projectId"
+                        element={<ProjectTasksPage />}
+                      />
                     </Route>
 
                     {/* Redirect from root */}
