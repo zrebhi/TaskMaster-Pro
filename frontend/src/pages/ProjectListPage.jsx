@@ -49,7 +49,8 @@ const ProjectListPage = () => {
   const handleDeleteClick = useCallback(
     (project) => {
       // Ensure the full project object is available for the modal message
-      const projectDetails = projects.find(p => p.id === project.id) || project;
+      const projectDetails =
+        projects.find((p) => p.id === project.id) || project;
       setProjectToDelete(projectDetails);
       setIsDeleteModalOpen(true);
     },
@@ -62,10 +63,6 @@ const ProjectListPage = () => {
   }, []);
 
   const handleConfirmDelete = useCallback(async () => {
-    if (!projectToDelete) {
-      handleCloseDeleteModal();
-      return;
-    }
     setIsDeleting(true);
     try {
       await deleteProject(projectToDelete.id);

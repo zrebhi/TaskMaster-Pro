@@ -8,6 +8,8 @@ import ConfirmationModal from '../components/Common/ConfirmationModal';
 import AddTaskModal from '../components/Tasks/AddTaskModal';
 import TaskContext from '../context/TaskContext';
 import ProjectContext from '../context/ProjectContext';
+import { useError } from '../context/ErrorContext';
+import { handleApiError } from '../utils/errorHandler';
 
 import { DataTable } from '../components/ui/tables/data-table';
 import { DataTableToolbar } from '../components/ui/tables/data-table-toolbar';
@@ -24,6 +26,7 @@ const ProjectTasksPage = () => {
   } = useContext(ProjectContext);
   const { tasks, isLoadingTasks, taskError, fetchTasks, deleteTask } =
     useContext(TaskContext);
+  const { showErrorToast } = useError();
 
   const [isEditTaskModalOpen, setIsEditTaskModalOpen] = useState(false);
   const [taskToEdit, setTaskToEdit] = useState(null);
@@ -49,11 +52,10 @@ const ProjectTasksPage = () => {
 
   const handleEditTask = useCallback(
     (task) => {
-      const originalTask = tasks.find((t) => String(t.id) === String(task.id));
-      setTaskToEdit(originalTask || task);
+      setTaskToEdit(task);
       setIsEditTaskModalOpen(true);
     },
-    [tasks]
+    []
   );
 
   const handleCloseEditTaskModal = useCallback(() => {
@@ -63,12 +65,19 @@ const ProjectTasksPage = () => {
 
   const handleDeleteTask = useCallback(
     (task) => {
-      // Similar to handleEditTask, ensure correct task object is used.
-      const originalTask = tasks.find((t) => String(t.id) === String(task.id));
-      setTaskToDelete(originalTask || task);
-      setIsDeleteTaskModalOpen(true);
+      try {
+        if (!task) {
+          throw new Error('handleDeleteTask was called with a null or undefined task.');
+        }
+        // Similar to handleEditTask, ensure correct task object is used.
+        setTaskToDelete(task);
+        setIsDeleteTaskModalOpen(true);
+      } catch (error) {
+        const errorResult = handleApiError(error, 'deleting task');
+        showErrorToast(errorResult);
+      }
     },
-    [tasks]
+    [showErrorToast]
   );
 
   const handleCloseDeleteTaskModal = useCallback(() => {
@@ -97,9 +106,9 @@ const ProjectTasksPage = () => {
       .map((task) => ({
         ...task,
         id: String(task.id),
-        priority: task.priority || 2,
+        priority: task.priority,
         status: task.is_completed ? 'done' : 'to do',
-        title: task.title || 'Untitled Task',
+        title: task.title,
         due_date: task.due_date,
       }));
   }, [tasks, projectId]);
@@ -129,8 +138,7 @@ const ProjectTasksPage = () => {
             {selectedProject.name}
           </h2>
           <p className="text-muted-foreground">
-            {selectedProject.description ||
-              "Here's a list of tasks for this project."}
+            Here{'\''}s a list of tasks for this project.
           </p>
         </div>
       </div>
@@ -147,7 +155,10 @@ const ProjectTasksPage = () => {
               <div className="flex items-center justify-end mb-2 gap-2">
                 {' '}
                 {!!reactTableInstance && ( // Ensure boolean for conditional rendering
-                  <DataTableToolbar table={reactTableInstance} columnVisibility={columnVisibility} />
+                  <DataTableToolbar
+                    table={reactTableInstance}
+                    columnVisibility={columnVisibility}
+                  />
                 )}
                 <Button
                   onClick={() => setIsAddTaskModalOpen(true)}

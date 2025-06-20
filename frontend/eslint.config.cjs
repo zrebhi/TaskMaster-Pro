@@ -176,6 +176,8 @@ module.exports = [
             'waitForElementToBeRemoved',
             'advanceTimersAndExpect',
             'testToastWithCustomOptions',
+            'testModalOpenClose', 
+            'setupProjectAndTaskFetchTest',
           ],
         },
       ],

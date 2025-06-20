@@ -73,11 +73,11 @@ export const createMockProjectContext = (overrides = {}) => ({
  * @returns {Object} Mock ProjectContext with projects
  */
 export const createProjectContextWithProjects = (
-  projects = [],
+  projects,
   overrides = {}
 ) => {
   const mockProjects =
-    projects.length > 0
+    projects !== undefined
       ? projects
       : [
           createMockProject(),
@@ -95,11 +95,19 @@ export const createProjectContextWithProjects = (
  * @param {Object} overrides - Additional context overrides
  * @returns {Object} Mock ProjectContext in loading state
  */
-export const createLoadingProjectContext = (overrides = {}) =>
-  createMockProjectContext({
+export const createLoadingProjectContext = (overrides = {}) => {
+  let resolveFetchProjectsPromise;
+  const fetchProjectsPromise = new Promise((resolve) => {
+    resolveFetchProjectsPromise = resolve;
+  });
+
+  return createMockProjectContext({
     isLoading: true,
+    fetchProjects: jest.fn(() => fetchProjectsPromise),
+    _resolveFetchProjects: resolveFetchProjectsPromise, // Expose the resolver
     ...overrides,
   });
+};
 
 /**
  * Create ProjectContext with error state
@@ -401,3 +409,4 @@ export const setupProjectScenario = (projects = [], authOverrides = {}) => {
     projects: projectContext.projects,
   };
 };
+

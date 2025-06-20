@@ -113,6 +113,7 @@ export const createMockTask = (overrides = {}) => ({
   description: 'Test task description',
   status: 'pending',
   priority: 'medium',
+  is_completed: false,
   projectId: 'project-123',
   userId: 'user-123',
   createdAt: '2024-01-01T00:00:00.000Z',
