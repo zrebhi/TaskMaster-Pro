@@ -17,11 +17,10 @@ const {
  * @returns {Promise<void>}
  */
 exports.registerUser = asyncHandler(async (req, res) => {
-  let { username = '', email = '', password = '' } = req.body;
-  username = username.trim();
+  let { username = '', email = '' } = req.body;
+  username = username.trim().toLowerCase();
   email = email.trim().toLowerCase();
-  password = password.trim();
-
+  const { password } = req.body;
   // Validate input: username, email, and password are required
   if (!username || !email || !password) {
     throw new ValidationError('Please provide username, email, and password.');
@@ -67,8 +66,10 @@ exports.registerUser = asyncHandler(async (req, res) => {
  * @returns {Promise<void>}
  */
 exports.loginUser = asyncHandler(async (req, res) => {
-  const { email, username, password } = req.body;
-
+  let { email = '', username = '' } = req.body;
+  email = email.trim().toLowerCase();
+  username = username.trim().toLowerCase();
+  const { password } = req.body;
   // Validate input: require password and either email or username
   if ((!email && !username) || !password) {
     throw new ValidationError(
@@ -77,12 +78,7 @@ exports.loginUser = asyncHandler(async (req, res) => {
   }
 
   // Find the user by email or username
-  const whereClause = {};
-  if (email) {
-    whereClause.email = email;
-  } else if (username) {
-    whereClause.username = username;
-  }
+  const whereClause = email ? { email } : { username };
 
   const user = await User.findOne({
     where: whereClause,

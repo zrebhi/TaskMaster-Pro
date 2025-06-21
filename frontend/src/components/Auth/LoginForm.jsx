@@ -38,10 +38,11 @@ export function LoginForm({ className, ...props }) {
     setIsLoading(true);
 
     try {
-      const isEmail = identifier.includes('@');
+      const normalizedIdentifier = identifier.trim().toLowerCase();
+      const isEmail = normalizedIdentifier.includes('@');
       const loginPayload = isEmail
-        ? { email: identifier, password }
-        : { username: identifier, password };
+        ? { email: normalizedIdentifier, password }
+        : { username: normalizedIdentifier, password };
 
       const data = await loginUser(loginPayload);
 
@@ -78,9 +79,11 @@ export function LoginForm({ className, ...props }) {
         <form onSubmit={onSubmit}>
           <div className="flex flex-col gap-6">
             {/* Your existing error message display, now styled within the card */}
-            {error ? <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">
+            {error ? (
+              <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">
                 {error}
-              </div> : null}
+              </div>
+            ) : null}
             <div className="grid gap-3">
               <Label htmlFor="identifier">Email or Username</Label>
               <Input

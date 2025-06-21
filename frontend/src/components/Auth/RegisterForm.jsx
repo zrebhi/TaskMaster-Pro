@@ -60,7 +60,13 @@ const RegisterForm = ({ className, ...props }) => {
     }
 
     try {
-      const data = await registerUser({ username, email, password });
+      const normalizedUsername = username.trim().toLocaleLowerCase();
+      const normalizedEmail = email.trim().toLowerCase();
+      const data = await registerUser({
+        username: normalizedUsername,
+        email: normalizedEmail,
+        password,
+      });
       const successMsg =
         data.message || 'Registration successful! You can now log in.';
       setSuccessMessage(successMsg);
@@ -91,12 +97,16 @@ const RegisterForm = ({ className, ...props }) => {
       <CardContent>
         <form onSubmit={onSubmit}>
           <div className="flex flex-col gap-6">
-            {error ? <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">
+            {error ? (
+              <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">
                 {error}
-              </div> : null}
-            {successMessage ? <div className="text-sm text-green-600 bg-green-50 p-3 rounded-md">
+              </div>
+            ) : null}
+            {successMessage ? (
+              <div className="text-sm text-green-600 bg-green-50 p-3 rounded-md">
                 {successMessage}
-              </div> : null}
+              </div>
+            ) : null}
             <div className="grid gap-3">
               <Label htmlFor="username">Username:</Label>
               <Input

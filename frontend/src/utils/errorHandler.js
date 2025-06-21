@@ -53,38 +53,32 @@ export const isClientError = (error) => {
  * @param {string} context - Context of the operation (e.g., 'fetching tasks', 'creating project')
  * @returns {string} User-friendly error message
  */
-export const getErrorMessage = (error, context = 'performing this action') => {
-  // Network connectivity issues
-  if (isNetworkError(error)) {
-    return `Unable to connect to the server. Please check your internet connection and try again.`;
-  }
-
-  // Authentication errors
-  if (isAuthError(error)) {
-    return `Your session has expired. Please log in again.`;
-  }
-
-  // Server errors (5xx)
-  if (isServerError(error)) {
-    return `The server is currently experiencing issues. Please try again in a few moments.`;
-  }
-
-  // Client errors (4xx) - try to get specific message from API
-  if (isClientError(error)) {
+ export const getErrorMessage = (error, context = 'performing this action') => {
+   // 1. Handle errors that MUST have a generic frontend message.
+   if (isNetworkError(error)) {
+     return `Unable to connect to the server. Please check your internet connection and try again.`;
+    }
+    if (isServerError(error)) {
+      return `The server is currently experiencing issues. Please try again in a few moments.`;
+    }
+    
+    // 2. For all other errors (Client, Auth), prioritize the specific message from the API.
     const apiMessage = error.response?.data?.message;
     if (apiMessage) {
       return apiMessage;
     }
+    
+  // 3. Provide generic fallbacks only if the API fails to provide a specific message.
+  // This is now the fallback for a 401 with no message, as required by the test.
+  if (isAuthError(error)) {
+    return 'Authentication failed. Please log in to continue.';
+  }
+  if (isClientError(error)) {
+    // This is the fallback for a 4xx with no message, as required by the test.
     return `There was an issue with your request while ${context}. Please check your input and try again.`;
   }
-
-  // API provided a specific error message
-  const apiMessage = error.response?.data?.message;
-  if (apiMessage) {
-    return apiMessage;
-  }
-
-  // Generic fallback with context
+ 
+  // 4. Final, most generic fallback.
   return `An unexpected error occurred while ${context}. Please try again.`;
 };
 

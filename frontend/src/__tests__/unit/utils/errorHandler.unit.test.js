@@ -178,10 +178,21 @@ describe('errorHandler', () => {
       );
     });
 
-    it('should return auth error message for 401 errors', () => {
-      const error = createMockApiError(401, 'Unauthorized');
+    it('should return specific API message for auth errors', () => {
+      // This tests the primary path: a 401 error with a clear message
+      // from the backend, e.g., "Invalid credentials."
+      const error = createMockApiError(401, 'Invalid credentials.');
       const message = getErrorMessage(error);
-      expect(message).toBe('Your session has expired. Please log in again.');
+      expect(message).toBe('Invalid credentials.');
+    });
+
+    it('should return a generic auth error message if API provides no message', () => {
+      // This tests the fallback path: a 401 error where the backend
+      // failed to provide a message payload.
+      const errorWithNoMessage = createMockApiError(401, '');
+      errorWithNoMessage.response.data.message = undefined; // Be explicit
+      const message = getErrorMessage(errorWithNoMessage);
+      expect(message).toBe('Authentication failed. Please log in to continue.');
     });
 
     it('should return server error message for 5xx errors', () => {
@@ -197,8 +208,8 @@ describe('errorHandler', () => {
       const message = getErrorMessage(error);
       expect(message).toBe('Validation failed');
     });
-
-    it('should return contextual message for client errors without API message', () => {
+ 
+    it('should return a contextual client error message if API provides no message', () => {
       const error = createMockApiError(400, '');
       error.response.data.message = '';
       const message = getErrorMessage(error, 'creating task');
@@ -206,7 +217,7 @@ describe('errorHandler', () => {
         'There was an issue with your request while creating task. Please check your input and try again.'
       );
     });
-
+ 
     it('should return API message when available for other errors', () => {
       const error = new Error('Some error');
       error.response = { data: { message: 'Custom API message' } };
@@ -339,12 +350,12 @@ describe('errorHandler', () => {
     });
 
     it('should handle auth errors and call logout', () => {
-      const error = createMockApiError(401, 'Unauthorized');
+      const error = createMockApiError(401, 'Token expired. Please log in again.');
       const mockLogout = jest.fn();
       const result = handleApiError(error, 'accessing resource', mockLogout);
-
+ 
       expect(result).toEqual({
-        message: 'Your session has expired. Please log in again.',
+        message: 'Token expired. Please log in again.',
         shouldLogout: true,
         severity: ERROR_SEVERITY.MEDIUM,
         isNetworkError: false,

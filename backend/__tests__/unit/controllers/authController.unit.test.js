@@ -84,6 +84,21 @@ describe('Auth Controller Unit Tests', () => {
         );
       });
 
+      it('should throw ValidationError when email is missing but username is present', async () => {
+        mockReq.body = {
+          username: 'testuser',
+          password: 'password123',
+        };
+
+        await expect(registerUser(mockReq, mockRes, mockNext)).rejects.toThrow(
+          expect.objectContaining({
+            message: 'Please provide username, email, and password.',
+            statusCode: 400,
+            errorCode: 'VALIDATION_ERROR',
+          })
+        );
+      });
+
       it('should throw ValidationError for invalid username format', async () => {
         mockReq.body = {
           username: 'invalid@username',
@@ -267,7 +282,6 @@ describe('Auth Controller Unit Tests', () => {
 
     it('should successfully login user with username and password', async () => {
       mockReq.body = {
-        email: '',
         username: 'testuser',
         password: 'password123',
       };
@@ -276,10 +290,12 @@ describe('Auth Controller Unit Tests', () => {
 
       await loginUser(mockReq, mockRes, mockNext);
 
+      // Verify the `where` clause was built with the username
       expect(User.findOne).toHaveBeenCalledWith({
         where: { username: 'testuser' },
       });
 
+      // Verify it did NOT try to use the email
       expect(User.findOne).not.toHaveBeenCalledWith({
         where: { email: expect.anything() },
       });
