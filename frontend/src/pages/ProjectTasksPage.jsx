@@ -33,6 +33,7 @@ const ProjectTasksPage = () => {
   const [isDeleteTaskModalOpen, setIsDeleteTaskModalOpen] = useState(false);
   const [taskToDelete, setTaskToDelete] = useState(null);
   const [isAddTaskModalOpen, setIsAddTaskModalOpen] = useState(false);
+  const [isDeletingTask, setIsDeletingTask] = useState(false); // New state for delete loading
   const [reactTableInstance, setReactTableInstance] = useState(null); // State for table instance
   const [columnVisibility, setColumnVisibility] = useState({}); // Lifted state
 
@@ -90,11 +91,13 @@ const ProjectTasksPage = () => {
       handleCloseDeleteTaskModal();
       return;
     }
+    setIsDeletingTask(true);
     try {
       await deleteTask(taskToDelete.id);
     } catch (err) {
       console.error('Delete task error:', err);
     } finally {
+      setIsDeletingTask(false);
       handleCloseDeleteTaskModal();
     }
   }, [taskToDelete, deleteTask, handleCloseDeleteTaskModal]);
@@ -203,7 +206,7 @@ const ProjectTasksPage = () => {
         onConfirm={handleConfirmDeleteTask}
         title="Delete Task"
         message={`Are you sure you want to delete the task "${taskToDelete?.title}"?`}
-        isLoading={isLoadingTasks}
+        isLoading={isDeletingTask}
         confirmText="Delete"
         loadingText="Deleting..."
         confirmButtonStyle="danger"

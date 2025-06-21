@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
-import AddProjectForm from '../components/Projects/AddProjectForm'; // Keep for now, might be used by AddProjectModal
 import ProjectContext from '../context/ProjectContext';
 import EditProjectModal from '../components/Projects/EditProjectModal';
 import ConfirmationModal from '../components/Common/ConfirmationModal';
@@ -48,13 +47,10 @@ const ProjectListPage = () => {
 
   const handleDeleteClick = useCallback(
     (project) => {
-      // Ensure the full project object is available for the modal message
-      const projectDetails =
-        projects.find((p) => p.id === project.id) || project;
-      setProjectToDelete(projectDetails);
+      setProjectToDelete(project);
       setIsDeleteModalOpen(true);
     },
-    [projects]
+    [] // No longer depends on the projects array
   );
 
   const handleCloseDeleteModal = useCallback(() => {
@@ -87,7 +83,6 @@ const ProjectListPage = () => {
               {!!reactTableInstance && (
                 <DataTableToolbar
                   table={reactTableInstance}
-                  onSearchChange={() => {}} // No search filter for now
                   onColumnVisibilityChange={setColumnVisibility}
                   columnVisibility={columnVisibility}
                 />
@@ -113,12 +108,18 @@ const ProjectListPage = () => {
             />
           </div>
         ) : (
-          <div className="flex flex-col items-center justify-center h-full">
-            <p className="text-muted-foreground mb-4">
-              No projects yet. Get started by adding one!
-            </p>
-            <AddProjectForm />{' '}
-            {/* Render AddProjectForm directly if no projects */}
+          <div className="flex flex-1 items-center justify-center rounded-lg border border-dashed shadow-sm">
+            <div className="flex flex-col items-center gap-2 text-center">
+              <h3 className="text-2xl font-bold tracking-tight">
+                You have no projects
+              </h3>
+              <p className="text-sm text-muted-foreground mb-3">
+                Get started by creating a new project.
+              </p>
+              <Button onClick={() => setIsAddProjectModalOpen(true)}>
+                <Plus className="mr-2 h-4 w-4" /> Add Project
+              </Button>
+            </div>
           </div>
         ))}
 

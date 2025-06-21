@@ -1,5 +1,7 @@
 import { useState, useEffect, useContext } from 'react';
 import ProjectContext from '../../context/ProjectContext';
+import { getErrorMessage } from '../../utils/errorHandler';
+import { PROJECT_NAME_MAX_LENGTH } from '../../config/constants';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -35,14 +37,14 @@ const EditProjectModal = ({ project, isOpen, onClose }) => {
       await updateProject(project.id, { name: projectName.trim() });
       onClose();
     } catch (err) {
-      console.error('Update project error:', err);
-      setError(err.message || 'Failed to update project. Please try again.');
+      setError(getErrorMessage(err, 'updating the project'));
     }
   };
 
   // Use onOpenChange for controlled dialog state
   const handleOpenChange = (open) => {
-    if (!isLoading) { // Prevent closing while loading
+    if (!isLoading) {
+      // Prevent closing while loading
       if (!open) {
         onClose();
       }
@@ -55,7 +57,7 @@ const EditProjectModal = ({ project, isOpen, onClose }) => {
         <DialogHeader>
           <DialogTitle>Edit Project</DialogTitle>
           <DialogDescription>
-            Make changes to your project here. Click save when you{'\''}re done.
+            Make changes to your project here. Click save when you{"'"}re done.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
@@ -76,7 +78,7 @@ const EditProjectModal = ({ project, isOpen, onClose }) => {
                 placeholder="e.g., Website Redesign, Q3 Marketing Campaign"
                 required
                 disabled={isLoading}
-                maxLength={255}
+                maxLength={PROJECT_NAME_MAX_LENGTH}
               />
             </div>
           </div>

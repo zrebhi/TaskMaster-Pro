@@ -4,6 +4,7 @@ const {
   updateProject,
   deleteProject,
 } = require('../../../controllers/projectController');
+const { PROJECT_NAME_MAX_LENGTH } = require('../../../config/constants');
 const { Project } = require('../../../models');
 const {
   createMockProject,
@@ -60,7 +61,7 @@ describe('Project Controller Unit Tests', () => {
 
         await expect(controllerFn(mockReq, mockRes, mockNext)).rejects.toThrow(
           expect.objectContaining({
-            message: 'Project name is too long.',
+            message: `Project name is too long. Maximum length is ${PROJECT_NAME_MAX_LENGTH} characters.`,
             statusCode: 400,
             errorCode: 'VALIDATION_ERROR',
           })

@@ -65,13 +65,13 @@ export const ProjectProvider = ({ children }) => {
         return newProject;
       } catch (err) {
         if (err.processedError) {
+          // Show the toast, but do not set the page-level error state.
           showErrorToast(err.processedError);
-          setError(err.processedError.message);
         } else {
           const fallbackMessage = 'Failed to create project.';
           showErrorToast({ message: fallbackMessage, severity: 'medium' });
-          setError(fallbackMessage);
         }
+        // Always re-throw the error for the form component to catch.
         throw err;
       } finally {
         setIsLoading(false);
@@ -108,11 +108,9 @@ export const ProjectProvider = ({ children }) => {
       } catch (err) {
         if (err.processedError) {
           showErrorToast(err.processedError);
-          setError(err.processedError.message);
         } else {
           const fallbackMessage = 'Failed to update project.';
           showErrorToast({ message: fallbackMessage, severity: 'medium' });
-          setError(fallbackMessage);
         }
         throw err;
       } finally {
@@ -141,11 +139,9 @@ export const ProjectProvider = ({ children }) => {
       } catch (err) {
         if (err.processedError) {
           showErrorToast(err.processedError);
-          setError(err.processedError.message);
         } else {
           const fallbackMessage = 'Failed to delete project.';
           showErrorToast({ message: fallbackMessage, severity: 'medium' });
-          setError(fallbackMessage);
         }
         throw err;
       } finally {

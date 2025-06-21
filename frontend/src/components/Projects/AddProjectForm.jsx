@@ -1,5 +1,7 @@
 import { useState, useContext } from 'react';
 import ProjectContext from '../../context/ProjectContext';
+import { getErrorMessage } from '../../utils/errorHandler';
+import { PROJECT_NAME_MAX_LENGTH } from '../../config/constants';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import {
@@ -12,7 +14,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
-const AddProjectForm = ({ className, ...props }) => {
+const AddProjectForm = ({ className, onSuccess, ...props }) => {
   const [projectName, setProjectName] = useState('');
   const [error, setError] = useState('');
   const { addProject, isLoading } = useContext(ProjectContext);
@@ -28,8 +30,9 @@ const AddProjectForm = ({ className, ...props }) => {
     try {
       await addProject({ name: projectName.trim() });
       setProjectName('');
-    } catch{
-      setError('Failed to create project. Please try again.');
+      if (onSuccess) onSuccess();
+    } catch (err) {
+      setError(getErrorMessage(err, 'creating the project'));
     }
   };
 
@@ -44,9 +47,11 @@ const AddProjectForm = ({ className, ...props }) => {
       <CardContent>
         <form onSubmit={handleSubmit}>
           <div className="flex flex-col gap-6">
-            {error ? <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">
+            {error ? (
+              <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">
                 {error}
-              </div> : null}
+              </div>
+            ) : null}
             <div className="grid gap-3">
               <Label htmlFor="projectName">Project Name</Label>
               <Input
@@ -58,6 +63,7 @@ const AddProjectForm = ({ className, ...props }) => {
                 onChange={(e) => setProjectName(e.target.value)}
                 required
                 disabled={isLoading}
+                maxLength={PROJECT_NAME_MAX_LENGTH}
               />
             </div>
             <Button type="submit" className="w-full" disabled={isLoading}>

@@ -1,3 +1,5 @@
+const { PROJECT_NAME_MAX_LENGTH } = require('../config/constants');
+
 module.exports = (sequelize, DataTypes) => {
   const Project = sequelize.define(
     'Project',
@@ -17,8 +19,8 @@ module.exports = (sequelize, DataTypes) => {
         allowNull: false,
         validate: {
           len: {
-            args: [1, 255],
-            msg: 'Project name must be between 1 and 255 characters.',
+            args: [1, PROJECT_NAME_MAX_LENGTH],
+            msg: `Project name must be between 1 and ${PROJECT_NAME_MAX_LENGTH} characters.`,
           },
         },
       },

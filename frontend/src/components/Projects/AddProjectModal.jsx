@@ -20,7 +20,7 @@ const AddProjectModal = ({ isOpen, onClose }) => {
           <DialogTitle />
           <DialogDescription />
         </DialogHeader>
-        <AddProjectForm />
+        <AddProjectForm onSuccess={onClose} />
         <DialogFooter />
       </DialogContent>
     </Dialog>

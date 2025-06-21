@@ -1,4 +1,5 @@
 const { Project } = require('../models');
+const { PROJECT_NAME_MAX_LENGTH } = require('../config/constants');
 const {
   asyncHandler,
   ValidationError,
@@ -16,8 +17,8 @@ exports.createProject = asyncHandler(async (req, res) => {
   if (!name || name.trim() === '') {
     throw new ValidationError('Project name is required.');
   }
-  if (name.trim().length > 255) {
-    throw new ValidationError('Project name is too long.');
+  if (name.trim().length > PROJECT_NAME_MAX_LENGTH) {
+    throw new ValidationError(`Project name is too long. Maximum length is ${PROJECT_NAME_MAX_LENGTH} characters.`);
   }
 
   const newProject = await Project.create({
@@ -64,8 +65,10 @@ exports.updateProject = asyncHandler(async (req, res) => {
   if (!name || name.trim() === '') {
     throw new ValidationError('Project name is required.');
   }
-  if (name.trim().length > 255) {
-    throw new ValidationError('Project name is too long.');
+  if (name.trim().length > PROJECT_NAME_MAX_LENGTH) {
+    throw new ValidationError(
+      `Project name is too long. Maximum length is ${PROJECT_NAME_MAX_LENGTH} characters.`
+    );
   }
 
   // Update the project name and save changes

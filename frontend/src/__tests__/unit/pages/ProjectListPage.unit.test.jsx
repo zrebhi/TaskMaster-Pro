@@ -283,55 +283,60 @@ describe('ProjectListPage', () => {
     consoleSpy.mockRestore();
   });
 
-  it('renders empty state when no projects exist', () => {
+  it('renders empty state and allows opening the add modal', async () => {
     const projectContextValue = createProjectContextWithProjects([]);
-
-    renderWithMinimalProviders(
-      <MemoryRouter>
-        <TestProviders projectValue={projectContextValue}>
-          <ProjectListPage />
-        </TestProviders>
-      </MemoryRouter>
-    );
-
-    // Should show empty state message
-    expect(
-      screen.getByText('No projects yet. Get started by adding one!')
-    ).toBeInTheDocument();
-
-    // Should show AddProjectForm directly in empty state
-    expect(screen.getByTestId('add-project-form')).toBeInTheDocument();
-  });
-
-  it('handles add project modal functionality', async () => {
-    const projects = [createMockProject({ id: '1', name: 'Project One' })];
-    const projectContextValue = createProjectContextWithProjects(projects);
     const user = userEvent.setup();
-
-    renderWithMinimalProviders(
-      <MemoryRouter>
-        <TestProviders projectValue={projectContextValue}>
-          <ProjectListPage />
-        </TestProviders>
-      </MemoryRouter>
-    );
-
-    // Initially modal should not be visible
-    expect(screen.queryByTestId('add-project-modal')).not.toBeInTheDocument();
-
-    // Find and click the "Add Project" button to open modal
+ 
+     renderWithMinimalProviders(
+       <MemoryRouter>
+         <TestProviders projectValue={projectContextValue}>
+           <ProjectListPage />
+         </TestProviders>
+       </MemoryRouter>
+     );
+ 
+    // Find and click the "Add Project" button within the empty state
     const addProjectButton = screen.getByRole('button', {
       name: /add project/i,
     });
     await user.click(addProjectButton);
-
+ 
+    // Assert that clicking the button opens the modal
+    expect(screen.getByTestId('add-project-modal')).toBeInTheDocument();
+  });
+ 
+  it('handles opening and closing the add project modal via the toolbar', async () => {
+    const projects = [createMockProject({ id: '1', name: 'Project One' })];
+    const projectContextValue = createProjectContextWithProjects(projects);
+    const user = userEvent.setup();
+ 
+    renderWithMinimalProviders(
+      <MemoryRouter>
+        <TestProviders projectValue={projectContextValue}>
+          <ProjectListPage />
+        </TestProviders>
+      </MemoryRouter>
+    );
+ 
+    // Initially modal should not be visible
+    expect(screen.queryByTestId('add-project-modal')).not.toBeInTheDocument();
+ 
+    // Wait for the toolbar to appear, then find and click the "Add Project" button within it.
+    // We find all buttons with this name and click the one that appears alongside the table.
+    const addProjectButtons = await screen.findAllByRole('button', {
+      name: /add project/i,
+    });
+    // The button in the toolbar will be present since we have projects.
+    const toolbarAddButton = addProjectButtons[0];
+    await user.click(toolbarAddButton);
+ 
     // Verify modal is now open
     expect(screen.getByTestId('add-project-modal')).toBeInTheDocument();
-
-    // Click the close button to test the onClose callback (line 131)
+ 
+    // Find the close button inside the modal and click it
     const closeButton = screen.getByTestId('close-add-modal');
     await user.click(closeButton);
-
+ 
     // Verify modal is closed
     expect(screen.queryByTestId('add-project-modal')).not.toBeInTheDocument();
   });

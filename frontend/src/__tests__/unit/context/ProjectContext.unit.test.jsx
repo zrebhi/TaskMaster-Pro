@@ -80,7 +80,8 @@ describe('ProjectContext Unit Tests', () => {
     });
 
     expect(result.current.isLoading).toBe(false);
-    expect(result.current.error).toBe(expectedErrorMessage);
+    // We now expect the global error state to REMAIN null, as the error is handled locally.
+    expect(result.current.error).toBe(null);
     expect(thrownError).toBe(mockError);
     expect(mockShowErrorToast).toHaveBeenCalledWith(expectedToastCall);
   };
@@ -254,7 +255,8 @@ describe('ProjectContext Unit Tests', () => {
       expect(mocks.createProjectAPI).toHaveBeenCalledWith(projectData);
       expect(result.current.projects).toEqual([]);
       expect(result.current.isLoading).toBe(false);
-      expect(result.current.error).toBe(fallbackMessage);
+      // Global error state should not be set for action errors
+      expect(result.current.error).toBe(null);
       expect(thrownError).toBeInstanceOf(Error);
       expect(mockShowErrorToast).toHaveBeenCalledWith({
         message: fallbackMessage,
@@ -362,7 +364,8 @@ describe('ProjectContext Unit Tests', () => {
         updateData
       );
       expect(result.current.isLoading).toBe(false);
-      expect(result.current.error).toBe(fallbackMessage);
+      // Global error state should not be set for action errors
+      expect(result.current.error).toBe(null);
       expect(thrownError).toBeInstanceOf(Error);
       expect(mockShowErrorToast).toHaveBeenCalledWith({
         message: fallbackMessage,
@@ -447,7 +450,8 @@ describe('ProjectContext Unit Tests', () => {
 
       expect(mocks.deleteProjectAPI).toHaveBeenCalledWith(projectId);
       expect(result.current.isLoading).toBe(false);
-      expect(result.current.error).toBe(fallbackMessage);
+      // Global error state should not be set for action errors
+      expect(result.current.error).toBe(null);
       expect(thrownError).toBeInstanceOf(Error);
       expect(mockShowErrorToast).toHaveBeenCalledWith({
         message: fallbackMessage,

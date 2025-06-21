@@ -28,7 +28,7 @@ describe('AddProjectForm Unit Tests', () => {
 
     return renderWithMinimalProviders(
       <TestProjectProvider value={{ ...defaultProjectValue, ...projectValue }}>
-        <AddProjectForm />
+        <AddProjectForm onSuccess={projectValue.onSuccess} />
       </TestProjectProvider>
     );
   };
@@ -86,21 +86,23 @@ describe('AddProjectForm Unit Tests', () => {
     expect(mockAddProject).not.toHaveBeenCalled();
   });
 
-  test('calls addProject and clears input on successful submission', async () => {
-    mockAddProject.mockResolvedValue({ id: 'proj1', name: 'My New Project' });
+  it('calls addProject and clears input on successful submission', async () => {
+    mockAddProject.mockResolvedValue({ id: 'proj1', name: 'New Awesome Project' });
+    const mockOnSuccess = jest.fn();
 
-    renderAddProjectForm();
+    renderAddProjectForm({ onSuccess: mockOnSuccess });
 
     await fillForm(user, {
-      'project name': 'My New Project',
+      'project name': 'New Awesome Project',
     });
     await submitForm(user, /create project/i);
 
     await waitFor(() => {
-      expect(mockAddProject).toHaveBeenCalledWith({ name: 'My New Project' });
+      expect(mockAddProject).toHaveBeenCalledWith({ name: 'New Awesome Project' });
     });
 
     expect(screen.getByLabelText(/project name/i)).toHaveValue('');
+    expect(mockOnSuccess).toHaveBeenCalledTimes(1);
   });
 
   test('displays error message when addProject fails', async () => {
@@ -114,9 +116,10 @@ describe('AddProjectForm Unit Tests', () => {
     await submitForm(user, /create project/i);
 
     await waitFor(() => {
-      expect(
-        screen.getByText('Failed to create project. Please try again.')
-      ).toBeInTheDocument();
+      // Verify it displays the contextual error from getErrorMessage
+      const expectedMessage =
+        /an unexpected error occurred while creating the project/i;
+      expect(screen.getByText(expectedMessage)).toBeInTheDocument();
     });
   });
 
