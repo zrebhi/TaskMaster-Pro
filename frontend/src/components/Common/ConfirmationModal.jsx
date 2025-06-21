@@ -41,12 +41,18 @@ const ConfirmationModal = ({
           <DialogTitle id="confirmation-modal-title">
             {title || 'Confirm Action'}
           </DialogTitle>
-          <DialogDescription>{message || 'Are you sure?'}</DialogDescription>
+          <DialogDescription asChild>
+            <p className="text-muted-foreground text-sm break-all">
+              {message || 'Are you sure?'}
+            </p>
+          </DialogDescription>
         </DialogHeader>
         <DialogFooter>
           <Button
             type="button"
-            variant={confirmButtonStyle === 'danger' ? 'destructive' : 'default'}
+            variant={
+              confirmButtonStyle === 'danger' ? 'destructive' : 'default'
+            }
             onClick={onConfirm}
             disabled={isLoading}
             className="background-destructive"
