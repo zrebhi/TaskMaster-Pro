@@ -42,7 +42,7 @@ const ConfirmationModal = ({
         <DialogContent className="sm:max-w-[425px] solid-popover-bg">
           <DialogHeader>
             <DialogTitle>{title || 'Confirm Action'}</DialogTitle>
-            <DialogDescription className="break-all">
+            <DialogDescription>
               {message || 'Are you sure?'}
             </DialogDescription>
           </DialogHeader>
