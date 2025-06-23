@@ -5,13 +5,8 @@ import { PROJECT_NAME_MAX_LENGTH } from '../../config/constants';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
+  Input
+} from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
 const AddProjectForm = ({ className, onSuccess, ...props }) => {
@@ -37,42 +32,32 @@ const AddProjectForm = ({ className, onSuccess, ...props }) => {
   };
 
   return (
-    <Card className={cn('w-full max-w-sm', className)} {...props}>
-      <CardHeader>
-        <CardTitle>Create New Project</CardTitle>
-        <CardDescription>
-          Enter a name for your new project below
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit}>
-          <div className="flex flex-col gap-6">
-            {error ? (
-              <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">
-                {error}
-              </div>
-            ) : null}
-            <div className="grid gap-3">
-              <Label htmlFor="projectName">Project Name</Label>
-              <Input
-                id="projectName"
-                name="projectName"
-                type="text"
-                placeholder="e.g., Work Tasks, Home Renovation"
-                value={projectName}
-                onChange={(e) => setProjectName(e.target.value)}
-                required
-                disabled={isLoading}
-                maxLength={PROJECT_NAME_MAX_LENGTH}
-              />
-            </div>
-            <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? 'Creating...' : 'Create Project'}
-            </Button>
+    <form onSubmit={handleSubmit} className={cn('pt-4', className)} {...props}>
+      <div className="flex flex-col gap-6">
+        {error ? (
+          <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">
+            {error}
           </div>
-        </form>
-      </CardContent>
-    </Card>
+        ) : null}
+        <div className="grid gap-3">
+          <Label htmlFor="projectName">Project Name</Label>
+          <Input
+            id="projectName"
+            name="projectName"
+            type="text"
+            placeholder="e.g., Work Tasks, Home Renovation"
+            value={projectName}
+            onChange={(e) => setProjectName(e.target.value)}
+            required
+            disabled={isLoading}
+            maxLength={PROJECT_NAME_MAX_LENGTH}
+          />
+        </div>
+        <Button type="submit" className="w-full" disabled={isLoading}>
+          {isLoading ? 'Creating...' : 'Create Project'}
+        </Button>
+      </div>
+    </form>
   );
 };
 

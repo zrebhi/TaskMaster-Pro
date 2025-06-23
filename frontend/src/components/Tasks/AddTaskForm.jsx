@@ -3,11 +3,6 @@ import TaskContext from '../../context/TaskContext';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -103,82 +98,72 @@ const AddTaskForm = ({ projectId, className, onTaskAdded, ...props }) => {
   };
 
   return (
-    <Card className={cn('w-full max-w-md relative', className)} {...props}>
-      <CardHeader>
-        <CardTitle>Create New Task</CardTitle>
-        <CardDescription>
-          Add a new task to your project with details and priority
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit}>
-          <div className="flex flex-col gap-6">
-            {error ? <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">
-                {error}
-              </div> : null}
-            <div className="grid gap-3">
-              <Label htmlFor="taskTitle">Task Title</Label>
-              <Input
-                id="taskTitle"
-                name="title"
-                type="text"
-                placeholder="e.g., Review project proposal, Fix login bug"
-                value={title}
-                onChange={onChange}
-                required
-                disabled={isLoadingTasks}
-                maxLength={255}
-              />
-            </div>
-            <div className="grid gap-3">
-              <Label htmlFor="taskDueDate">Due Date (optional)</Label>
-              <Input
-                id="taskDueDate"
-                name="due_date"
-                type="date"
-                value={due_date}
-                onChange={onChange}
-                disabled={isLoadingTasks}
-              />
-            </div>
-            <div className="grid gap-3">
-              <Label htmlFor="taskDescription">Description (optional)</Label>
-              <Textarea
-                id="taskDescription"
-                name="description"
-                placeholder="Add more details about this task..."
-                value={description}
-                onChange={onChange}
-                disabled={isLoadingTasks}
-                rows={3}
-                className="resize-y"
-              />
-            </div>
-            <div className="grid gap-3">
-              <Label id="taskPriority" htmlFor="taskPriority">Priority</Label>
-              {/* <CustomSelect /> */}
-              <Select
-                value={priority.toString()}
-                onValueChange={onSelectChange}
-                disabled={isLoadingTasks}
-              >
-                <SelectTrigger aria-labelledby="taskPriority">
-                  <SelectValue placeholder="Select priority" />
-                </SelectTrigger>
-                <SelectContent className="solid-popover-bg">
-                  <SelectItem value="1">Low</SelectItem>
-                  <SelectItem value="2">Medium</SelectItem>
-                  <SelectItem value="3">High</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <Button type="submit" className="w-full" disabled={isLoadingTasks}>
-              {isLoadingTasks ? 'Creating...' : 'Create Task'}
-            </Button>
-          </div>
-        </form>
-      </CardContent>
-    </Card>
+    <form onSubmit={handleSubmit} className={cn('pt-4', className)} {...props}>
+      <div className="flex flex-col gap-6">
+        {error ? <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">
+            {error}
+          </div> : null}
+        <div className="grid gap-3">
+          <Label htmlFor="taskTitle">Task Title</Label>
+          <Input
+            id="taskTitle"
+            name="title"
+            type="text"
+            placeholder="e.g., Review project proposal, Fix login bug"
+            value={title}
+            onChange={onChange}
+            required
+            disabled={isLoadingTasks}
+            maxLength={255}
+          />
+        </div>
+        <div className="grid gap-3">
+          <Label htmlFor="taskDueDate">Due Date (optional)</Label>
+          <Input
+            id="taskDueDate"
+            name="due_date"
+            type="date"
+            value={due_date}
+            onChange={onChange}
+            disabled={isLoadingTasks}
+          />
+        </div>
+        <div className="grid gap-3">
+          <Label htmlFor="taskDescription">Description (optional)</Label>
+          <Textarea
+            id="taskDescription"
+            name="description"
+            placeholder="Add more details about this task..."
+            value={description}
+            onChange={onChange}
+            disabled={isLoadingTasks}
+            rows={3}
+            className="resize-y"
+          />
+        </div>
+        <div className="grid gap-3">
+          <Label id="taskPriority" htmlFor="taskPriority">Priority</Label>
+          {/* <CustomSelect /> */}
+          <Select
+            value={priority.toString()}
+            onValueChange={onSelectChange}
+            disabled={isLoadingTasks}
+          >
+            <SelectTrigger aria-labelledby="taskPriority">
+              <SelectValue placeholder="Select priority" />
+            </SelectTrigger>
+            <SelectContent className="solid-popover-bg">
+              <SelectItem value="1">Low</SelectItem>
+              <SelectItem value="2">Medium</SelectItem>
+              <SelectItem value="3">High</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <Button type="submit" className="w-full" disabled={isLoadingTasks}>
+          {isLoadingTasks ? 'Creating...' : 'Create Task'}
+        </Button>
+      </div>
+    </form>
   );
 };
 

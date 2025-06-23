@@ -6,6 +6,8 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogPortal,
+  DialogOverlay,
 } from '@/components/ui/dialog';
 
 /**
@@ -32,43 +34,38 @@ const ConfirmationModal = ({
   confirmText = 'Confirm',
   loadingText = 'Processing...',
   cancelText = 'Cancel',
-  confirmButtonStyle = 'danger',
 }) => {
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[425px] solid-popover-bg">
-        <DialogHeader>
-          <DialogTitle id="confirmation-modal-title">
-            {title || 'Confirm Action'}
-          </DialogTitle>
-          <DialogDescription asChild>
-            <p className="text-muted-foreground text-sm break-all">
+      <DialogPortal>
+        <DialogOverlay />
+        <DialogContent className="sm:max-w-[425px] solid-popover-bg">
+          <DialogHeader>
+            <DialogTitle>{title || 'Confirm Action'}</DialogTitle>
+            <DialogDescription className="break-all">
               {message || 'Are you sure?'}
-            </p>
-          </DialogDescription>
-        </DialogHeader>
-        <DialogFooter>
-          <Button
-            type="button"
-            variant={
-              confirmButtonStyle === 'danger' ? 'destructive' : 'default'
-            }
-            onClick={onConfirm}
-            disabled={isLoading}
-            className="background-destructive"
-          >
-            {isLoading ? loadingText : confirmText}
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={onClose}
-            disabled={isLoading}
-          >
-            {cancelText}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              type="button"
+              onClick={onConfirm}
+              disabled={isLoading}
+              className="background-destructive"
+            >
+              {isLoading ? loadingText : confirmText}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onClose}
+              disabled={isLoading}
+            >
+              {cancelText}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </DialogPortal>
     </Dialog>
   );
 };
