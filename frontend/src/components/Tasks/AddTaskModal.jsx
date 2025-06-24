@@ -4,26 +4,42 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import AddTaskForm from './AddTaskForm';
+import TaskForm from './TaskForm';
 
 const AddTaskModal = ({ isOpen, onClose, projectId }) => {
-  const { isLoadingTasks } = useContext(TaskContext);
+  const { isLoadingTasks, addTask } = useContext(TaskContext);
+
+  const handleAddTask = async (taskData) => {
+    if (!projectId) {
+      throw new Error('No project selected.');
+    }
+    await addTask(projectId, taskData);
+    onClose(); // Close the modal on successful submission
+  };
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !isLoadingTasks && onClose(open)}>
-      <DialogContent className="sm:max-w-[425px] solid-popover-bg">
+    <Dialog
+      open={isOpen}
+      onOpenChange={(open) => !isLoadingTasks && onClose(open)}
+    >
+      <DialogContent className="sm:max-w-[425px] solid-popover-bg flex flex-col max-h-[90vh]">
         <DialogHeader>
           <DialogTitle>Create New Task</DialogTitle>
           <DialogDescription>
             Add a new task to your project with details and priority. Click create when you{'\''}re done.
           </DialogDescription>
         </DialogHeader>
-        <AddTaskForm projectId={projectId} onTaskAdded={onClose} />
-        <DialogFooter />
+        <div className="overflow-y-auto -mr-4 pr-4">
+          <TaskForm
+            onSubmit={handleAddTask}
+            isLoading={isLoadingTasks}
+            submitButtonText="Create Task"
+            loadingButtonText="Creating..."
+          />
+        </div>
       </DialogContent>
     </Dialog>
   );

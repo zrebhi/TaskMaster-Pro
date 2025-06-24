@@ -40,11 +40,9 @@ const ConfirmationModal = ({
       <DialogPortal>
         <DialogOverlay />
         <DialogContent className="sm:max-w-[425px] solid-popover-bg">
-          <DialogHeader>
+          <DialogHeader className="min-w-0">
             <DialogTitle>{title || 'Confirm Action'}</DialogTitle>
-            <DialogDescription>
-              {message || 'Are you sure?'}
-            </DialogDescription>
+            <DialogDescription>{message || 'Are you sure?'}</DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button

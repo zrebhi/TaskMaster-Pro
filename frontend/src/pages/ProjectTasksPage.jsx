@@ -1,8 +1,5 @@
-// src/pages/ProjectTasksPage.jsx
-
 import { useState, useEffect, useCallback, useContext, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import AddTaskForm from '../components/Tasks/AddTaskForm';
 import EditTaskModal from '../components/Tasks/EditTaskModal';
 import ConfirmationModal from '../components/Common/ConfirmationModal';
 import AddTaskModal from '../components/Tasks/AddTaskModal';
@@ -51,13 +48,10 @@ const ProjectTasksPage = () => {
 
   const selectedProject = projects.find((p) => p.id.toString() === projectId);
 
-  const handleEditTask = useCallback(
-    (task) => {
-      setTaskToEdit(task);
-      setIsEditTaskModalOpen(true);
-    },
-    []
-  );
+  const handleEditTask = useCallback((task) => {
+    setTaskToEdit(task);
+    setIsEditTaskModalOpen(true);
+  }, []);
 
   const handleCloseEditTaskModal = useCallback(() => {
     setIsEditTaskModalOpen(false);
@@ -68,7 +62,9 @@ const ProjectTasksPage = () => {
     (task) => {
       try {
         if (!task) {
-          throw new Error('handleDeleteTask was called with a null or undefined task.');
+          throw new Error(
+            'handleDeleteTask was called with a null or undefined task.'
+          );
         }
         // Similar to handleEditTask, ensure correct task object is used.
         setTaskToDelete(task);
@@ -136,19 +132,16 @@ const ProjectTasksPage = () => {
       </Link>
 
       <div className="flex items-center justify-between gap-2">
-        <div className="flex flex-col gap-1">
+        <div className="flex flex-col gap-1 min-w-0">
           <h2 className="text-2xl font-semibold tracking-tight">
             {selectedProject.name}
           </h2>
-          <p className="text-muted-foreground">
-            Here{'\''}s a list of tasks for this project.
-          </p>
         </div>
       </div>
 
-      <hr className="my-4" />
+      {/* <hr className="my-4" /> */}
 
-      <div>
+      <div className="flex flex-col flex-1">
         {isLoadingTasks ? <p>Loading tasks...</p> : null}
         {taskError ? <p className="text-destructive">{taskError}</p> : null}
         {!isLoadingTasks &&
@@ -183,8 +176,18 @@ const ProjectTasksPage = () => {
               />
             </div>
           ) : (
-            <div className="flex items-center flex-col">
-              <AddTaskForm projectId={projectId} />
+            <div className="flex flex-1 items-center justify-center rounded-lg border border-dashed shadow-sm">
+              <div className="flex flex-col items-center gap-2 text-center">
+                <h3 className="text-2xl font-bold tracking-tight">
+                  You have no task
+                </h3>
+                <p className="text-sm text-muted-foreground mb-3">
+                  Get started by creating a new Task.
+                </p>
+                <Button onClick={() => setIsAddTaskModalOpen(true)}>
+                  <Plus className="mr-2 h-4 w-4" /> Add Task
+                </Button>
+              </div>
             </div>
           ))}
       </div>
