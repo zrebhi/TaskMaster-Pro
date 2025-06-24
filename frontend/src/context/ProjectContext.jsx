@@ -1,4 +1,4 @@
-import { createContext, useState, useContext, useCallback } from 'react';
+import { createContext, useState, useContext, useCallback, useRef } from 'react';
 import AuthContext from './AuthContext';
 import {
   getAllProjects,
@@ -14,26 +14,31 @@ export const ProjectProvider = ({ children }) => {
   const [projects, setProjects] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
-
+  const isFetching = useRef(false); // Ref to prevent re-entrant calls
+ 
   const { token, isAuthenticated } = useContext(AuthContext);
   const { showErrorToast, showSuccess } = useError();
-
-  /**
-   * Fetches all projects for the authenticated user and updates the state.
-   */
+ 
+   /**
+    * Fetches all projects for the authenticated user and updates the state.
+    */
   const fetchProjects = useCallback(async () => {
-    if (!isAuthenticated || !token) {
-      setProjects([]);
-      setIsLoading(false); // ensure loading state is reset
+    // If another fetch is already in progress, or if auth isn't ready, exit.
+    if (isFetching.current || !isAuthenticated || !token) {
+      // setProjects([]);
+      // setIsLoading(false); // ensure loading state is reset
       return;
     }
-
+ 
+    isFetching.current = true; // Set the flag
+    
     setIsLoading(true);
     setError(null);
     try {
       const fetchedProjects = await getAllProjects();
       setProjects(fetchedProjects);
     } catch (err) {
+      if (err.isSuppressed) return;
       if (err.processedError) {
         showErrorToast(err.processedError);
         setError(err.processedError.message);
@@ -44,6 +49,7 @@ export const ProjectProvider = ({ children }) => {
       }
     } finally {
       setIsLoading(false);
+      isFetching.current = false; // Reset the flag
     }
   }, [token, isAuthenticated, showErrorToast]);
 

@@ -141,7 +141,8 @@ const ProjectListPage = () => {
         isLoading={isDeleting}
         confirmText="Delete"
         loadingText="Deleting..."
-        confirmButtonStyle="danger"      />
+        confirmButtonStyle="danger"
+      />
     </div>
   );
 };

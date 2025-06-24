@@ -1,5 +1,5 @@
 import { createContext, useState, useEffect } from 'react';
-import { setAuthContext } from '../services/apiClient';
+import { setAuthContext, resetLogoutFlag } from '../services/apiClient';
 
 const AuthContext = createContext(null);
 
@@ -52,6 +52,7 @@ export const AuthProvider = ({ children }) => {
     setToken(newToken);
     setUser(userData);
     setIsAuthenticated(true);
+    resetLogoutFlag();
   };
 
   const logout = () => {

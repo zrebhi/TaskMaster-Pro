@@ -1,4 +1,4 @@
-import { createContext, useState, useCallback, useContext } from 'react';
+import { createContext, useState, useCallback, useContext, useRef } from 'react';
 import {
   getTasksForProjectAPI,
   createTaskInProjectAPI,
@@ -19,6 +19,7 @@ export const TaskProvider = ({ children }) => {
 
   const { showErrorToast } = useError();
   const { token, isAuthenticated } = useContext(AuthContext);
+  const isFetching = useRef(false); // Ref to prevent re-entrant calls
 
   const fetchTasks = useCallback(
     async (projectId) => {
@@ -28,12 +29,11 @@ export const TaskProvider = ({ children }) => {
         return;
       }
 
-      if (!isAuthenticated || !token) {
-        setTasks([]);
-        setCurrentProjectIdForTasks(null);
+      if (isFetching.current || !isAuthenticated || !token) {
         return;
       }
 
+      isFetching.current = true;
       setIsLoadingTasks(true);
       setTaskError(null);
       setCurrentProjectIdForTasks(projectId);
@@ -42,6 +42,7 @@ export const TaskProvider = ({ children }) => {
         const fetchedTasks = await getTasksForProjectAPI(projectId);
         setTasks(fetchedTasks);
       } catch (err) {
+        if (err.isSuppressed) return;
         if (err.processedError) {
           showErrorToast(err.processedError);
           setTaskError(err.processedError.message);
@@ -53,6 +54,7 @@ export const TaskProvider = ({ children }) => {
         setTasks([]);
       } finally {
         setIsLoadingTasks(false);
+        isFetching.current = false;
       }
     },
     [token, isAuthenticated, showErrorToast]

@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { handleApiError } from '../utils/errorHandler';
+import { handleApiError, isAuthError } from '../utils/errorHandler';
 
 /**
  * Centralized API client with global error handling
@@ -14,6 +14,15 @@ const apiClient = axios.create({
 
 // Store auth context reference for token access and logout functionality
 let authContextRef = null;
+let isLoggingOut = false; // Synchronous flag to prevent duplicate logouts
+
+/**
+ * Resets the logout flag. This should be called on a successful login
+ * to ensure the error handling works correctly for the new session.
+ */
+export const resetLogoutFlag = () => {
+  isLoggingOut = false;
+};
 
 /**
  * Set the auth context reference for token access and logout functionality
@@ -45,6 +54,17 @@ apiClient.interceptors.response.use(
     return response;
   },
   (error) => {
+    // Check for an auth error to de-duplicate logout actions
+    if (isAuthError(error)) {
+      if (isLoggingOut) {
+        // A logout is already in progress. Suppress this error to prevent
+        // duplicate toasts and logout calls.
+        error.isSuppressed = true;
+        return Promise.reject(error);
+      }
+      isLoggingOut = true;
+    }
+
     // Global error handling
     const context = error.config?.metadata?.context || 'performing this action';
     const errorResult = handleApiError(error, context, authContextRef?.logout);
