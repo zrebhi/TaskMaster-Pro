@@ -53,6 +53,7 @@ export const columns = [
   },
   {
     id: 'actions',
+    header: () => <span className="sr-only">Actions</span>,
     cell: ({ row, table }) => {
       const meta = table.options.meta;
       return (

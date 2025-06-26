@@ -6,6 +6,8 @@ import { priorities, statuses } from '../../../data/taskUIData';
 import { DataTableColumnHeader } from '../../ui/tables/data-table-column-header';
 import { DataTableRowActions } from '../../ui/tables/data-table-row-actions';
 
+/** @file Defines the column structure for the Tasks data table. */
+
 // Helper function for formatting dates, can be moved to a utils file
 const formatDate = (dateString) => {
   if (!dateString) return 'N/A';
@@ -47,7 +49,7 @@ export const columns = [
       <DataTableColumnHeader column={column} title="Title" />
     ),
     meta: {
-      headerTitle: "Title",
+      headerTitle: 'Title',
     },
     cell: ({ row }) => {
       return (
@@ -66,7 +68,7 @@ export const columns = [
       <DataTableColumnHeader column={column} title="Status" />
     ),
     meta: {
-      headerTitle: "Status",
+      headerTitle: 'Status',
     },
     cell: ({ row }) => {
       const status = statuses.find(
@@ -101,11 +103,9 @@ export const columns = [
       <DataTableColumnHeader column={column} title="Priority" />
     ),
     meta: {
-      headerTitle: "Priority",
+      headerTitle: 'Priority',
     },
     cell: ({ row }) => {
-      // Assuming priority is a number (1: Low, 2: Medium, 3: High)
-      // and priorities array is structured like: [{ value: 1, label: "Low", icon: Comp}, ...]
       const priorityValue = row.getValue('priority');
       const priority = priorities.find((p) => p.value === priorityValue);
 
@@ -123,15 +123,12 @@ export const columns = [
           {/* {priority.icon && (
             <priority.icon className="text-muted-foreground h-4 w-4" />
           )} */}
-          {/* Use Badge for visual consistency if desired */}
           <Badge
-            variant={
-              priority.value === 3
-                ? 'destructive_table'
-                : priority.value === 1
-                  ? 'outline'
-                  : 'default'
-            }
+            variant={priority.value === 3
+              ? 'destructive_table'
+              : priority.value === 1
+                ? 'outline'
+                : 'default'}
           >
             {priority.label}
           </Badge>
@@ -148,7 +145,7 @@ export const columns = [
       <DataTableColumnHeader column={column} title="Due Date" />
     ),
     meta: {
-      headerTitle: "Due Date",
+      headerTitle: 'Due Date',
     },
     cell: ({ row }) => {
       const dueDate = row.getValue('due_date');
@@ -157,9 +154,9 @@ export const columns = [
   },
   {
     id: 'actions',
+    header: () => <span className="sr-only">Actions</span>,
     cell: ({ row, table }) => {
-      // Access onEdit and onDelete from table.options.meta
-      // This assumes they are passed to DataTable and then to table options
+      /** @type {{ onEdit: (task: object) => void, onDelete: (task: object) => void }} */
       const meta = table.options.meta;
       return (
         <DataTableRowActions

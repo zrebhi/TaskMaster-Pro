@@ -1,3 +1,4 @@
+//@ts-check
 import { useState, useEffect, useCallback, useContext, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import EditTaskModal from '../components/Tasks/EditTaskModal';
@@ -13,6 +14,12 @@ import { DataTableToolbar } from '../components/ui/tables/data-table-toolbar';
 import { columns as taskTableColumns } from '../components/Tasks/Table/columns';
 import { Button } from '../components/ui/button';
 import { Plus } from 'lucide-react';
+
+/**
+ * @typedef {object} TableMeta
+ * @property {(task: object) => void} onEdit - Handler to trigger the edit modal.
+ * @property {(task: object) => void} onDelete - Handler to trigger the delete confirmation modal.
+ */
 
 const ProjectTasksPage = () => {
   const { projectId } = useParams();
@@ -48,6 +55,10 @@ const ProjectTasksPage = () => {
 
   const selectedProject = projects.find((p) => p.id.toString() === projectId);
 
+  /**
+   * Opens the edit modal and sets the task to be edited.
+   * @param {object} task The full task object from the table row.
+   */
   const handleEditTask = useCallback((task) => {
     setTaskToEdit(task);
     setIsEditTaskModalOpen(true);
@@ -58,6 +69,10 @@ const ProjectTasksPage = () => {
     setTaskToEdit(null);
   }, []);
 
+  /**
+   * Opens the delete confirmation modal and sets the task to be deleted.
+   * @param {object} task The full task object from the table row.
+   */
   const handleDeleteTask = useCallback(
     (task) => {
       try {
@@ -166,6 +181,7 @@ const ProjectTasksPage = () => {
               <DataTable
                 columns={taskTableColumns}
                 data={transformedTasks}
+                /** @type {TableMeta} */
                 meta={{
                   onEdit: handleEditTask,
                   onDelete: handleDeleteTask,

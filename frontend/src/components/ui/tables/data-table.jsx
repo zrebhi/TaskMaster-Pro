@@ -1,6 +1,6 @@
-"use client"
+'use client';
 
-import * as React from "react"
+import * as React from 'react';
 import {
   flexRender,
   getCoreRowModel,
@@ -10,7 +10,7 @@ import {
   getPaginationRowModel,
   getSortedRowModel,
   useReactTable,
-} from "@tanstack/react-table"
+} from '@tanstack/react-table';
 
 import {
   Table,
@@ -19,8 +19,20 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "../table"
+} from '../table';
 
+/**
+ * A reusable data table component powered by Tanstack Table.
+ * @template TData
+ * @template TValue
+ * @param {object} props
+ * @param {import("@tanstack/react-table").ColumnDef<TData, TValue>[]} props.columns - The column definitions for the table.
+ * @param {TData[]} props.data - The data to be displayed in the table.
+ * @param {{ onEdit?: (item: TData) => void, onDelete?: (item: TData) => void }} [props.meta] - Optional object to pass action handlers to the table.
+ * @param {import("@tanstack/react-table").VisibilityState} [props.columnVisibility] - State object controlling column visibility.
+ * @param {import("@tanstack/react-table").OnChangeFn<import("@tanstack/react-table").VisibilityState>} [props.onColumnVisibilityChange] - State setter for column visibility.
+ * @param {(table: import("@tanstack/react-table").Table<TData>) => void} [props.onTableInstanceReady] - Callback to get the table instance.
+ */
 export function DataTable({
   columns,
   data,
@@ -29,9 +41,9 @@ export function DataTable({
   columnVisibility: controlledColumnVisibility,
   onColumnVisibilityChange: controlledOnColumnVisibilityChange,
 }) {
-  const [rowSelection, setRowSelection] = React.useState({})
-  const [columnFilters, setColumnFilters] = React.useState([])
-  const [sorting, setSorting] = React.useState([])
+  const [rowSelection, setRowSelection] = React.useState({});
+  const [columnFilters, setColumnFilters] = React.useState([]);
+  const [sorting, setSorting] = React.useState([]);
 
   const table = useReactTable({
     data,
@@ -59,14 +71,14 @@ export function DataTable({
     getSortedRowModel: getSortedRowModel(),
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
-  })
+  });
 
   // Call the callback prop with the table instance
   React.useEffect(() => {
     if (table && onTableInstanceReady) {
-      onTableInstanceReady(table)
+      onTableInstanceReady(table);
     }
-  }, [table, onTableInstanceReady])
+  }, [table, onTableInstanceReady]);
 
   return (
     <div className="flex flex-col gap-4">
@@ -86,7 +98,7 @@ export function DataTable({
                             header.getContext()
                           )}
                     </TableHead>
-                  )
+                  );
                 })}
               </TableRow>
             ))}
@@ -96,7 +108,7 @@ export function DataTable({
               table.getRowModel().rows.map((row) => (
                 <TableRow
                   key={row.id}
-                  data-state={row.getIsSelected() && "selected"}
+                  data-state={row.getIsSelected() && 'selected'}
                 >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id}>
@@ -123,5 +135,5 @@ export function DataTable({
       </div>
       {/* <DataTablePagination table={table} /> */}
     </div>
-  )
+  );
 }
