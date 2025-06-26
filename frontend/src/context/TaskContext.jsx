@@ -1,4 +1,10 @@
-import { createContext, useState, useCallback, useContext, useRef } from 'react';
+import {
+  createContext,
+  useState,
+  useCallback,
+  useContext,
+  useRef,
+} from 'react';
 import {
   getTasksForProjectAPI,
   createTaskInProjectAPI,
@@ -164,18 +170,18 @@ export const TaskProvider = ({ children }) => {
       try {
         await deleteTaskById(taskId);
 
-        // Remove the task from local state
+        // Remove the task from local state on successful deletion
         setTasks((prevTasks) => prevTasks.filter((task) => task.id !== taskId));
       } catch (err) {
+        // On failure, show a toast but do not set a page-level error.
+        // This prevents the task list from disappearing on a failed delete.
         if (err.processedError) {
           showErrorToast(err.processedError);
-          setTaskError(err.processedError.message);
         } else {
           const fallbackMessage = 'Failed to delete task. Please try again.';
           showErrorToast({ message: fallbackMessage, severity: 'medium' });
-          setTaskError(fallbackMessage);
         }
-        throw err; // Re-throw so the component can handle it
+        throw err; // Re-throw so the component/modal can handle it
       } finally {
         setIsLoadingTasks(false);
       }
