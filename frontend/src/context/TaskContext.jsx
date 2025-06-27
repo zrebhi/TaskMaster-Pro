@@ -84,28 +84,23 @@ export const TaskProvider = ({ children }) => {
         return;
       }
 
-      setIsLoadingTasks(true);
-      setTaskError(null);
-
       try {
         const newTask = await createTaskInProjectAPI(projectId, taskData);
 
-        // Optimistic update: add the new task to the current tasks if we're viewing the same project
+        // Add the new task to the current tasks if we're viewing the same project
         if (currentProjectIdForTasks === projectId) {
           setTasks((prevTasks) => [...prevTasks, newTask]);
         }
+        return newTask; // Return the new task on success
       } catch (err) {
+        // On failure, show a toast but do not set a page-level error.
         if (err.processedError) {
           showErrorToast(err.processedError);
-          setTaskError(err.processedError.message);
         } else {
           const fallbackMessage = 'Failed to create task. Please try again.';
           showErrorToast({ message: fallbackMessage, severity: 'medium' });
-          setTaskError(fallbackMessage);
         }
         throw err; // Re-throw so the form can handle it
-      } finally {
-        setIsLoadingTasks(false);
       }
     },
     [token, isAuthenticated, showErrorToast, currentProjectIdForTasks]
@@ -123,8 +118,8 @@ export const TaskProvider = ({ children }) => {
         return;
       }
 
-      setIsLoadingTasks(true);
-      setTaskError(null);
+      // No loading indicator for this action to keep UI responsive
+      // setTaskError(null); // Don't clear page-level errors for this
 
       try {
         const updatedTask = await updateTaskDetails(taskId, taskData);
@@ -136,17 +131,15 @@ export const TaskProvider = ({ children }) => {
           )
         );
       } catch (err) {
+        // On failure, show a toast but do not set a page-level error.
         if (err.processedError) {
           showErrorToast(err.processedError);
-          setTaskError(err.processedError.message);
         } else {
           const fallbackMessage = 'Failed to update task. Please try again.';
           showErrorToast({ message: fallbackMessage, severity: 'medium' });
-          setTaskError(fallbackMessage);
         }
-        throw err; // Re-throw so the component can handle it
-      } finally {
-        setIsLoadingTasks(false);
+        // Re-throw so the calling component can react (e.g., stop a loading spinner)
+        throw err;
       }
     },
     [token, isAuthenticated, showErrorToast]

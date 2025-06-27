@@ -388,33 +388,6 @@ describe('TaskContext', () => {
       expect(result.current.currentProjectIdForTasks).toBe(currentProjectId);
     });
 
-    test('manages loading state correctly during task creation', async () => {
-      const projectId = 'project-123';
-      const taskData = { title: 'New Task' };
-      const newTask = createMockTask();
-
-      let resolvePromise;
-      const promise = new Promise((resolve) => {
-        resolvePromise = resolve;
-      });
-      createTaskInProjectAPI.mockReturnValue(promise);
-
-      const { result } = renderTaskContext();
-
-      act(() => {
-        result.current.addTask(projectId, taskData);
-      });
-
-      expect(result.current.isLoadingTasks).toBe(true);
-      expect(result.current.taskError).toBeNull();
-
-      await act(async () => {
-        resolvePromise(newTask);
-        await promise;
-      });
-
-      expect(result.current.isLoadingTasks).toBe(false);
-    });
   });
 
   describe('updateTask Function', () => {

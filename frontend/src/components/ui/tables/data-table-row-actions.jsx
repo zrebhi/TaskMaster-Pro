@@ -1,24 +1,15 @@
 "use client"
 
 import { MoreHorizontal } from "lucide-react"
-
-import { Button } from "../button" // Path relative to frontend/src/components/ui/tables/
+import { Button } from "../button"
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "../dropdown-menu" // Path relative to frontend/src/components/ui/tables/
+} from "../dropdown-menu"
 
-// Props onEdit and onDelete will be passed down from the columns definition
-export function DataTableRowActions({
-  row,
-  onEdit,
-  onDelete,
-}) {
-  const task = row.original // Access the task data
-
+// The component is now a pure wrapper. It only provides the menu structure.
+export function DataTableRowActions({ children }) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -31,17 +22,9 @@ export function DataTableRowActions({
           <span className="sr-only">Open menu</span>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-[160px] solid-popover-bg">
-        <DropdownMenuItem onClick={() => onEdit && onEdit(task)}>
-          Edit
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem
-          onClick={() => onDelete && onDelete(task)}
-          className="text-destructive focus:bg-destructive/10 focus:text-destructive hover:bg-destructive/10 hover:text-destructive"
-        >
-          Delete
-        </DropdownMenuItem>
+      {/* The specific actions are passed in from the parent */}
+      <DropdownMenuContent align="end" className="w-[180px] solid-popover-bg">
+        {children}
       </DropdownMenuContent>
     </DropdownMenu>
   )

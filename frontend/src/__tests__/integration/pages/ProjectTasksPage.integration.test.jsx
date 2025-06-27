@@ -417,6 +417,166 @@ describe('Integration Test: ProjectTasksPage', () => {
       // The old title should be gone
       expect(screen.queryByText(task.title)).not.toBeInTheDocument();
     });
+describe('Task Completion Flow', () => {
+      // Use the same project setup
+      const project = createMockProject({ id: 'proj-1' });
+
+      // Test 1: The "Happy Path"
+      it('should call updateTask, apply a line-through style, and update the action text when a task is marked as complete', async () => {
+        // GIVEN: An incomplete task and a mock update function
+        const incompleteTask = createMockTask({
+          id: 'task-complete-1',
+          title: 'Finish the report',
+          is_completed: false,
+          project_id: 'proj-1',
+        });
+        const updateTaskMock = jest.fn().mockResolvedValue({});
+        const updatedTask = { ...incompleteTask, is_completed: true };
+
+        const { rerender } = renderComponent(
+          { projects: [project] },
+          {
+            tasks: [incompleteTask],
+            updateTask: updateTaskMock,
+            currentProjectIdForTasks: 'proj-1',
+          }
+        );
+
+        // WHEN: The user marks the task as complete
+        const row = screen.getByText(incompleteTask.title).closest('tr');
+        await user.click(within(row).getByRole('button', { name: /open menu/i }));
+        await user.click(
+          await screen.findByRole('menuitem', { name: /mark as complete/i })
+        );
+
+        // THEN: The context function is called correctly
+        await waitFor(() => {
+          expect(updateTaskMock).toHaveBeenCalledWith(incompleteTask.id, {
+            is_completed: true,
+          });
+        });
+
+        // AND: The UI updates after the state changes (simulated via rerender)
+        rerender(
+            <MemoryRouter initialEntries={['/projects/proj-1']}>
+                <TestProviders
+                    authValue={createAuthenticatedContext()}
+                    projectValue={createMockProjectContext({ projects: [project] })}
+                    taskValue={createMockTaskContext({
+                        tasks: [updatedTask], // Simulate the state update
+                        updateTask: updateTaskMock,
+                        currentProjectIdForTasks: 'proj-1',
+                    })}
+                    errorValue={createMockErrorContext()}
+                >
+                    <Routes><Route path="/projects/:projectId" element={<ProjectTasksPage />} /></Routes>
+                </TestProviders>
+            </MemoryRouter>
+        );
+
+        expect(row).toHaveAttribute('data-completed', 'true');
+        expect(within(row).getByText('Done')).toBeInTheDocument();
+
+        // Assert the behavioral text change
+        await user.click(within(row).getByRole('button', { name: /open menu/i }));
+        expect(
+          await screen.findByRole('menuitem', { name: /mark as incomplete/i })
+        ).toBeInTheDocument();
+      });
+
+      // Test 2: The "Reverse Path"
+      it('should correctly mark a completed task as incomplete', async () => {
+        // GIVEN: A completed task
+        const completedTask = createMockTask({
+          id: 'task-uncomplete-1',
+          title: 'A finished task',
+          is_completed: true,
+          project_id: 'proj-1',
+        });
+        const updateTaskMock = jest.fn().mockResolvedValue({});
+
+        renderComponent(
+          { projects: [project] },
+          {
+            tasks: [completedTask],
+            updateTask: updateTaskMock,
+            currentProjectIdForTasks: 'proj-1',
+          }
+        );
+
+        // WHEN: The user marks the task as incomplete
+        const row = screen.getByText(completedTask.title).closest('tr');
+        await user.click(within(row).getByRole('button', { name: /open menu/i }));
+        await user.click(
+          await screen.findByRole('menuitem', { name: /mark as incomplete/i })
+        );
+
+        // THEN: The context function is called with the correct payload
+        await waitFor(() => {
+          expect(updateTaskMock).toHaveBeenCalledWith(completedTask.id, {
+            is_completed: false,
+          });
+        });
+      });
+
+      // Test 3: The "Failure Path"
+      it('should display a toast notification and not change the UI if marking a task as complete fails', async () => {
+        // GIVEN: The API is mocked to fail, and we are using the REAL TaskProvider
+        const error = new Error('Update Failed');
+        error.processedError = {
+          message: 'API Error: Could not update',
+          severity: 'high',
+        };
+        const {
+            updateTaskDetails, // This is the function we need to mock now
+            getTasksForProjectAPI,
+        } = require('../../../services/taskApiService');
+        /** @type {jest.Mock} */ (updateTaskDetails).mockRejectedValue(error);
+        const task = createMockTask({
+            id: 'task-fail-1',
+            title: 'Task that will fail',
+            is_completed: false,
+            project_id: 'proj-1',
+        });
+        /** @type {jest.Mock} */ (getTasksForProjectAPI).mockResolvedValue([task]);
+        
+        const showErrorToastMock = jest.fn();
+
+        // Render with the real provider to test the real error handling logic
+        render(
+          <MemoryRouter initialEntries={['/projects/proj-1']}>
+            <AuthContext.Provider value={createAuthenticatedContext()}>
+              <ErrorContext.Provider value={createMockErrorContext({ showErrorToast: showErrorToastMock })}>
+                <ProjectContext.Provider value={createMockProjectContext({ projects: [project] })}>
+                  <TaskProvider>
+                    <Routes><Route path="/projects/:projectId" element={<ProjectTasksPage />} /></Routes>
+                  </TaskProvider>
+                </ProjectContext.Provider>
+              </ErrorContext.Provider>
+            </AuthContext.Provider>
+          </MemoryRouter>
+        );
+        
+        // WHEN: The user tries to mark the task as complete
+        const row = (await screen.findByText(task.title)).closest('tr');
+        await user.click(within(row).getByRole('button', { name: /open menu/i }));
+        await user.click(await screen.findByRole('menuitem', { name: /mark as complete/i }));
+
+        // THEN: A toast notification is shown
+        await waitFor(() => {
+            expect(showErrorToastMock).toHaveBeenCalledWith(error.processedError);
+        });
+
+        // AND: The UI has NOT changed
+        const titleSpan = screen.getByText(task.title);
+        expect(titleSpan).not.toHaveClass('line-through'); // Check style for absence
+        
+        // Check data-attribute for state
+        const taskRow = screen.getByText(task.title).closest('tr');
+        expect(taskRow).toHaveAttribute('data-completed', 'false');
+        expect(within(taskRow).getByText('To Do')).toBeInTheDocument();
+      });
+    });
   });
 
   // Test suite for the "Add Task" flow.

@@ -1,10 +1,16 @@
 'use client';
 
 import { Badge } from '../../ui/badge';
+import { cn } from '../../../lib/utils';
 // import { Checkbox } from "../../ui/checkbox"
 import { priorities, statuses } from '../../../data/taskUIData';
 import { DataTableColumnHeader } from '../../ui/tables/data-table-column-header';
 import { DataTableRowActions } from '../../ui/tables/data-table-row-actions';
+import {
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+} from '../../ui/dropdown-menu';
+import { Edit, Trash2, Check, Undo2 } from 'lucide-react';
 
 /** @file Defines the column structure for the Tasks data table. */
 
@@ -54,7 +60,14 @@ export const columns = [
     cell: ({ row }) => {
       return (
         <div className="flex">
-          <span className="max-w-[300px] md:max-w-[400px] truncate font-medium">
+          <span
+            className={cn(
+              'max-w-[300px] md:max-w-[400px] truncate font-medium',
+              {
+                'line-through text-muted-foreground': row.original.is_completed,
+              }
+            )}
+          >
             {row.getValue('title')}
           </span>
         </div>
@@ -156,16 +169,39 @@ export const columns = [
     id: 'actions',
     header: () => <span className="sr-only">Actions</span>,
     cell: ({ row, table }) => {
-      /** @type {{ onEdit: (task: object) => void, onDelete: (task: object) => void }} */
+      const task = row.original;
       const meta = table.options.meta;
+
       return (
-        <DataTableRowActions
-          row={row}
-          onEdit={meta?.onEdit}
-          onDelete={meta?.onDelete}
-        />
+        <DataTableRowActions>
+          <DropdownMenuItem onClick={() => meta?.onEdit(task)}>
+            <Edit className="mr-2 h-4 w-4" />
+            <span>Edit</span>
+          </DropdownMenuItem>
+
+          <DropdownMenuItem onClick={() => meta?.onToggleComplete(task)}>
+            {task.is_completed ? (
+              <Undo2 className="mr-2 h-4 w-4" />
+            ) : (
+              <Check className="mr-2 h-4 w-4" />
+            )}
+            <span>
+              {task.is_completed ? 'Mark as Incomplete' : 'Mark as Complete'}
+            </span>
+          </DropdownMenuItem>
+
+          <DropdownMenuSeparator />
+
+          <DropdownMenuItem
+            onClick={() => meta?.onDelete(task)}
+            className="text-destructive focus:bg-destructive/10 focus:text-destructive"
+          >
+            <Trash2 className="mr-2 h-4 w-4" />
+            <span>Delete</span>
+          </DropdownMenuItem>
+        </DataTableRowActions>
       );
     },
-    enableHiding: false, // Actions column should not be toggleable
+    enableHiding: false,
   },
 ];

@@ -2,6 +2,11 @@
 
 import { DataTableColumnHeader } from '../../ui/tables/data-table-column-header';
 import { DataTableRowActions } from '../../ui/tables/data-table-row-actions';
+import {
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+} from '../../ui/dropdown-menu';
+import { Edit, Trash2 } from 'lucide-react';
 
 // Helper function for formatting dates
 const formatDate = (dateString) => {
@@ -55,13 +60,26 @@ export const columns = [
     id: 'actions',
     header: () => <span className="sr-only">Actions</span>,
     cell: ({ row, table }) => {
+      const project = row.original;
       const meta = table.options.meta;
+
       return (
-        <DataTableRowActions
-          row={row}
-          onEdit={meta?.onEdit}
-          onDelete={meta?.onDelete}
-        />
+        <DataTableRowActions>
+          <DropdownMenuItem onClick={() => meta?.onEdit(project)}>
+            <Edit className="mr-2 h-4 w-4" />
+            <span>Edit</span>
+          </DropdownMenuItem>
+
+          <DropdownMenuSeparator />
+
+          <DropdownMenuItem
+            onClick={() => meta?.onDelete(project)}
+            className="text-destructive focus:bg-destructive/10 focus:text-destructive"
+          >
+            <Trash2 className="mr-2 h-4 w-4" />
+            <span>Delete</span>
+          </DropdownMenuItem>
+        </DataTableRowActions>
       );
     },
     enableHiding: false,

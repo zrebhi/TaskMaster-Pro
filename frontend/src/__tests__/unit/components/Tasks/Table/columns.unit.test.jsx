@@ -137,43 +137,4 @@ describe('Task Table Columns: Unit Tests', () => {
       expect(screen.getByText('N/A')).toBeInTheDocument();
     });
   });
-
-  describe('Actions Cell', () => {
-    const actionsColumn = getColumn('actions');
-    const CellComponent = actionsColumn.cell;
-    // We need to require the component to access the mock since it's defined via jest.mock().
-    const {
-      DataTableRowActions,
-    } = require('../../../../../components/ui/tables/data-table-row-actions');
-
-    it('should pass the onEdit and onDelete handlers from table.meta to DataTableRowActions props', () => {
-      // Arrange: Set up mock handlers and the table structure that the cell expects.
-      const mockOnEdit = jest.fn();
-      const mockOnDelete = jest.fn();
-      const mockRow = { original: { id: 1, title: 'Test Task' } };
-      const mockTable = {
-        options: {
-          meta: {
-            onEdit: mockOnEdit,
-            onDelete: mockOnDelete,
-          },
-        },
-      };
-
-      // Act: Render the cell.
-      render(<CellComponent row={mockRow} table={mockTable} />);
-
-      // Assert: Verify that the DataTableRowActions component was rendered and called with the correct props.
-      expect(screen.getByTestId('row-actions')).toBeInTheDocument();
-      expect(DataTableRowActions).toHaveBeenCalled();
-
-      // @ts-ignore - We know DataTableRowActions is a mock, but TS can't infer it in a JS file.
-      // This allows us to safely access the `.mock` property for inspection.
-      const props = DataTableRowActions.mock.calls[0][0];
-
-      expect(props.onEdit).toBe(mockOnEdit);
-      expect(props.onDelete).toBe(mockOnDelete);
-      expect(props.row).toBe(mockRow);
-    });
-  });
 });

@@ -19,6 +19,7 @@ import { Plus } from 'lucide-react';
  * @typedef {object} TableMeta
  * @property {(task: object) => void} onEdit - Handler to trigger the edit modal.
  * @property {(task: object) => void} onDelete - Handler to trigger the delete confirmation modal.
+ * @property {(task: object) => void} onToggleComplete - Handler to toggle the task's completion status.
  */
 
 const ProjectTasksPage = () => {
@@ -28,8 +29,14 @@ const ProjectTasksPage = () => {
     fetchProjects,
     isLoading: isLoadingProjects,
   } = useContext(ProjectContext);
-  const { tasks, isLoadingTasks, taskError, fetchTasks, deleteTask } =
-    useContext(TaskContext);
+  const {
+    tasks,
+    isLoadingTasks,
+    taskError,
+    fetchTasks,
+    deleteTask,
+    updateTask,
+  } = useContext(TaskContext);
   const { showErrorToast } = useError();
 
   const [isEditTaskModalOpen, setIsEditTaskModalOpen] = useState(false);
@@ -113,6 +120,25 @@ const ProjectTasksPage = () => {
     }
   }, [taskToDelete, deleteTask, handleCloseDeleteTaskModal]);
 
+  /**
+   * Toggles the completion status of a task.
+   * @param {object} task The full task object from the table row.
+   */
+  const handleToggleComplete = useCallback(
+    async (task) => {
+      try {
+        if (!task) {
+          throw new Error('handleToggleComplete was called without a task.');
+        }
+        await updateTask(task.id, { is_completed: !task.is_completed });
+      } catch (error) {
+        const errorResult = handleApiError(error, 'updating task status');
+        showErrorToast(errorResult);
+      }
+    },
+    [updateTask, showErrorToast]
+  );
+
   // Transform tasks for the DataTable
   const transformedTasks = useMemo(() => {
     return tasks
@@ -185,6 +211,7 @@ const ProjectTasksPage = () => {
                 meta={{
                   onEdit: handleEditTask,
                   onDelete: handleDeleteTask,
+                  onToggleComplete: handleToggleComplete,
                 }}
                 onTableInstanceReady={setReactTableInstance}
                 columnVisibility={columnVisibility}

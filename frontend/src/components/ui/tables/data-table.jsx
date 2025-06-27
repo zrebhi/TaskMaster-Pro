@@ -28,7 +28,7 @@ import {
  * @param {object} props
  * @param {import("@tanstack/react-table").ColumnDef<TData, TValue>[]} props.columns - The column definitions for the table.
  * @param {TData[]} props.data - The data to be displayed in the table.
- * @param {{ onEdit?: (item: TData) => void, onDelete?: (item: TData) => void }} [props.meta] - Optional object to pass action handlers to the table.
+ * @param {{ onEdit?: (item: TData) => void, onDelete?: (item: TData) => void, onToggleComplete?: (item: TData) => void }} [props.meta] - Optional object to pass action handlers to the table.
  * @param {import("@tanstack/react-table").VisibilityState} [props.columnVisibility] - State object controlling column visibility.
  * @param {import("@tanstack/react-table").OnChangeFn<import("@tanstack/react-table").VisibilityState>} [props.onColumnVisibilityChange] - State setter for column visibility.
  * @param {(table: import("@tanstack/react-table").Table<TData>) => void} [props.onTableInstanceReady] - Callback to get the table instance.
@@ -109,6 +109,7 @@ export function DataTable({
                 <TableRow
                   key={row.id}
                   data-state={row.getIsSelected() && 'selected'}
+                  data-completed={row.original.is_completed}
                 >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id}>
