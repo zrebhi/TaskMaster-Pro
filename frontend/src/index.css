@@ -111,8 +111,12 @@
     color: hsl(var(--destructive)) !important;
   }
 
-  .background-destructive {
-    background-color: hsl(var(--destructive)) !important;
+  .text-destructive-foreground {
+    color: hsl(var(--destructive-foreground)) !important;
+  }
+
+  .bg-destructive {
+    background-color: hsl(var(--destructive));
   }
 
   .solid-popover-bg {

@@ -34,6 +34,7 @@ const ConfirmationModal = ({
   confirmText = 'Confirm',
   loadingText = 'Processing...',
   cancelText = 'Cancel',
+  confirmButtonStyle,
 }) => {
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -49,7 +50,7 @@ const ConfirmationModal = ({
               type="button"
               onClick={onConfirm}
               disabled={isLoading}
-              className="background-destructive"
+              variant={confirmButtonStyle === 'danger' ? 'destructive' : 'default'}
             >
               {isLoading ? loadingText : confirmText}
             </Button>
