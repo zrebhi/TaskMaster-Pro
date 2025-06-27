@@ -6,7 +6,9 @@ import {
   createMockNetworkError,
 } from './test-utils';
 
+
 // API Response Mock Data
+
 
 /**
  * Authentication API response mocks
@@ -139,7 +141,10 @@ export const taskApiMocks = {
 
 /**
  * Common error response mocks
+ * @typedef {Error & { code?: string, processedError?: object, response?: object, isAxiosError?: boolean }} AppError
+ * Represents a custom error structure used throughout the application, often augmented by Axios.
  */
+
 export const errorApiMocks = {
   networkError: () => createMockNetworkError('Network Error'),
 
@@ -156,8 +161,9 @@ export const errorApiMocks = {
 
   timeout: () => {
     const error = new Error('Request timeout');
-    error.code = 'ECONNABORTED';
-    error.processedError = {
+    const customError = error;
+    customError.code = 'ECONNABORTED';
+    customError.processedError = {
       message: 'Request timed out. Please try again.',
       severity: 'medium',
       isNetworkError: true,
@@ -331,7 +337,6 @@ export const resetApiMocks = () => {
 /**
  * Setup loading state simulation
  * @param {Object} mocks - Mock functions to setup
- * @param {number} delay - Delay in milliseconds
  */
 export const setupLoadingSimulation = (mocks) => {
   Object.values(mocks).forEach((mock) => {

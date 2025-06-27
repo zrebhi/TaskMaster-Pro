@@ -229,10 +229,8 @@ export const createErrorContextWithErrors = (errors = [], overrides = {}) =>
 
 /**
  * Test wrapper for AuthContext
- * @param {Object} props - Component props
- * @param {React.ReactNode} props.children - Child components
- * @param {Object} props.value - AuthContext value
- * @returns {React.Component} AuthContext provider wrapper
+ * @param {{ children: React.ReactNode, value?: object }} props The component props.
+ * @returns {import('react').JSX.Element} AuthContext provider wrapper.
  */
 export const TestAuthProvider = ({ children, value }) => {
   const AuthContext = require('../../context/AuthContext').default;
@@ -245,10 +243,8 @@ export const TestAuthProvider = ({ children, value }) => {
 
 /**
  * Test wrapper for ProjectContext
- * @param {Object} props - Component props
- * @param {React.ReactNode} props.children - Child components
- * @param {Object} props.value - ProjectContext value
- * @returns {React.Component} ProjectContext provider wrapper
+ * @param {{ children: React.ReactNode, value?: object }} props The component props.
+ * @returns {import('react').JSX.Element} AuthContext provider wrapper.
  */
 export const TestProjectProvider = ({ children, value }) => {
   const ProjectContext = require('../../context/ProjectContext').default;
@@ -263,10 +259,8 @@ export const TestProjectProvider = ({ children, value }) => {
 
 /**
  * Test wrapper for TaskContext
- * @param {Object} props - Component props
- * @param {React.ReactNode} props.children - Child components
- * @param {Object} props.value - TaskContext value
- * @returns {React.Component} TaskContext provider wrapper
+ * @param {{ children: React.ReactNode, value?: object }} props The component props.
+ * @returns {import('react').JSX.Element} AuthContext provider wrapper.
  */
 export const TestTaskProvider = ({ children, value }) => {
   const TaskContext = require('../../context/TaskContext').default;
@@ -279,10 +273,8 @@ export const TestTaskProvider = ({ children, value }) => {
 
 /**
  * Test wrapper for ErrorContext
- * @param {Object} props - Component props
- * @param {React.ReactNode} props.children - Child components
- * @param {Object} props.value - ErrorContext value
- * @returns {React.Component} ErrorContext provider wrapper
+ * @param {{ children: React.ReactNode, value?: object }} props The component props.
+ * @returns {import('react').JSX.Element} AuthContext provider wrapper.
  */
 export const TestErrorProvider = ({ children, value }) => {
   const ErrorContext = require('../../context/ErrorContext').default;
@@ -295,13 +287,14 @@ export const TestErrorProvider = ({ children, value }) => {
 
 /**
  * Combined test provider wrapper
- * @param {Object} props - Component props
- * @param {React.ReactNode} props.children - Child components
- * @param {Object} props.authValue - AuthContext value
- * @param {Object} props.projectValue - ProjectContext value
- * @param {Object} props.taskValue - TaskContext value
- * @param {Object} props.errorValue - ErrorContext value
- * @returns {React.Component} Combined provider wrapper
+* @param {{
+  *  children: React.ReactNode,
+  *  authValue?: object,
+  *  projectValue?: object,
+  *  taskValue?: object,
+  *  errorValue?: object
+  * }} props The component props.
+  * @returns {import('react').JSX.Element} Combined provider wrapper.
  */
 export const TestProviders = ({
   children,
