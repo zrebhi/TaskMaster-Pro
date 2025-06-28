@@ -19,6 +19,7 @@ import { Separator } from '@/components/ui/separator';
  * @template TData
  * @template TValue
  * @param {{
+ *   table: import("@tanstack/react-table").Table<TData>,
  *   column?: import("@tanstack/react-table").Column<TData, TValue>
  *   title?: string
  *   options: {
@@ -26,38 +27,29 @@ import { Separator } from '@/components/ui/separator';
  *     value: string
  *     icon?: React.ComponentType<{ className?: string }>
  *   }[]
- *  columnFilters?: any[]
- *  rows?: any[]
  * }} props
  */
 export function DataTableFacetedFilter({
+  table,
   column,
   title,
-  options,
-  columnFilters,
-  rows,
+  options
 }) {
-  // We derive the selected values from the columnFilters prop that is passed down
-  // from the ProjectTasksPage component. This ensures that the component is
-  // controlled and that its state is always in sync with the table's state.
-  const columnFilter = columnFilters?.find(
-    (filter) => filter.id === column?.id
-  );
-  const selectedValues = new Set(/** @type {string[]} */ (columnFilter?.value));
+  const selectedValues = new Set(/** @type {string[]} */ (column?.getFilterValue()));
 
   const facets = useMemo(() => {
     const newFacets = new Map();
     if (!column) return newFacets;
 
-    // The `rows` prop contains the latest filtered rows from the table instance.
-    // We manually calculate the facet counts from these rows to ensure they are always up-to-date.
-    rows?.forEach((row) => {
+    // We use the pre-filtered rows to calculate the facet counts.
+    // This ensures that the counts reflect the entire dataset before this filter is applied.
+    table.getPreFilteredRowModel().rows.forEach((row) => {
       const value = row.getValue(column.id);
       newFacets.set(value, (newFacets.get(value) || 0) + 1);
     });
 
     return newFacets;
-  }, [rows, column]);
+  }, [table, column]);
 
   return (
     <DropdownMenu modal={false}>

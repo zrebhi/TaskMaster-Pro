@@ -8,15 +8,9 @@ import { DataTableColumnToggle } from './data-table-column-toggle';
 
 import { Plus } from 'lucide-react';
 
-export function DataTableToolbar({
-  table,
-  columnFilters,
-  filtersConfig,
-  rows,
-  onAdd,
-  addButtonText,
-}) {
-  const isFiltered = columnFilters?.length > 0;
+export function DataTableToolbar({ table, onAdd, addButtonText }) {
+  const isFiltered = table.getState().columnFilters.length > 0;
+  const filtersConfig = table.options.meta?.filtersConfig;
 
   return (
     <div
@@ -45,8 +39,7 @@ export function DataTableToolbar({
               column={column}
               title={filter.title}
               options={filter.options}
-              columnFilters={columnFilters}
-              rows={rows}
+              table={table}
             />
           );
         })}

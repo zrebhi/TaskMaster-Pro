@@ -30,6 +30,7 @@ import { priorities, statuses } from '../data/taskUIData';
  * @property {(task: object) => void} onEdit - Handler to trigger the edit modal.
  * @property {(task: object) => void} onDelete - Handler to trigger the delete confirmation modal.
  * @property {(task: object) => void} onToggleComplete - Handler to toggle the task's completion status.
+ * @property {Array<{columnId: string, title: string, options: Array<{value: string | number, label: string, icon?: React.ComponentType<{className?: string}>}>}>} [filtersConfig] - Configuration for faceted filters.
  */
 
 const ProjectTasksPage = () => {
@@ -61,8 +62,6 @@ const ProjectTasksPage = () => {
   const [columnFilters, setColumnFilters] = useState(() => []);
   const [sorting, setSorting] = useState([]);
   const [rowSelection, setRowSelection] = useState({});
-  const [filteredRows, setFilteredRows] = useState([]); // State for filtered rows
-
   useEffect(() => {
     if (projects.length === 0) {
       fetchProjects();
@@ -173,6 +172,18 @@ const ProjectTasksPage = () => {
       onEdit: handleEditTask,
       onDelete: handleDeleteTask,
       onToggleComplete: handleToggleComplete,
+      filtersConfig: [
+        {
+          columnId: 'priority',
+          title: 'Priority',
+          options: priorities,
+        },
+        {
+          columnId: 'status',
+          title: 'Status',
+          options: statuses,
+        },
+      ],
     },
     enableRowSelection: true,
     onRowSelectionChange: setRowSelection,
@@ -187,23 +198,6 @@ const ProjectTasksPage = () => {
     getFacetedUniqueValues: getFacetedUniqueValues(),
   });
 
-  useEffect(() => {
-    // This effect now lives in the parent component.
-    setFilteredRows(table.getFilteredRowModel().rows);
-  }, [table, columnFilters]);
-
-  const filtersConfig = [
-    {
-      columnId: 'priority',
-      title: 'Priority',
-      options: priorities,
-    },
-    {
-      columnId: 'status',
-      title: 'Status',
-      options: statuses,
-    },
-  ];
 
   if (isLoadingProjects) {
     return <p>Loading project details...</p>;
@@ -217,10 +211,10 @@ const ProjectTasksPage = () => {
       </div>
     );
   }
- 
-   return (
-     <div className="flex flex-col flex-1 h-full p-4 md:p-8 gap-8">
-       <Link to="/" className="text-sm text-muted-foreground hover:underline">
+
+  return (
+    <div className="flex flex-col flex-1 h-full p-4 md:p-8 gap-8">
+      <Link to="/" className="text-sm text-muted-foreground hover:underline">
         ← All Projects
       </Link>
 
@@ -243,9 +237,6 @@ const ProjectTasksPage = () => {
               <div className="flex items-end justify-end mb-2 gap-2">
                 <DataTableToolbar
                   table={table}
-                  columnFilters={columnFilters}
-                  filtersConfig={filtersConfig}
-                  rows={filteredRows}
                   onAdd={() => setIsAddTaskModalOpen(true)}
                   addButtonText="Add Task"
                 />
