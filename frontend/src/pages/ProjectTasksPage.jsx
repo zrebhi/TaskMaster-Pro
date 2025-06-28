@@ -14,6 +14,7 @@ import { DataTableToolbar } from '../components/ui/tables/data-table-toolbar';
 import { columns as taskTableColumns } from '../components/Tasks/Table/columns';
 import { Button } from '../components/ui/button';
 import { Plus } from 'lucide-react';
+import { priorities, statuses } from '../data/taskUIData';
 
 /**
  * @typedef {object} TableMeta
@@ -47,6 +48,8 @@ const ProjectTasksPage = () => {
   const [isDeletingTask, setIsDeletingTask] = useState(false); // New state for delete loading
   const [reactTableInstance, setReactTableInstance] = useState(null); // State for table instance
   const [columnVisibility, setColumnVisibility] = useState({}); // Lifted state
+  const [columnFilters, setColumnFilters] = useState(() => []); // Lifted state
+  const [filteredRows, setFilteredRows] = useState([]); // State for filtered rows
 
   useEffect(() => {
     if (projects.length === 0) {
@@ -153,6 +156,19 @@ const ProjectTasksPage = () => {
       }));
   }, [tasks, projectId]);
 
+  const filtersConfig = [
+    {
+      columnId: 'priority',
+      title: 'Priority',
+      options: priorities,
+    },
+    {
+      columnId: 'status',
+      title: 'Status',
+      options: statuses
+    }
+  ];
+
   if (isLoadingProjects) {
     return <p>Loading project details...</p>;
   }
@@ -189,20 +205,19 @@ const ProjectTasksPage = () => {
           !taskError &&
           (transformedTasks.length > 0 ? (
             <div>
-              <div className="flex items-center justify-end mb-2 gap-2">
+              <div className="flex items-end justify-end mb-2 gap-2">
                 {' '}
                 {!!reactTableInstance && ( // Ensure boolean for conditional rendering
                   <DataTableToolbar
                     table={reactTableInstance}
                     columnVisibility={columnVisibility}
+                    columnFilters={columnFilters}
+                    filtersConfig={filtersConfig}
+                    rows={filteredRows}
+                    onAdd={() => setIsAddTaskModalOpen(true)}
+                    addButtonText="Add Task"
                   />
                 )}
-                <Button
-                  onClick={() => setIsAddTaskModalOpen(true)}
-                  variant="outline"
-                >
-                  <Plus className="mr-2 h-4 w-4" /> Add Task{' '}
-                </Button>
               </div>
               <DataTable
                 columns={taskTableColumns}
@@ -216,6 +231,9 @@ const ProjectTasksPage = () => {
                 onTableInstanceReady={setReactTableInstance}
                 columnVisibility={columnVisibility}
                 onColumnVisibilityChange={setColumnVisibility}
+                columnFilters={columnFilters}
+                onColumnFiltersChange={setColumnFilters}
+                onFilteredRowsChange={setFilteredRows}
               />
             </div>
           ) : (
@@ -262,3 +280,4 @@ const ProjectTasksPage = () => {
 };
 
 export default ProjectTasksPage;
+

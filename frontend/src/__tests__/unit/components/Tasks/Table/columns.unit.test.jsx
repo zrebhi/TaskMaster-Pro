@@ -61,7 +61,7 @@ describe('Task Table Columns: Unit Tests', () => {
       // Assert: Verify the correct label and badge variant are rendered.
       expect(screen.getByText('High')).toBeInTheDocument();
       const badge = screen.getByTestId('badge');
-      expect(badge).toHaveAttribute('data-variant', 'destructive_table');
+      expect(badge).toHaveAttribute('data-variant', 'destructive');
     });
 
     it('should render a "Medium" priority visual for a priority value of 2', () => {

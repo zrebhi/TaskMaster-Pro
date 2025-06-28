@@ -17,9 +17,9 @@ export function DataTableColumnToggle({ table, columnVisibility = {} }) {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="outline">
-          <Columns className="mr-2 size-4" />
+          <Columns className="size-3 sm:size-4" />
           View
-          <ChevronDown className="ml-2 size-4" />
+          <ChevronDown className="size-3 sm:size-4" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-[150px]">

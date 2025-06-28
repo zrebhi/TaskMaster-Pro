@@ -1,14 +1,68 @@
 'use client';
 
+import { Cross2Icon } from '@radix-ui/react-icons';
+// import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { DataTableFacetedFilter } from './data-table-faceted-filter';
 import { DataTableColumnToggle } from './data-table-column-toggle';
 
-export function DataTableToolbar({ table, columnVisibility }) {
+import { Plus } from 'lucide-react';
+
+export function DataTableToolbar({
+  table,
+  columnVisibility,
+  columnFilters,
+  filtersConfig,
+  rows,
+  onAdd,
+  addButtonText,
+}) {
+  const isFiltered = columnFilters?.length > 0;
+
   return (
-    <div className="flex items-center justify-between">
-      <div className="flex flex-1 items-center space-x-2">
-        {/* Add filtering inputs here in the future if needed */}
+    <div
+      role="toolbar"
+      className="flex flex-col sm:flex-row items-end gap-2"
+    >
+      <div className="hidden sm:flex sm:items-center space-x-2 items-end">
+        {!!isFiltered && (
+          <Button
+            variant="ghost"
+            onClick={() => table.resetColumnFilters()}
+            className="h-8 px-2 lg:px-3"
+          >
+            Reset
+            <Cross2Icon className="ml-2 h-4 w-4" />
+          </Button>
+        )}
+        {filtersConfig?.map((filter) => {
+          const column = table.getColumn(filter.columnId);
+          if (!column) {
+            return null;
+          }
+          return (
+            <DataTableFacetedFilter
+              key={filter.columnId}
+              column={column}
+              title={filter.title}
+              options={filter.options}
+              columnFilters={columnFilters}
+              rows={rows}
+            />
+          );
+        })}
       </div>
-      <DataTableColumnToggle table={table} columnVisibility={columnVisibility} />
+      <div className="flex items-center space-x-2">
+        <DataTableColumnToggle
+          table={table}
+          columnVisibility={columnVisibility}
+        />
+        {!!onAdd && !!addButtonText && (
+          <Button role="button" onClick={onAdd} variant="outline">
+            <Plus className="h-3 w-3 sm:h-4 sm:w-4" /> {addButtonText}
+          </Button>
+        )}
+      </div>
     </div>
   );
 }

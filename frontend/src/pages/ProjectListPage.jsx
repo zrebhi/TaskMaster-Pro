@@ -85,14 +85,10 @@ const ProjectListPage = () => {
                   table={reactTableInstance}
                   onColumnVisibilityChange={setColumnVisibility}
                   columnVisibility={columnVisibility}
+                  onAdd={() => setIsAddProjectModalOpen(true)}
+                  addButtonText="Add Project"
                 />
               )}
-              <Button
-                onClick={() => setIsAddProjectModalOpen(true)}
-                variant="outline"
-              >
-                <Plus className="mr-2 h-4 w-4" /> Add Project
-              </Button>
             </div>
             <DataTable
               columns={projectTableColumns}

@@ -417,7 +417,7 @@ describe('Integration Test: ProjectTasksPage', () => {
       // The old title should be gone
       expect(screen.queryByText(task.title)).not.toBeInTheDocument();
     });
-describe('Task Completion Flow', () => {
+    describe('Task Completion Flow', () => {
       // Use the same project setup
       const project = createMockProject({ id: 'proj-1' });
 
@@ -444,7 +444,9 @@ describe('Task Completion Flow', () => {
 
         // WHEN: The user marks the task as complete
         const row = screen.getByText(incompleteTask.title).closest('tr');
-        await user.click(within(row).getByRole('button', { name: /open menu/i }));
+        await user.click(
+          within(row).getByRole('button', { name: /open menu/i })
+        );
         await user.click(
           await screen.findByRole('menuitem', { name: /mark as complete/i })
         );
@@ -458,27 +460,34 @@ describe('Task Completion Flow', () => {
 
         // AND: The UI updates after the state changes (simulated via rerender)
         rerender(
-            <MemoryRouter initialEntries={['/projects/proj-1']}>
-                <TestProviders
-                    authValue={createAuthenticatedContext()}
-                    projectValue={createMockProjectContext({ projects: [project] })}
-                    taskValue={createMockTaskContext({
-                        tasks: [updatedTask], // Simulate the state update
-                        updateTask: updateTaskMock,
-                        currentProjectIdForTasks: 'proj-1',
-                    })}
-                    errorValue={createMockErrorContext()}
-                >
-                    <Routes><Route path="/projects/:projectId" element={<ProjectTasksPage />} /></Routes>
-                </TestProviders>
-            </MemoryRouter>
+          <MemoryRouter initialEntries={['/projects/proj-1']}>
+            <TestProviders
+              authValue={createAuthenticatedContext()}
+              projectValue={createMockProjectContext({ projects: [project] })}
+              taskValue={createMockTaskContext({
+                tasks: [updatedTask], // Simulate the state update
+                updateTask: updateTaskMock,
+                currentProjectIdForTasks: 'proj-1',
+              })}
+              errorValue={createMockErrorContext()}
+            >
+              <Routes>
+                <Route
+                  path="/projects/:projectId"
+                  element={<ProjectTasksPage />}
+                />
+              </Routes>
+            </TestProviders>
+          </MemoryRouter>
         );
 
         expect(row).toHaveAttribute('data-completed', 'true');
         expect(within(row).getByText('Done')).toBeInTheDocument();
 
         // Assert the behavioral text change
-        await user.click(within(row).getByRole('button', { name: /open menu/i }));
+        await user.click(
+          within(row).getByRole('button', { name: /open menu/i })
+        );
         expect(
           await screen.findByRole('menuitem', { name: /mark as incomplete/i })
         ).toBeInTheDocument();
@@ -506,7 +515,9 @@ describe('Task Completion Flow', () => {
 
         // WHEN: The user marks the task as incomplete
         const row = screen.getByText(completedTask.title).closest('tr');
-        await user.click(within(row).getByRole('button', { name: /open menu/i }));
+        await user.click(
+          within(row).getByRole('button', { name: /open menu/i })
+        );
         await user.click(
           await screen.findByRole('menuitem', { name: /mark as incomplete/i })
         );
@@ -528,49 +539,66 @@ describe('Task Completion Flow', () => {
           severity: 'high',
         };
         const {
-            updateTaskDetails, // This is the function we need to mock now
-            getTasksForProjectAPI,
+          updateTaskDetails, // This is the function we need to mock now
+          getTasksForProjectAPI,
         } = require('../../../services/taskApiService');
         /** @type {jest.Mock} */ (updateTaskDetails).mockRejectedValue(error);
         const task = createMockTask({
-            id: 'task-fail-1',
-            title: 'Task that will fail',
-            is_completed: false,
-            project_id: 'proj-1',
+          id: 'task-fail-1',
+          title: 'Task that will fail',
+          is_completed: false,
+          project_id: 'proj-1',
         });
-        /** @type {jest.Mock} */ (getTasksForProjectAPI).mockResolvedValue([task]);
-        
+        /** @type {jest.Mock} */ (getTasksForProjectAPI).mockResolvedValue([
+          task,
+        ]);
+
         const showErrorToastMock = jest.fn();
 
         // Render with the real provider to test the real error handling logic
         render(
           <MemoryRouter initialEntries={['/projects/proj-1']}>
             <AuthContext.Provider value={createAuthenticatedContext()}>
-              <ErrorContext.Provider value={createMockErrorContext({ showErrorToast: showErrorToastMock })}>
-                <ProjectContext.Provider value={createMockProjectContext({ projects: [project] })}>
+              <ErrorContext.Provider
+                value={createMockErrorContext({
+                  showErrorToast: showErrorToastMock,
+                })}
+              >
+                <ProjectContext.Provider
+                  value={createMockProjectContext({ projects: [project] })}
+                >
                   <TaskProvider>
-                    <Routes><Route path="/projects/:projectId" element={<ProjectTasksPage />} /></Routes>
+                    <Routes>
+                      <Route
+                        path="/projects/:projectId"
+                        element={<ProjectTasksPage />}
+                      />
+                    </Routes>
                   </TaskProvider>
                 </ProjectContext.Provider>
               </ErrorContext.Provider>
             </AuthContext.Provider>
           </MemoryRouter>
         );
-        
+
         // WHEN: The user tries to mark the task as complete
         const row = (await screen.findByText(task.title)).closest('tr');
-        await user.click(within(row).getByRole('button', { name: /open menu/i }));
-        await user.click(await screen.findByRole('menuitem', { name: /mark as complete/i }));
+        await user.click(
+          within(row).getByRole('button', { name: /open menu/i })
+        );
+        await user.click(
+          await screen.findByRole('menuitem', { name: /mark as complete/i })
+        );
 
         // THEN: A toast notification is shown
         await waitFor(() => {
-            expect(showErrorToastMock).toHaveBeenCalledWith(error.processedError);
+          expect(showErrorToastMock).toHaveBeenCalledWith(error.processedError);
         });
 
         // AND: The UI has NOT changed
         const titleSpan = screen.getByText(task.title);
         expect(titleSpan).not.toHaveClass('line-through'); // Check style for absence
-        
+
         // Check data-attribute for state
         const taskRow = screen.getByText(task.title).closest('tr');
         expect(taskRow).toHaveAttribute('data-completed', 'false');
@@ -747,37 +775,226 @@ describe('Task Completion Flow', () => {
         expect(getTitleColumnText()).toEqual(['C Task', 'B Task', 'A Task']);
       });
     });
+    describe('Interactive Filtering', () => {
+      const project = createMockProject({ id: 'proj-1' });
+      const tasks = [
+        createMockTask({
+          id: 'task-1',
+          title: 'Implement login page',
+          is_completed: true, // status: done
+          priority: 3,
+          project_id: 'proj-1',
+        }),
+        createMockTask({
+          id: 'task-2',
+          title: 'Design database schema',
+          is_completed: false, // status: to do
+          priority: 3,
+          project_id: 'proj-1',
+        }),
+        createMockTask({
+          id: 'task-3',
+          title: 'Implement user dashboard',
+          is_completed: false, // status: to do
+          priority: 2,
+          project_id: 'proj-1',
+        }),
+      ];
+  
+      it('should filter the table when a status is selected using the checkbox filter', async () => {
+        renderComponent(
+          { projects: [project] },
+          { tasks, currentProjectIdForTasks: 'proj-1' }
+        );
+        const toolbar = screen.getByRole('toolbar');
+  
+        // WHEN: The user opens the filter and checks "Done"
+        await user.click(
+          within(toolbar).getByRole('button', { name: /status/i })
+        );
+        const doneCheckbox = await screen.findByRole('menuitemcheckbox', {
+          name: /done/i,
+        });
+        await user.click(doneCheckbox);
+  
+        // THEN: Only 'done' tasks are visible
+        await waitFor(() => {
+          expect(screen.getByText('Implement login page')).toBeInTheDocument();
+          expect(
+            screen.queryByText('Design database schema')
+          ).not.toBeInTheDocument();
+        });
+  
+        // AND WHEN: The user also checks "To Do"
+        const todoCheckbox = screen.getByRole('menuitemcheckbox', {
+          name: /to do/i,
+        });
+        await user.click(todoCheckbox);
+  
+        // THEN: All tasks are visible again
+        await waitFor(() => {
+          expect(screen.getByText('Implement login page')).toBeInTheDocument();
+          expect(screen.getByText('Design database schema')).toBeInTheDocument();
+        });
+      });
+  
+      it('should clear all active filters when the "Reset" button is clicked', async () => {
+        renderComponent(
+          { projects: [project] },
+          { tasks, currentProjectIdForTasks: 'proj-1' }
+        );
+        const toolbar = screen.getByRole('toolbar');
+  
+        // GIVEN: A filter is active
+        await user.click(
+          within(toolbar).getByRole('button', { name: /status/i })
+        );
+        const doneCheckbox = await screen.findByRole('menuitemcheckbox', {
+          name: /done/i,
+        });
+        await user.click(doneCheckbox);
+  
+        // Assert that the list is filtered
+        await waitFor(() => {
+          expect(screen.getByText('Implement login page')).toBeInTheDocument();
+          expect(
+            screen.queryByText('Design database schema')
+          ).not.toBeInTheDocument();
+        });
+  
+        // WHEN: The user clicks the reset button
+        const resetButton = within(toolbar).getByRole('button', {
+          name: /reset/i,
+        });
+        await user.click(resetButton);
+  
+        // THEN: All tasks are visible again
+        await waitFor(() => {
+          expect(screen.getByText('Implement login page')).toBeInTheDocument();
+          expect(screen.getByText('Design database schema')).toBeInTheDocument();
+          expect(
+            screen.getByText('Implement user dashboard')
+          ).toBeInTheDocument();
+        });
+      });
+      it('should deselect a filter when clicking the option again', async () => {
+        renderComponent(
+          { projects: [project] },
+          { tasks, currentProjectIdForTasks: 'proj-1' }
+        );
+        const toolbar = screen.getByRole('toolbar');
+  
+        // GIVEN: The "Done" filter is active
+        await user.click(
+          within(toolbar).getByRole('button', { name: /status/i })
+        );
+        const doneCheckbox = await screen.findByRole('menuitemcheckbox', {
+          name: /done/i,
+        });
+        await user.click(doneCheckbox);
+  
+        // Assert that the list is filtered
+        await waitFor(() => {
+          expect(screen.getByText('Implement login page')).toBeInTheDocument();
+          expect(
+            screen.queryByText('Design database schema')
+          ).not.toBeInTheDocument();
+        });
+  
+        // WHEN: The user clicks the "Done" checkbox again
+        await user.click(doneCheckbox);
+  
+        // THEN: The filter is removed and all tasks are visible
+        await waitFor(() => {
+          expect(screen.getByText('Implement login page')).toBeInTheDocument();
+          expect(screen.getByText('Design database schema')).toBeInTheDocument();
+        });
+      });
+      it('should combine filters from different facets (status and priority)', async () => {
+        renderComponent(
+          { projects: [project] },
+          { tasks, currentProjectIdForTasks: 'proj-1' }
+        );
+        const toolbar = screen.getByRole('toolbar');
+  
+        // GIVEN: The user applies a status filter
+        await user.click(
+          within(toolbar).getByRole('button', { name: /status/i })
+        );
+        const doneCheckbox = await screen.findByRole('menuitemcheckbox', {
+          name: /done/i,
+        });
+        await user.click(doneCheckbox);
+  
+        // AND: the user applies a priority filter
+        await user.click(
+          within(toolbar).getByRole('button', { name: /priority/i })
+        );
+        const highPriorityCheckbox = await screen.findByRole('menuitemcheckbox', {
+          name: /high/i,
+        });
+        await user.click(highPriorityCheckbox);
+  
+        // THEN: Only the task matching both filters is visible
+        await waitFor(() => {
+          expect(screen.getByText('Implement login page')).toBeInTheDocument();
+          expect(
+            screen.queryByText('Design database schema')
+          ).not.toBeInTheDocument();
+          expect(
+            screen.queryByText('Implement user dashboard')
+          ).not.toBeInTheDocument();
+        });
+      });
+    });
   });
 
   // Test suite for accessibility (a11y) checks.
   describe('5. Accessibility', () => {
-    it('should have no accessibility violations on initial render with tasks', async () => {
-      const project = createMockProject({ id: 'proj-1' });
-      const tasks = [
+    let container;
+    let project;
+    let tasks;
+
+    beforeEach(() => {
+      project = createMockProject({ id: 'proj-1' });
+      tasks = [
         createMockTask({
           id: 'task-1',
           title: 'Accessible Task',
           project_id: 'proj-1',
         }),
       ];
-      const { container } = renderComponent(
+      ({ container } = renderComponent(
         { projects: [project] },
         { tasks, currentProjectIdForTasks: 'proj-1' }
-      );
+      ));
+    });
+
+    it('should have no accessibility violations on initial render with tasks', async () => {
       const results = await axe(container);
       expect(results).toHaveNoViolations();
     });
 
     it('should have no accessibility violations when modals are open', async () => {
-      const project = createMockProject({ id: 'proj-1' });
-      const { container } = renderComponent(
-        { projects: [project] },
-        { tasks: [] }
-      );
-
       await user.click(screen.getByRole('button', { name: /add task/i }));
       await screen.findByRole('dialog');
 
+      const results = await axe(container);
+      expect(results).toHaveNoViolations();
+    });
+
+    it('should have no accessibility violations when a filter menu is open', async () => {
+      const toolbar = screen.getByRole('toolbar');
+
+      // GIVEN: the status filter menu is open
+      await user.click(
+        within(toolbar).getByRole('button', { name: /status/i })
+      );
+      await screen.findByRole('menuitemcheckbox', {
+        name: /done/i,
+      });
+
+      // THEN: there should be no accessibility violations
       const results = await axe(container);
       expect(results).toHaveNoViolations();
     });

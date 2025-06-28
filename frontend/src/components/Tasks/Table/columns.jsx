@@ -138,7 +138,7 @@ export const columns = [
           )} */}
           <Badge
             variant={priority.value === 3
-              ? 'destructive_table'
+              ? 'destructive'
               : priority.value === 1
                 ? 'outline'
                 : 'default'}

@@ -31,7 +31,10 @@ import {
  * @param {{ onEdit?: (item: TData) => void, onDelete?: (item: TData) => void, onToggleComplete?: (item: TData) => void }} [props.meta] - Optional object to pass action handlers to the table.
  * @param {import("@tanstack/react-table").VisibilityState} [props.columnVisibility] - State object controlling column visibility.
  * @param {import("@tanstack/react-table").OnChangeFn<import("@tanstack/react-table").VisibilityState>} [props.onColumnVisibilityChange] - State setter for column visibility.
+ * @param {import("@tanstack/react-table").ColumnFiltersState} [props.columnFilters] - State object controlling column filters.
+ * @param {import("@tanstack/react-table").OnChangeFn<import("@tanstack/react-table").ColumnFiltersState>} [props.onColumnFiltersChange] - State setter for column filters.
  * @param {(table: import("@tanstack/react-table").Table<TData>) => void} [props.onTableInstanceReady] - Callback to get the table instance.
+ * @param {(rows: import("@tanstack/react-table").Row<TData>[]) => void} [props.onFilteredRowsChange] - Callback to get the filtered rows.
  */
 export function DataTable({
   columns,
@@ -40,9 +43,11 @@ export function DataTable({
   onTableInstanceReady,
   columnVisibility: controlledColumnVisibility,
   onColumnVisibilityChange: controlledOnColumnVisibilityChange,
+  columnFilters: controlledColumnFilters,
+  onColumnFiltersChange: controlledOnColumnFiltersChange,
+  onFilteredRowsChange,
 }) {
   const [rowSelection, setRowSelection] = React.useState({});
-  const [columnFilters, setColumnFilters] = React.useState([]);
   const [sorting, setSorting] = React.useState([]);
 
   const table = useReactTable({
@@ -53,7 +58,7 @@ export function DataTable({
       sorting,
       columnVisibility: controlledColumnVisibility, // Use controlled state
       rowSelection,
-      columnFilters,
+      columnFilters: controlledColumnFilters, // Use controlled state
     },
     initialState: {
       pagination: {
@@ -63,7 +68,7 @@ export function DataTable({
     enableRowSelection: true,
     onRowSelectionChange: setRowSelection,
     onSortingChange: setSorting,
-    onColumnFiltersChange: setColumnFilters,
+    onColumnFiltersChange: controlledOnColumnFiltersChange, // Use controlled setter
     onColumnVisibilityChange: controlledOnColumnVisibilityChange, // Use controlled setter
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
@@ -79,6 +84,12 @@ export function DataTable({
       onTableInstanceReady(table);
     }
   }, [table, onTableInstanceReady]);
+
+  React.useEffect(() => {
+    if (table && onFilteredRowsChange) {
+      onFilteredRowsChange(table.getFilteredRowModel().rows);
+    }
+  }, [table, onFilteredRowsChange, controlledColumnFilters]);
 
   return (
     <div className="flex flex-col gap-4">
