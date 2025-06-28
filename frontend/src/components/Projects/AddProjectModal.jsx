@@ -15,11 +15,12 @@ const AddProjectModal = ({ isOpen, onClose }) => {
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !isLoading && onClose(open)}>
-      <DialogContent className="sm:max-w-[425px] solid-popover-bg">
+      <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Create New Project</DialogTitle>
           <DialogDescription>
-            Enter a name for your new project below. Click create when you{'\''}re done.
+            Enter a name for your new project below. Click create when you{"'"}
+            re done.
           </DialogDescription>
         </DialogHeader>
         <AddProjectForm onSuccess={onClose} />

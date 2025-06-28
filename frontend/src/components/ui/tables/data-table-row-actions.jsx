@@ -1,12 +1,12 @@
-"use client"
+'use client';
 
-import { MoreHorizontal } from "lucide-react"
-import { Button } from "../button"
+import { MoreHorizontal } from 'lucide-react';
+import { Button } from '../button';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuTrigger,
-} from "../dropdown-menu"
+} from '../dropdown-menu';
 
 // The component is now a pure wrapper. It only provides the menu structure.
 export function DataTableRowActions({ children }) {
@@ -23,9 +23,9 @@ export function DataTableRowActions({ children }) {
         </Button>
       </DropdownMenuTrigger>
       {/* The specific actions are passed in from the parent */}
-      <DropdownMenuContent align="end" className="w-[180px] solid-popover-bg">
+      <DropdownMenuContent align="end" className="w-[180px]">
         {children}
       </DropdownMenuContent>
     </DropdownMenu>
-  )
+  );
 }

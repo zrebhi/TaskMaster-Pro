@@ -27,7 +27,7 @@ const EditTaskModal = ({ task, isOpen, onClose }) => {
       open={isOpen}
       onOpenChange={(open) => !isLoadingTasks && onClose(open)}
     >
-      <DialogContent className="sm:max-w-[425px] solid-popover-bg flex flex-col max-h-[90vh]">
+      <DialogContent className="sm:max-w-[425px] flex flex-col max-h-[90vh]">
         <DialogHeader>
           <DialogTitle>Edit Task</DialogTitle>
           <DialogDescription>

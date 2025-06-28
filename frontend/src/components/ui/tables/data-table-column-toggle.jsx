@@ -22,7 +22,7 @@ export function DataTableColumnToggle({ table, columnVisibility = {} }) {
           <ChevronDown className="ml-2 size-4" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-[150px] solid-popover-bg">
+      <DropdownMenuContent className="w-[150px]">
         <DropdownMenuLabel>Toggle columns</DropdownMenuLabel>
         <DropdownMenuSeparator />
         {table

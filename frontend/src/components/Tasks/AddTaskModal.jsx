@@ -25,11 +25,12 @@ const AddTaskModal = ({ isOpen, onClose, projectId }) => {
       open={isOpen}
       onOpenChange={(open) => !isLoadingTasks && onClose(open)}
     >
-      <DialogContent className="sm:max-w-[425px] solid-popover-bg flex flex-col max-h-[90vh]">
+      <DialogContent className="sm:max-w-[425px] flex flex-col max-h-[90vh]">
         <DialogHeader>
           <DialogTitle>Create New Task</DialogTitle>
           <DialogDescription>
-            Add a new task to your project with details and priority. Click create when you{'\''}re done.
+            Add a new task to your project with details and priority. Click
+            create when you{"'"}re done.
           </DialogDescription>
         </DialogHeader>
         <div className="overflow-y-auto -mr-4 pr-4">

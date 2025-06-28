@@ -167,7 +167,7 @@ const TaskForm = ({
           <SelectTrigger aria-labelledby="taskPriority">
             <SelectValue placeholder="Select priority" />
           </SelectTrigger>
-          <SelectContent className="solid-popover-bg">
+          <SelectContent>
             <SelectItem value="1">Low</SelectItem>
             <SelectItem value="2">Medium</SelectItem>
             <SelectItem value="3">High</SelectItem>
