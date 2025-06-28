@@ -12,7 +12,7 @@ import {
   DropdownMenuTrigger,
 } from '../../ui/dropdown-menu';
 
-export function DataTableColumnToggle({ table, columnVisibility = {} }) {
+export function DataTableColumnToggle({ table }) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -32,7 +32,7 @@ export function DataTableColumnToggle({ table, columnVisibility = {} }) {
               typeof column.accessorFn !== 'undefined' && column.getCanHide()
           )
           .map((column) => {
-            const isChecked = columnVisibility[column.id] ?? true;
+            const isChecked = column.getIsVisible();
             return (
               <DropdownMenuCheckboxItem
                 key={column.id}

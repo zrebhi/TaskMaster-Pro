@@ -1,6 +1,15 @@
 //@ts-check
 import { useState, useEffect, useCallback, useContext, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import {
+  useReactTable,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getSortedRowModel,
+  getPaginationRowModel,
+  getFacetedRowModel,
+  getFacetedUniqueValues,
+} from '@tanstack/react-table';
 import EditTaskModal from '../components/Tasks/EditTaskModal';
 import ConfirmationModal from '../components/Common/ConfirmationModal';
 import AddTaskModal from '../components/Tasks/AddTaskModal';
@@ -46,9 +55,12 @@ const ProjectTasksPage = () => {
   const [taskToDelete, setTaskToDelete] = useState(null);
   const [isAddTaskModalOpen, setIsAddTaskModalOpen] = useState(false);
   const [isDeletingTask, setIsDeletingTask] = useState(false); // New state for delete loading
-  const [reactTableInstance, setReactTableInstance] = useState(null); // State for table instance
-  const [columnVisibility, setColumnVisibility] = useState({}); // Lifted state
-  const [columnFilters, setColumnFilters] = useState(() => []); // Lifted state
+
+  // State for Tanstack Table - lifted from DataTable component
+  const [columnVisibility, setColumnVisibility] = useState({});
+  const [columnFilters, setColumnFilters] = useState(() => []);
+  const [sorting, setSorting] = useState([]);
+  const [rowSelection, setRowSelection] = useState({});
   const [filteredRows, setFilteredRows] = useState([]); // State for filtered rows
 
   useEffect(() => {
@@ -65,10 +77,6 @@ const ProjectTasksPage = () => {
 
   const selectedProject = projects.find((p) => p.id.toString() === projectId);
 
-  /**
-   * Opens the edit modal and sets the task to be edited.
-   * @param {object} task The full task object from the table row.
-   */
   const handleEditTask = useCallback((task) => {
     setTaskToEdit(task);
     setIsEditTaskModalOpen(true);
@@ -79,10 +87,6 @@ const ProjectTasksPage = () => {
     setTaskToEdit(null);
   }, []);
 
-  /**
-   * Opens the delete confirmation modal and sets the task to be deleted.
-   * @param {object} task The full task object from the table row.
-   */
   const handleDeleteTask = useCallback(
     (task) => {
       try {
@@ -91,7 +95,6 @@ const ProjectTasksPage = () => {
             'handleDeleteTask was called with a null or undefined task.'
           );
         }
-        // Similar to handleEditTask, ensure correct task object is used.
         setTaskToDelete(task);
         setIsDeleteTaskModalOpen(true);
       } catch (error) {
@@ -145,7 +148,7 @@ const ProjectTasksPage = () => {
   // Transform tasks for the DataTable
   const transformedTasks = useMemo(() => {
     return tasks
-      .filter((task) => task.project_id?.toString() === projectId) // Ensure tasks are for the current project
+      .filter((task) => task.project_id?.toString() === projectId)
       .map((task) => ({
         ...task,
         id: String(task.id),
@@ -156,6 +159,39 @@ const ProjectTasksPage = () => {
       }));
   }, [tasks, projectId]);
 
+  const table = useReactTable({
+    data: transformedTasks,
+    columns: taskTableColumns,
+    state: {
+      sorting,
+      columnVisibility,
+      rowSelection,
+      columnFilters,
+    },
+    /** @type {TableMeta} */
+    meta: {
+      onEdit: handleEditTask,
+      onDelete: handleDeleteTask,
+      onToggleComplete: handleToggleComplete,
+    },
+    enableRowSelection: true,
+    onRowSelectionChange: setRowSelection,
+    onSortingChange: setSorting,
+    onColumnFiltersChange: setColumnFilters,
+    onColumnVisibilityChange: setColumnVisibility,
+    getCoreRowModel: getCoreRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getFacetedRowModel: getFacetedRowModel(),
+    getFacetedUniqueValues: getFacetedUniqueValues(),
+  });
+
+  useEffect(() => {
+    // This effect now lives in the parent component.
+    setFilteredRows(table.getFilteredRowModel().rows);
+  }, [table, columnFilters]);
+
   const filtersConfig = [
     {
       columnId: 'priority',
@@ -165,8 +201,8 @@ const ProjectTasksPage = () => {
     {
       columnId: 'status',
       title: 'Status',
-      options: statuses
-    }
+      options: statuses,
+    },
   ];
 
   if (isLoadingProjects) {
@@ -181,10 +217,10 @@ const ProjectTasksPage = () => {
       </div>
     );
   }
-
-  return (
-    <div className="flex flex-col flex-1 h-full p-4 md:p-8 gap-8">
-      <Link to="/" className="text-sm text-muted-foreground hover:underline">
+ 
+   return (
+     <div className="flex flex-col flex-1 h-full p-4 md:p-8 gap-8">
+       <Link to="/" className="text-sm text-muted-foreground hover:underline">
         ← All Projects
       </Link>
 
@@ -196,45 +232,25 @@ const ProjectTasksPage = () => {
         </div>
       </div>
 
-      {/* <hr className="my-4" /> */}
-
       <div className="flex flex-col flex-1">
         {isLoadingTasks ? <p>Loading tasks...</p> : null}
         {taskError ? <p className="text-destructive">{taskError}</p> : null}
         {!isLoadingTasks &&
           !taskError &&
+          !!table &&
           (transformedTasks.length > 0 ? (
             <div>
               <div className="flex items-end justify-end mb-2 gap-2">
-                {' '}
-                {!!reactTableInstance && ( // Ensure boolean for conditional rendering
-                  <DataTableToolbar
-                    table={reactTableInstance}
-                    columnVisibility={columnVisibility}
-                    columnFilters={columnFilters}
-                    filtersConfig={filtersConfig}
-                    rows={filteredRows}
-                    onAdd={() => setIsAddTaskModalOpen(true)}
-                    addButtonText="Add Task"
-                  />
-                )}
+                <DataTableToolbar
+                  table={table}
+                  columnFilters={columnFilters}
+                  filtersConfig={filtersConfig}
+                  rows={filteredRows}
+                  onAdd={() => setIsAddTaskModalOpen(true)}
+                  addButtonText="Add Task"
+                />
               </div>
-              <DataTable
-                columns={taskTableColumns}
-                data={transformedTasks}
-                /** @type {TableMeta} */
-                meta={{
-                  onEdit: handleEditTask,
-                  onDelete: handleDeleteTask,
-                  onToggleComplete: handleToggleComplete,
-                }}
-                onTableInstanceReady={setReactTableInstance}
-                columnVisibility={columnVisibility}
-                onColumnVisibilityChange={setColumnVisibility}
-                columnFilters={columnFilters}
-                onColumnFiltersChange={setColumnFilters}
-                onFilteredRowsChange={setFilteredRows}
-              />
+              <DataTable table={table} columns={taskTableColumns} />
             </div>
           ) : (
             <div className="flex flex-1 items-center justify-center rounded-lg border border-dashed shadow-sm">
@@ -280,4 +296,3 @@ const ProjectTasksPage = () => {
 };
 
 export default ProjectTasksPage;
-

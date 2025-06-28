@@ -1,5 +1,12 @@
 import { useState, useEffect, useCallback, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
+import {
+  useReactTable,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getSortedRowModel,
+  getPaginationRowModel,
+} from '@tanstack/react-table';
 import ProjectContext from '../context/ProjectContext';
 import EditProjectModal from '../components/Projects/EditProjectModal';
 import ConfirmationModal from '../components/Common/ConfirmationModal';
@@ -20,9 +27,13 @@ const ProjectListPage = () => {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [projectToDelete, setProjectToDelete] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [reactTableInstance, setReactTableInstance] = useState(null);
-  const [columnVisibility, setColumnVisibility] = useState({});
   const [isAddProjectModalOpen, setIsAddProjectModalOpen] = useState(false);
+
+  // State for Tanstack Table
+  const [sorting, setSorting] = useState([]);
+  const [columnFilters, setColumnFilters] = useState([]);
+  const [columnVisibility, setColumnVisibility] = useState({});
+  const [rowSelection, setRowSelection] = useState({});
 
   useEffect(() => {
     fetchProjects();
@@ -50,7 +61,7 @@ const ProjectListPage = () => {
       setProjectToDelete(project);
       setIsDeleteModalOpen(true);
     },
-    [] // No longer depends on the projects array
+    []
   );
 
   const handleCloseDeleteModal = useCallback(() => {
@@ -64,12 +75,36 @@ const ProjectListPage = () => {
       await deleteProject(projectToDelete.id);
     } catch (err) {
       console.error('Delete project error:', err);
-      // Optionally, set an error state here to display to the user
     } finally {
       setIsDeleting(false);
-      handleCloseDeleteModal(); // Ensure modal closes even on error
+      handleCloseDeleteModal();
     }
   }, [projectToDelete, deleteProject, handleCloseDeleteModal]);
+
+  const table = useReactTable({
+    data: projects,
+    columns: projectTableColumns,
+    state: {
+      sorting,
+      columnVisibility,
+      rowSelection,
+      columnFilters,
+    },
+    meta: {
+      onEdit: handleEditClick,
+      onDelete: handleDeleteClick,
+      onSelect: handleSelectProject,
+    },
+    enableRowSelection: true,
+    onRowSelectionChange: setRowSelection,
+    onSortingChange: setSorting,
+    onColumnFiltersChange: setColumnFilters,
+    onColumnVisibilityChange: setColumnVisibility,
+    getCoreRowModel: getCoreRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+  });
 
   return (
     <div className="flex flex-col flex-1 h-full p-4 md:p-8 gap-8">
@@ -80,27 +115,15 @@ const ProjectListPage = () => {
         (projects.length > 0 ? (
           <div className="space-y-4">
             <div className="flex items-center justify-end mb-2 gap-2">
-              {!!reactTableInstance && (
-                <DataTableToolbar
-                  table={reactTableInstance}
-                  onColumnVisibilityChange={setColumnVisibility}
-                  columnVisibility={columnVisibility}
-                  onAdd={() => setIsAddProjectModalOpen(true)}
-                  addButtonText="Add Project"
-                />
-              )}
+              <DataTableToolbar
+                table={table}
+                onAdd={() => setIsAddProjectModalOpen(true)}
+                addButtonText="Add Project"
+              />
             </div>
             <DataTable
+              table={table}
               columns={projectTableColumns}
-              data={projects}
-              meta={{
-                onEdit: handleEditClick,
-                onDelete: handleDeleteClick,
-                onSelect: handleSelectProject,
-              }}
-              onTableInstanceReady={setReactTableInstance}
-              columnVisibility={columnVisibility}
-              onColumnVisibilityChange={setColumnVisibility}
             />
           </div>
         ) : (

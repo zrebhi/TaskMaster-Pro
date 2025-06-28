@@ -1,16 +1,6 @@
 'use client';
 
-import * as React from 'react';
-import {
-  flexRender,
-  getCoreRowModel,
-  getFacetedRowModel,
-  getFacetedUniqueValues,
-  getFilteredRowModel,
-  getPaginationRowModel,
-  getSortedRowModel,
-  useReactTable,
-} from '@tanstack/react-table';
+import { flexRender } from '@tanstack/react-table';
 
 import {
   Table,
@@ -23,77 +13,19 @@ import {
 
 /**
  * A reusable data table component powered by Tanstack Table.
+ * This is now a "dumb" presentational component that receives a fully-configured table instance.
  * @template TData
- * @template TValue
  * @param {object} props
- * @param {import("@tanstack/react-table").ColumnDef<TData, TValue>[]} props.columns - The column definitions for the table.
- * @param {TData[]} props.data - The data to be displayed in the table.
- * @param {{ onEdit?: (item: TData) => void, onDelete?: (item: TData) => void, onToggleComplete?: (item: TData) => void }} [props.meta] - Optional object to pass action handlers to the table.
- * @param {import("@tanstack/react-table").VisibilityState} [props.columnVisibility] - State object controlling column visibility.
- * @param {import("@tanstack/react-table").OnChangeFn<import("@tanstack/react-table").VisibilityState>} [props.onColumnVisibilityChange] - State setter for column visibility.
- * @param {import("@tanstack/react-table").ColumnFiltersState} [props.columnFilters] - State object controlling column filters.
- * @param {import("@tanstack/react-table").OnChangeFn<import("@tanstack/react-table").ColumnFiltersState>} [props.onColumnFiltersChange] - State setter for column filters.
- * @param {(table: import("@tanstack/react-table").Table<TData>) => void} [props.onTableInstanceReady] - Callback to get the table instance.
- * @param {(rows: import("@tanstack/react-table").Row<TData>[]) => void} [props.onFilteredRowsChange] - Callback to get the filtered rows.
+ * @param {import("@tanstack/react-table").Table<TData>} props.table - The Tanstack Table instance created by useReactTable.
+ * @param {import("@tanstack/react-table").ColumnDef<TData>[]} props.columns - Used to determine the colspan for the "no results" row.
  */
 export function DataTable({
+  table,
   columns,
-  data,
-  meta,
-  onTableInstanceReady,
-  columnVisibility: controlledColumnVisibility,
-  onColumnVisibilityChange: controlledOnColumnVisibilityChange,
-  columnFilters: controlledColumnFilters,
-  onColumnFiltersChange: controlledOnColumnFiltersChange,
-  onFilteredRowsChange,
 }) {
-  const [rowSelection, setRowSelection] = React.useState({});
-  const [sorting, setSorting] = React.useState([]);
-
-  const table = useReactTable({
-    data,
-    columns,
-    meta, // Pass meta to useReactTable
-    state: {
-      sorting,
-      columnVisibility: controlledColumnVisibility, // Use controlled state
-      rowSelection,
-      columnFilters: controlledColumnFilters, // Use controlled state
-    },
-    initialState: {
-      pagination: {
-        pageSize: 25, // Default page size from template
-      },
-    },
-    enableRowSelection: true,
-    onRowSelectionChange: setRowSelection,
-    onSortingChange: setSorting,
-    onColumnFiltersChange: controlledOnColumnFiltersChange, // Use controlled setter
-    onColumnVisibilityChange: controlledOnColumnVisibilityChange, // Use controlled setter
-    getCoreRowModel: getCoreRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    getFacetedRowModel: getFacetedRowModel(),
-    getFacetedUniqueValues: getFacetedUniqueValues(),
-  });
-
-  // Call the callback prop with the table instance
-  React.useEffect(() => {
-    if (table && onTableInstanceReady) {
-      onTableInstanceReady(table);
-    }
-  }, [table, onTableInstanceReady]);
-
-  React.useEffect(() => {
-    if (table && onFilteredRowsChange) {
-      onFilteredRowsChange(table.getFilteredRowModel().rows);
-    }
-  }, [table, onFilteredRowsChange, controlledColumnFilters]);
 
   return (
     <div className="flex flex-col gap-4">
-      {/* children prop removed */}
       <div className="rounded-md border">
         <Table>
           <TableHeader>

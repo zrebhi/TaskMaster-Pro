@@ -10,7 +10,6 @@ import { Plus } from 'lucide-react';
 
 export function DataTableToolbar({
   table,
-  columnVisibility,
   columnFilters,
   filtersConfig,
   rows,
@@ -55,7 +54,6 @@ export function DataTableToolbar({
       <div className="flex items-center space-x-2">
         <DataTableColumnToggle
           table={table}
-          columnVisibility={columnVisibility}
         />
         {!!onAdd && !!addButtonText && (
           <Button role="button" onClick={onAdd} variant="outline">
