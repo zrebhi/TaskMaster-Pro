@@ -39,7 +39,6 @@ export function DataTableToolbar({ table, onAdd, addButtonText }) {
               column={column}
               title={filter.title}
               options={filter.options}
-              table={table}
             />
           );
         })}

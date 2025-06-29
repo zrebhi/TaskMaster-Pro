@@ -1,5 +1,6 @@
 import { Command as CommandPrimitive } from 'cmdk';
 import { SearchIcon } from 'lucide-react';
+import { useState } from 'react';
 
 import { cn } from '@/lib/utils';
 import {
@@ -10,12 +11,26 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 
-function Command({ className = undefined, ...props }) {
+function Command({ className = undefined, shouldFilter = true, ...props }) {
+  const [interactionMode, setInteractionMode] = useState('mouse');
   return (
     <CommandPrimitive
       data-slot="command"
+      shouldFilter={shouldFilter}
+      data-interaction-mode={interactionMode}
+      onKeyDown={(e) => {
+        if (['ArrowUp', 'ArrowDown', 'Enter', 'Home', 'End'].includes(e.key)) {
+          setInteractionMode('keyboard');
+        }
+        props.onKeyDown?.(e);
+      }}
+      onPointerMove={() => {
+        if (interactionMode !== 'mouse') {
+          setInteractionMode('mouse');
+        }
+      }}
       className={cn(
-        'bg-popover text-popover-foreground flex h-full w-full flex-col overflow-hidden rounded-md',
+        'group bg-popover text-popover-foreground flex h-full w-full flex-col overflow-hidden rounded-md',
         className
       )}
       {...props}
@@ -53,14 +68,13 @@ function CommandInput({ className = undefined, ...props }) {
   return (
     <div
       data-slot="command-input-wrapper"
-      className="flex h-9 items-center gap-2 border-b px-3"
+      className={cn('flex h-9 items-center gap-2 border-b px-3', className)}
     >
-      <SearchIcon className="size-4 shrink-0 opacity-50" />
+      <SearchIcon className="size-4 shrink-0 opacity-50"/>
       <CommandPrimitive.Input
         data-slot="command-input"
         className={cn(
-          'placeholder:text-muted-foreground flex h-10 w-full rounded-md bg-transparent py-3 text-sm outline-hidden disabled:cursor-not-allowed disabled:opacity-50',
-          className
+          'placeholder:text-muted-foreground flex h-10 w-full rounded-md bg-transparent py-3 text-sm outline-none disabled:cursor-not-allowed disabled:opacity-50'
         )}
         {...props}
       />
@@ -119,7 +133,7 @@ function CommandItem({ className = undefined, ...props }) {
     <CommandPrimitive.Item
       data-slot="command-item"
       className={cn(
-        "data-[selected=true]:bg-accent data-[selected=true]:text-accent-foreground [&_svg:not([class*='text-'])]:text-muted-foreground relative flex cursor-default items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-hidden select-none data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        "data-[selected=true]:bg-accent data-[selected=true]:text-accent-foreground group-data-[interaction-mode=keyboard]:data-[selected=true]:ring-1 group-data-[interaction-mode=keyboard]:data-[selected=true]:ring-ring relative flex cursor-default items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none select-none data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
         className
       )}
       {...props}

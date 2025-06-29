@@ -1,25 +1,28 @@
 //@ts-check
-import { PlusCircledIcon } from '@radix-ui/react-icons';
-import { useMemo } from 'react';
+import { CheckIcon, PlusCircledIcon } from '@radix-ui/react-icons';
 
+import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+  Command,
+  CommandInput,
+  CommandGroup,
+  CommandItem,
+  CommandList,
+  CommandSeparator,
+} from '@/components/ui/command';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 import { Separator } from '@/components/ui/separator';
 
 /**
  * @template TData
  * @template TValue
  * @param {{
- *   table: import("@tanstack/react-table").Table<TData>,
  *   column?: import("@tanstack/react-table").Column<TData, TValue>
  *   title?: string
  *   options: {
@@ -29,31 +32,15 @@ import { Separator } from '@/components/ui/separator';
  *   }[]
  * }} props
  */
-export function DataTableFacetedFilter({
-  table,
-  column,
-  title,
-  options
-}) {
-  const selectedValues = new Set(/** @type {string[]} */ (column?.getFilterValue()));
-
-  const facets = useMemo(() => {
-    const newFacets = new Map();
-    if (!column) return newFacets;
-
-    // We use the pre-filtered rows to calculate the facet counts.
-    // This ensures that the counts reflect the entire dataset before this filter is applied.
-    table.getPreFilteredRowModel().rows.forEach((row) => {
-      const value = row.getValue(column.id);
-      newFacets.set(value, (newFacets.get(value) || 0) + 1);
-    });
-
-    return newFacets;
-  }, [table, column]);
+export function DataTableFacetedFilter({ column, title, options }) {
+  const facets = column?.getFacetedUniqueValues();
+  const selectedValues = new Set(
+    /** @type {string[]} */ (column?.getFilterValue())
+  );
 
   return (
-    <DropdownMenu modal={false}>
-      <DropdownMenuTrigger asChild>
+    <Popover>
+      <PopoverTrigger asChild>
         <Button variant="outline" size="sm" className="h-8 border-dashed">
           <PlusCircledIcon className="mr-2 h-4 w-4" />
           {title}
@@ -91,63 +78,65 @@ export function DataTableFacetedFilter({
             </>
           )}
         </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-[200px]" align="start">
-        <DropdownMenuLabel
-          className="px-2 py-1.5 text-sm font-semibold"
-          inset={false}
-        >
-          {title}
-        </DropdownMenuLabel>
-        <DropdownMenuSeparator className="-mx-1 my-1 h-px bg-muted" />
-        {options.map((option) => {
-          const isSelected = selectedValues.has(option.value);
-          return (
-            <DropdownMenuCheckboxItem
-              key={option.value}
-              className="relative flex cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50"
-              checked={isSelected}
-              onCheckedChange={() => {
-                const newSelectedValues = new Set(selectedValues);
-                if (isSelected) {
-                  newSelectedValues.delete(option.value);
-                } else {
-                  newSelectedValues.add(option.value);
-                }
-                const filterValues = Array.from(newSelectedValues);
-                column?.setFilterValue(
-                  filterValues.length ? filterValues : undefined
+      </PopoverTrigger>
+      <PopoverContent className="w-[200px] p-0" align="start">
+        <Command shouldFilter={false}>
+          <CommandInput className="sr-only" />
+          <CommandList>
+            <CommandGroup>
+              {options.map((option) => {
+                const isSelected = selectedValues.has(option.value);
+                return (
+                  <CommandItem
+                    key={option.value}
+                    onSelect={() => {
+                      if (isSelected) {
+                        selectedValues.delete(option.value);
+                      } else {
+                        selectedValues.add(option.value);
+                      }
+                      const filterValues = Array.from(selectedValues);
+                      column?.setFilterValue(
+                        filterValues.length ? filterValues : undefined
+                      );
+                    }}
+                    aria-checked={isSelected}
+                  >
+                    <CheckIcon
+                      className={cn(
+                        'mr-2 h-4 w-4',
+                        isSelected ? 'opacity-100' : 'opacity-0'
+                      )}
+                    />
+                    {!!option.icon && (
+                      <option.icon className="mr-2 h-4 w-4 text-muted-foreground" />
+                    )}
+                    <span>{option.label}</span>
+                    {!!facets?.get(option.value) && (
+                      <span className="ml-auto flex h-4 w-4 items-center justify-center font-mono text-xs">
+                        {facets.get(option.value)}
+                      </span>
+                    )}
+                  </CommandItem>
                 );
-              }}
-              onSelect={(event) => event.preventDefault()}
-            >
-              <div className="flex w-full items-center">
-                {!!option.icon && (
-                  <option.icon className="mr-2 h-4 w-4 text-muted-foreground" />
-                )}
-                <span className="flex-1">{option.label}</span>
-                {!!facets?.get(option.value) && (
-                  <span className="ml-auto flex h-4 w-4 items-center justify-center font-mono text-xs">
-                    {facets.get(option.value)}
-                  </span>
-                )}
-              </div>
-            </DropdownMenuCheckboxItem>
-          );
-        })}
-        {selectedValues.size > 0 && (
-          <>
-            <DropdownMenuSeparator className="-mx-1 my-1 h-px bg-muted" />
-            <DropdownMenuItem
-              onSelect={() => column?.setFilterValue(undefined)}
-              className="relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 justify-center"
-              inset={false}
-            >
-              Clear filters
-            </DropdownMenuItem>
-          </>
-        )}
-      </DropdownMenuContent>
-    </DropdownMenu>
+              })}
+            </CommandGroup>
+            {selectedValues.size > 0 && (
+              <>
+                <CommandSeparator />
+                <CommandGroup>
+                  <CommandItem
+                    onSelect={() => column?.setFilterValue(undefined)}
+                    className="justify-center text-center"
+                  >
+                    Clear filters
+                  </CommandItem>
+                </CommandGroup>
+              </>
+            )}
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
   );
 }

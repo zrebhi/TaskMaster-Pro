@@ -727,7 +727,7 @@ describe('Integration Test: ProjectTasksPage', () => {
       ).toBeInTheDocument();
       await user.click(screen.getByRole('button', { name: /view/i }));
       await user.click(
-        await screen.findByRole('menuitemcheckbox', { name: /due date/i })
+        await screen.findByRole('option', { name: /due date/i })
       );
       expect(
         screen.queryByRole('columnheader', { name: /due date/i })
@@ -812,7 +812,7 @@ describe('Integration Test: ProjectTasksPage', () => {
         await user.click(
           within(toolbar).getByRole('button', { name: /status/i })
         );
-        const doneCheckbox = await screen.findByRole('menuitemcheckbox', {
+        const doneCheckbox = await screen.findByRole('option', {
           name: /done/i,
         });
         await user.click(doneCheckbox);
@@ -826,7 +826,7 @@ describe('Integration Test: ProjectTasksPage', () => {
         });
   
         // AND WHEN: The user also checks "To Do"
-        const todoCheckbox = screen.getByRole('menuitemcheckbox', {
+        const todoCheckbox = screen.getByRole('option', {
           name: /to do/i,
         });
         await user.click(todoCheckbox);
@@ -849,7 +849,7 @@ describe('Integration Test: ProjectTasksPage', () => {
         await user.click(
           within(toolbar).getByRole('button', { name: /status/i })
         );
-        const doneCheckbox = await screen.findByRole('menuitemcheckbox', {
+        const doneCheckbox = await screen.findByRole('option', {
           name: /done/i,
         });
         await user.click(doneCheckbox);
@@ -888,7 +888,7 @@ describe('Integration Test: ProjectTasksPage', () => {
         await user.click(
           within(toolbar).getByRole('button', { name: /status/i })
         );
-        const doneCheckbox = await screen.findByRole('menuitemcheckbox', {
+        const doneCheckbox = await screen.findByRole('option', {
           name: /done/i,
         });
         await user.click(doneCheckbox);
@@ -921,7 +921,7 @@ describe('Integration Test: ProjectTasksPage', () => {
         await user.click(
           within(toolbar).getByRole('button', { name: /status/i })
         );
-        const doneCheckbox = await screen.findByRole('menuitemcheckbox', {
+        const doneCheckbox = await screen.findByRole('option', {
           name: /done/i,
         });
         await user.click(doneCheckbox);
@@ -930,7 +930,7 @@ describe('Integration Test: ProjectTasksPage', () => {
         await user.click(
           within(toolbar).getByRole('button', { name: /priority/i })
         );
-        const highPriorityCheckbox = await screen.findByRole('menuitemcheckbox', {
+        const highPriorityCheckbox = await screen.findByRole('option', {
           name: /high/i,
         });
         await user.click(highPriorityCheckbox);
@@ -990,7 +990,7 @@ describe('Integration Test: ProjectTasksPage', () => {
       await user.click(
         within(toolbar).getByRole('button', { name: /status/i })
       );
-      await screen.findByRole('menuitemcheckbox', {
+      await screen.findByRole('option', {
         name: /done/i,
       });
 
