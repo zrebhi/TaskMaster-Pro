@@ -775,6 +775,163 @@ describe('Integration Test: ProjectTasksPage', () => {
         expect(getTitleColumnText()).toEqual(['C Task', 'B Task', 'A Task']);
       });
     });
+    describe('Responsive Column Visibility with Persistence', () => {
+      // Store the original window properties to restore after tests
+      const originalInnerWidth = window.innerWidth;
+      const originalLocalStorage = window.localStorage;
+      const project = createMockProject({ id: 'proj-1' });
+      const tasks = [
+        createMockTask({
+          id: 'task-1',
+          title: 'A Task',
+          project_id: 'proj-1',
+          due_date: '2025-01-01T00:00:00.000Z',
+        }),
+      ];
+
+      beforeAll(() => {
+        // Mock localStorage
+        let store = {};
+        const localStorageMock = {
+          getItem: jest.fn((key) => store[key] || null),
+          setItem: jest.fn((key, value) => {
+            store[key] = value.toString();
+          }),
+          clear: jest.fn(() => {
+            store = {};
+          }),
+          removeItem: jest.fn((key) => {
+            delete store[key];
+          }),
+          length: 0, // Add length property
+          key: jest.fn(), // Add key function
+        };
+        Object.defineProperty(window, 'localStorage', {
+          value: localStorageMock,
+          writable: true,
+          configurable: true,
+        });
+      });
+
+      beforeEach(() => {
+        // Clear localStorage before each test to ensure isolation
+        window.localStorage.clear();
+      });
+
+      afterEach(() => {
+        // Restore window width after each test
+        Object.defineProperty(window, 'innerWidth', {
+          writable: true,
+          configurable: true,
+          value: originalInnerWidth,
+        });
+      });
+
+      afterAll(() => {
+        // Restore localStorage after all tests in this suite
+        Object.defineProperty(window, 'localStorage', {
+          value: originalLocalStorage,
+        });
+      });
+
+      it('should hide the "Due Date" column by default on mobile screens', () => {
+        // GIVEN a mobile screen width
+        Object.defineProperty(window, 'innerWidth', {
+          writable: true,
+          configurable: true,
+          value: 500,
+        });
+
+        // WHEN the component is rendered for the first time
+        renderComponent(
+          { projects: [project] },
+          { tasks, currentProjectIdForTasks: 'proj-1' }
+        );
+
+        // THEN the "Due Date" column should not be visible
+        expect(
+          screen.queryByRole('columnheader', { name: /due date/i })
+        ).not.toBeInTheDocument();
+      });
+
+      it('should show the "Due Date" column by default on desktop screens', () => {
+        // GIVEN a desktop screen width
+        Object.defineProperty(window, 'innerWidth', {
+          writable: true,
+          configurable: true,
+          value: 1024,
+        });
+
+        // WHEN the component is rendered for the first time
+        renderComponent(
+          { projects: [project] },
+          { tasks, currentProjectIdForTasks: 'proj-1' }
+        );
+
+        // THEN the "Due Date" column should be visible
+        expect(
+          screen.getByRole('columnheader', { name: /due date/i })
+        ).toBeInTheDocument();
+      });
+
+      it('should remember the user’s choice to show and then hide a column across page reloads', async () => {
+        // GIVEN a mobile screen width
+        Object.defineProperty(window, 'innerWidth', {
+          writable: true,
+          configurable: true,
+          value: 500,
+        });
+        const { unmount } = renderComponent(
+          { projects: [project] },
+          { tasks, currentProjectIdForTasks: 'proj-1' }
+        );
+        expect(
+          screen.queryByRole('columnheader', { name: /due date/i })
+        ).not.toBeInTheDocument();
+
+        // WHEN the user shows the column
+        await user.click(screen.getByRole('button', { name: /view/i }));
+        await user.click(
+          await screen.findByRole('option', { name: /due date/i })
+        );
+        expect(
+          screen.getByRole('columnheader', { name: /due date/i })
+        ).toBeInTheDocument();
+
+        // AND the page is "reloaded" (unmount and re-render)
+        unmount();
+        renderComponent(
+          { projects: [project] },
+          { tasks, currentProjectIdForTasks: 'proj-1' }
+        );
+
+        // THEN the choice to show the column is remembered
+        expect(
+          screen.getByRole('columnheader', { name: /due date/i })
+        ).toBeInTheDocument();
+
+        // AND WHEN the user hides the column again
+        await user.click(screen.getByRole('button', { name: /view/i }));
+        await user.click(
+          await screen.findByRole('option', { name: /due date/i })
+        );
+        expect(
+          screen.queryByRole('columnheader', { name: /due date/i })
+        ).not.toBeInTheDocument();
+
+        // AND the page is "reloaded" again
+        unmount();
+        renderComponent(
+          { projects: [project] },
+          { tasks, currentProjectIdForTasks: 'proj-1' }
+        );
+
+        // THEN the choice to hide the column is also remembered
+        expect(
+          screen.queryByRole('columnheader', { name: /due date/i })
+        ).not.toBeInTheDocument();
+      });
+    });
     describe('Interactive Filtering', () => {
       const project = createMockProject({ id: 'proj-1' });
       const tasks = [

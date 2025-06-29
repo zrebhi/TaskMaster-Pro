@@ -57,16 +57,45 @@ const ProjectTasksPage = () => {
   const [isAddTaskModalOpen, setIsAddTaskModalOpen] = useState(false);
   const [isDeletingTask, setIsDeletingTask] = useState(false); // New state for delete loading
 
-  // State for Tanstack Table - lifted from DataTable component
-  const [columnVisibility, setColumnVisibility] = useState({});
+  const VISIBILITY_STORAGE_KEY = 'tasks-table-column-visibility';
+
+  const getInitialVisibility = () => {
+    try {
+      const savedVisibility = localStorage.getItem(VISIBILITY_STORAGE_KEY);
+      if (savedVisibility) {
+        return JSON.parse(savedVisibility);
+      }
+    } catch (e) {
+      console.error('Failed to parse column visibility from localStorage', e);
+      // Fall through to default if parsing fails
+    }
+
+    // If no saved state, determine based on screen width
+    // Hides 'due_date' on screens smaller than 768px by default
+    if (window.innerWidth < 768) {
+      return { due_date: false };
+    }
+
+    // Default for larger screens
+    return {};
+  };
+
+  // State for Tanstack Table
+  const [columnVisibility, setColumnVisibility] = useState(getInitialVisibility);
   const [columnFilters, setColumnFilters] = useState(() => []);
   const [sorting, setSorting] = useState([]);
   const [rowSelection, setRowSelection] = useState({});
+  
   useEffect(() => {
     if (projects.length === 0) {
       fetchProjects();
     }
   }, [projects, fetchProjects]);
+
+  // Effect to save column visibility changes to localStorage
+  useEffect(() => {
+    localStorage.setItem(VISIBILITY_STORAGE_KEY, JSON.stringify(columnVisibility));
+  }, [columnVisibility]);
 
   useEffect(() => {
     if (projectId) {
