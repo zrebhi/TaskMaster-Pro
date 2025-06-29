@@ -42,18 +42,18 @@ export function DataTableFacetedFilter({ column, title, options }) {
     <Popover>
       <PopoverTrigger asChild>
         <Button variant="outline" size="sm" className="h-8 border-dashed">
-          <PlusCircledIcon className="mr-2 h-4 w-4" />
+          <PlusCircledIcon className="mr-1 h-4 w-4" />
           {title}
           {selectedValues?.size > 0 && (
             <>
-              <Separator orientation="vertical" className="mx-2 h-4" />
+              <Separator orientation="vertical" className="h-4" />
               <Badge
                 variant="secondary"
-                className="rounded-sm px-1 font-normal lg:hidden"
+                className="rounded-sm font-normal lg:hidden"
               >
                 {selectedValues.size}
               </Badge>
-              <div className="hidden space-x-1 lg:flex">
+              <div className="hidden lg:flex">
                 {selectedValues.size > 2 ? (
                   <Badge
                     variant="secondary"

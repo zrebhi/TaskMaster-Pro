@@ -13,21 +13,21 @@ export function DataTableToolbar({ table, onAdd, addButtonText }) {
   const filtersConfig = table.options.meta?.filtersConfig;
 
   return (
-    <div
-      role="toolbar"
-      className="flex flex-col sm:flex-row items-end gap-2"
-    >
-      <div className="hidden sm:flex sm:items-center space-x-2 items-end">
-        {!!isFiltered && (
-          <Button
-            variant="ghost"
-            onClick={() => table.resetColumnFilters()}
-            className="h-8 px-2 lg:px-3"
-          >
-            Reset
-            <Cross2Icon className="ml-2 h-4 w-4" />
-          </Button>
-        )}
+    <div role="toolbar" className="flex flex-col sm:flex-row items-end gap-2">
+      <div className="flex justify-end items-center gap-2 flex-wrap">
+        <div className="flex justify-end items-end">
+          {!!isFiltered && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => table.resetColumnFilters()}
+              className="-m-2"
+            >
+              Reset
+              <Cross2Icon />
+            </Button>
+          )}
+        </div>
         {filtersConfig?.map((filter) => {
           const column = table.getColumn(filter.columnId);
           if (!column) {
@@ -44,9 +44,7 @@ export function DataTableToolbar({ table, onAdd, addButtonText }) {
         })}
       </div>
       <div className="flex items-center space-x-2">
-        <DataTableColumnToggle
-          table={table}
-        />
+        <DataTableColumnToggle table={table} />
         {!!onAdd && !!addButtonText && (
           <Button role="button" onClick={onAdd} variant="outline">
             <Plus className="h-3 w-3 sm:h-4 sm:w-4" /> {addButtonText}

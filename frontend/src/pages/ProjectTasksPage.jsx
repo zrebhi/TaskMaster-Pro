@@ -234,7 +234,7 @@ const ProjectTasksPage = () => {
           !!table &&
           (transformedTasks.length > 0 ? (
             <div>
-              <div className="flex items-end justify-end mb-2 gap-2">
+              <div className="flex items-end justify-end mb-2">
                 <DataTableToolbar
                   table={table}
                   onAdd={() => setIsAddTaskModalOpen(true)}
