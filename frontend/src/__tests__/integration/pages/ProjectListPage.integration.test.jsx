@@ -36,12 +36,6 @@ import ErrorContext from '../../../context/ErrorContext';
 // Mock the underlying API service to isolate the frontend.
 jest.mock('../../../services/projectApiService');
 
-// Mock the useNavigate hook
-const mockNavigate = jest.fn();
-jest.mock('react-router-dom', () => ({
-  ...jest.requireActual('react-router-dom'),
-  useNavigate: () => mockNavigate,
-}));
 
 /**
  * A custom render function for the ProjectListPage component.
@@ -68,6 +62,11 @@ const renderComponent = (
       >
         <Routes>
           <Route path="/" element={<ProjectListPage />} />
+          {/* Add a destination route to handle navigation from project links */}
+          <Route
+            path="/projects/:projectId"
+            element={<div>Mock Project Tasks Page</div>}
+          />
         </Routes>
       </TestProviders>
     </MemoryRouter>
@@ -81,7 +80,6 @@ describe('Integration Test: ProjectListPage', () => {
   beforeEach(() => {
     // setupTest mocks console.error and handles cleanup
     ({ cleanup } = setupTest());
-    mockNavigate.mockClear();
   });
 
   afterEach(() => {
@@ -407,22 +405,30 @@ describe('Integration Test: ProjectListPage', () => {
     });
   });
   describe('Story 4: Navigating to a Project', () => {
-    it("should navigate to the correct project tasks page when a project's name is clicked", async () => {
-      const project = createMockProject({ id: 'proj-1', name: 'My Test Project' });
+    it('should render a link for each project that navigates to the correct project tasks page', async () => {
+      const project = createMockProject({
+        id: 'proj-1',
+        name: 'My Test Project',
+      });
       const projectContextValue = createMockProjectContext({
         projects: [project],
       });
-  
+
       const { user } = renderComponent(projectContextValue);
-  
-      // In the component, the project name is a button that triggers navigation, not a standard link.
-      const projectButton = screen.getByRole('button', {
+
+      const projectLink = screen.getByRole('link', {
         name: /my test project/i,
       });
-      await user.click(projectButton);
-  
-      // Verify that useNavigate was called with the correct path
-      expect(mockNavigate).toHaveBeenCalledWith('/projects/proj-1');
+      expect(projectLink).toHaveAttribute('href', '/projects/proj-1');
+
+      // Click the link to navigate
+      await user.click(projectLink);
+
+      // Verify that the app has navigated to the mock tasks page,
+      // which silences the router warning and confirms navigation occurred.
+      expect(
+        screen.getByText(/mock project tasks page/i)
+      ).toBeInTheDocument();
     });
   });
 

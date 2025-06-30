@@ -1,5 +1,6 @@
 'use client';
 
+import { Link } from 'react-router-dom';
 import { DataTableColumnHeader } from '../../ui/tables/data-table-column-header';
 import { DataTableRowActions } from '../../ui/tables/data-table-row-actions';
 import {
@@ -26,19 +27,23 @@ export const columns = [
     ),
     meta: {
       headerTitle: 'Project Name',
+      // Remove the padding from the TableCell (the <td> element)
+      // so our Link can span the entire cell area.
+      cellClassName: 'p-0',
     },
-    cell: ({ row, table }) => {
-      const meta = table.options.meta;
+    cell: ({ row }) => {
       return (
-        <div className="flex">
-          <button
-            className="text-left max-w-[300px] md:max-w-[400px] truncate font-medium hover:underline"
-            onClick={() => meta?.onSelect(row.original.id)}
-            title={`View tasks for ${row.getValue('name')}`}
-          >
+        // Use a Link for proper navigation semantics.
+        // The Link now gets the padding, making the whole padded area clickable.
+        <Link
+          to={`/projects/${row.original.id}`}
+          className="flex items-center h-full w-full p-2 hover:underline"
+          title={`View tasks for ${row.getValue('name')}`}
+        >
+          <span className="max-w-[300px] md:max-w-[400px] truncate font-medium">
             {row.getValue('name')}
-          </button>
-        </div>
+          </span>
+        </Link>
       );
     },
     enableHiding: false,
