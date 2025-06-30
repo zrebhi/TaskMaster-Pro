@@ -38,7 +38,11 @@ const RegisterForm = ({ className, ...props }) => {
     setSuccessMessage('');
     setIsLoading(true);
 
-    // Basic client-side validation
+    // Normalize inputs at the very beginning.
+    const normalizedUsername = username.trim();
+    const normalizedEmail = email.trim();
+
+    // Basic client-side validation on normalized values
     if (password !== confirmPassword) {
       setError('Passwords do not match.');
       setIsLoading(false);
@@ -51,7 +55,7 @@ const RegisterForm = ({ className, ...props }) => {
     }
 
     const usernameRegex = /^[a-zA-Z0-9_-]+$/;
-    if (!usernameRegex.test(username)) {
+    if (!usernameRegex.test(normalizedUsername)) {
       setError(
         'Username can only contain letters, numbers, underscores, and hyphens.'
       );
@@ -60,11 +64,10 @@ const RegisterForm = ({ className, ...props }) => {
     }
 
     try {
-      const normalizedUsername = username.trim().toLocaleLowerCase();
-      const normalizedEmail = email.trim().toLowerCase();
+      // Send the final canonical form (lowercase) to the API.
       const data = await registerUser({
-        username: normalizedUsername,
-        email: normalizedEmail,
+        username: normalizedUsername.toLowerCase(),
+        email: normalizedEmail.toLowerCase(),
         password,
       });
       const successMsg =

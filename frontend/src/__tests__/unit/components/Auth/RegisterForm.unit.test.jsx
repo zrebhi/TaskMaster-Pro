@@ -207,4 +207,30 @@ describe('RegisterForm Unit Tests', () => {
       expect(mockedNavigate).toHaveBeenCalledWith('/auth/login');
     });
   });
+
+  test('trims leading/trailing whitespace from username and email on submission', async () => {
+    const { mocks } = setupSuccessfulAuthFlow();
+    const authResponse = authApiMocks.registerSuccess();
+    mocks.registerUser.mockResolvedValue(authResponse);
+
+    renderRegisterForm();
+
+    await fillRegistrationForm({
+      username: '  trimmeduser  ',
+      email: '  trimmed@example.com  ',
+    });
+    await submitForm(user, 'Register');
+
+    // Assert: Check that the API was called with the trimmed and lowercased values
+    await waitFor(() => {
+      expect(mocks.registerUser).toHaveBeenCalledWith({
+        username: 'trimmeduser', // Should be trimmed and lowercased
+        email: 'trimmed@example.com', // Should be trimmed and lowercased
+        password: 'password123',
+      });
+    });
+
+    // Assert: A successful navigation confirms that no client-side validation errors occurred.
+    expect(mockedNavigate).toHaveBeenCalled();
+  });
 });
