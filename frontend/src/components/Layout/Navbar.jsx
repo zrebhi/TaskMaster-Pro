@@ -2,6 +2,7 @@ import { useContext } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import AuthContext from '../../context/AuthContext.jsx';
 import logoImage from '../../assets/TaskMasterPro_ClipboardRocketLeftLogo.png';
+import { Button } from '../ui/button';
 
 const Navbar = () => {
   const auth = useContext(AuthContext);
@@ -28,30 +29,26 @@ const Navbar = () => {
 
       <ul className="flex items-center space-x-2">
         {auth && auth.isAuthenticated ? (
-          <>
-            <li>
-              <button
+              <Button
                 onClick={handleLogout}
                 className="bg-primary text-primary-foreground px-3 py-1 rounded"
               >
                 Logout
-              </button>
-            </li>
-          </>
+              </Button>
         ) : (
           <>
-            <button
+            <Button
               className="bg-primary text-primary-foreground px-2 py-1 rounded"
               onClick={() => navigate('/auth/login')}
             >
               Login
-            </button>
-            <button
+            </Button>
+            <Button
               className="bg-primary text-primary-foreground px-2 py-1 rounded"
               onClick={() => navigate('/auth/register')}
             >
               Register
-            </button>
+            </Button>
           </>
         )}
       </ul>

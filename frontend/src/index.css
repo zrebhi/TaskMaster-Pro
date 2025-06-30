@@ -116,6 +116,9 @@
     background-color: hsl(var(--destructive));
   }
 
+  .hover-border-primary:hover {
+    border-color: hsl(var(--primary)) !important;
+  }
   .solid-bg {
     background-color: var(--background);
   }
