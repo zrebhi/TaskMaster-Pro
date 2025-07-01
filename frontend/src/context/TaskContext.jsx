@@ -10,6 +10,7 @@ import {
   createTaskInProjectAPI,
   updateTaskDetails,
   deleteTaskById,
+  patchTaskAPI, // Import the new function
 } from '../services/taskApiService';
 import { useError } from './ErrorContext';
 import AuthContext from './AuthContext';
@@ -182,6 +183,43 @@ export const TaskProvider = ({ children }) => {
     [token, isAuthenticated, showErrorToast]
   );
 
+  const patchTask = useCallback(
+    async (taskId, partialTaskData) => {
+      if (!taskId || !partialTaskData) return;
+
+      const originalTasks = [...tasks];
+      // Optimistic UI Update: Update state immediately
+      setTasks((prevTasks) =>
+        prevTasks.map((task) =>
+          task.id === taskId ? { ...task, ...partialTaskData } : task
+        )
+      );
+
+      try {
+        // Call the API in the background
+        const updatedTaskFromServer = await patchTaskAPI(taskId, partialTaskData);
+        // Sync with the final state from server to ensure consistency
+        setTasks((prevTasks) =>
+          prevTasks.map((task) =>
+            task.id === taskId ? updatedTaskFromServer : task
+          )
+        );
+        // No success toast here to keep inline edits quiet, but we could add one.
+      } catch (err) {
+        // On failure, revert to original state and show error
+        setTasks(originalTasks);
+        if (err.processedError) {
+          showErrorToast(err.processedError);
+        } else {
+          const fallbackMessage = 'Failed to update task. Please try again.';
+          showErrorToast({ message: fallbackMessage, severity: 'medium' });
+        }
+        throw err;
+      }
+    },
+    [tasks, showErrorToast] // 'tasks' is a dependency
+  );
+
   return (
     <TaskContext.Provider
       value={{
@@ -194,6 +232,7 @@ export const TaskProvider = ({ children }) => {
         deleteTask,
         currentProjectIdForTasks,
         clearTasks,
+        patchTask,
       }}
     >
       {children}

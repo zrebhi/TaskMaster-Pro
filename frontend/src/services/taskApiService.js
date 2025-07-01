@@ -52,3 +52,18 @@ export const deleteTaskById = async (taskId) => {
   const response = await api.delete(`/tasks/${taskId}`, 'deleting task');
   return response.data;
 };
+
+/**
+ * Partially updates an existing task using PATCH. Ideal for inline editing.
+ * @param {string} taskId - The ID of the task to update.
+ * @param {object} partialTaskData - An object with only the fields to update.
+ * @returns {Promise<object>} A promise that resolves with the updated task data.
+ */
+export const patchTaskAPI = async (taskId, partialTaskData) => {
+  const response = await api.patch(
+    `/tasks/${taskId}`,
+    partialTaskData,
+    'updating task field'
+  );
+  return response.data?.task || response.data;
+};
