@@ -138,6 +138,7 @@ export const createMockTaskContext = (overrides = {}) => ({
   fetchTasks: jest.fn(),
   addTask: jest.fn(),
   updateTask: jest.fn(),
+  patchTask: jest.fn(),
   deleteTask: jest.fn(),
   currentProjectIdForTasks: null,
   clearTasks: jest.fn(),

@@ -29,7 +29,7 @@ import { priorities, statuses } from '../data/taskUIData';
  * @typedef {object} TableMeta
  * @property {(task: object) => void} onEdit - Handler to trigger the edit modal.
  * @property {(task: object) => void} onDelete - Handler to trigger the delete confirmation modal.
- * @property {(task: object) => void} onToggleComplete - Handler to toggle the task's completion status.
+ * @property {(taskId: string, data: object) => void} onPatchTask - Handler to patch a task with partial data.
  * @property {Array<{columnId: string, title: string, options: Array<{value: string | number, label: string, icon?: React.ComponentType<{className?: string}>}>}>} [filtersConfig] - Configuration for faceted filters.
  */
 
@@ -46,7 +46,7 @@ const ProjectTasksPage = () => {
     taskError,
     fetchTasks,
     deleteTask,
-    updateTask,
+    patchTask,
   } = useContext(TaskContext);
   const { showErrorToast } = useError();
 
@@ -154,23 +154,16 @@ const ProjectTasksPage = () => {
     }
   }, [taskToDelete, deleteTask, handleCloseDeleteTaskModal]);
 
-  /**
-   * Toggles the completion status of a task.
-   * @param {object} task The full task object from the table row.
-   */
-  const handleToggleComplete = useCallback(
-    async (task) => {
+  const handlePatchTask = useCallback(
+    async (taskId, data) => {
       try {
-        if (!task) {
-          throw new Error('handleToggleComplete was called without a task.');
-        }
-        await updateTask(task.id, { is_completed: !task.is_completed });
+        await patchTask(taskId, data);
       } catch (error) {
-        const errorResult = handleApiError(error, 'updating task status');
-        showErrorToast(errorResult);
+        // The context handles showing the error toast, but we can log here if needed.
+        console.error('Failed to patch task:', error);
       }
     },
-    [updateTask, showErrorToast]
+    [patchTask]
   );
 
   // Transform tasks for the DataTable
@@ -200,7 +193,7 @@ const ProjectTasksPage = () => {
     meta: {
       onEdit: handleEditTask,
       onDelete: handleDeleteTask,
-      onToggleComplete: handleToggleComplete,
+      onPatchTask: handlePatchTask,
       filtersConfig: [
         {
           columnId: 'priority',

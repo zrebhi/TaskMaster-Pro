@@ -1,7 +1,6 @@
 'use client';
 
 import { Badge } from '../../ui/badge';
-import { cn } from '../../../lib/utils';
 // import { Checkbox } from "../../ui/checkbox"
 import { priorities, statuses } from '../../../data/taskUIData';
 import { DataTableColumnHeader } from '../../ui/tables/data-table-column-header';
@@ -10,7 +9,7 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
 } from '../../ui/dropdown-menu';
-import { Edit, Trash2, Check, Undo2 } from 'lucide-react';
+import { Edit, Trash2, Undo2, Check } from 'lucide-react';
 
 /** @file Defines the column structure for the Tasks data table. */
 
@@ -60,14 +59,7 @@ export const columns = [
     cell: ({ row }) => {
       return (
         <div className="flex">
-          <span
-            className={cn(
-              'max-w-[300px] md:max-w-[400px] truncate font-medium',
-              {
-                'line-through text-muted-foreground': row.original.is_completed,
-              }
-            )}
-          >
+          <span className="max-w-[300px] md:max-w-[400px] truncate font-medium">
             {row.getValue('title')}
           </span>
         </div>
@@ -83,26 +75,34 @@ export const columns = [
     meta: {
       headerTitle: 'Status',
     },
-    cell: ({ row }) => {
+    cell: ({ row, table }) => {
       const status = statuses.find(
-        (s) =>
-          s.value.toLowerCase() ===
-          (row.getValue('status')?.toLowerCase() || '')
+        (s) => s.value === row.getValue('status')
       );
 
       if (!status) {
-        return (
-          <span className="capitalize">{row.getValue('status') || 'N/A'}</span>
-        );
+        return null;
       }
 
+      const handleStatusClick = () => {
+        const task = row.original;
+        table.options.meta?.onPatchTask(task.id, {
+          is_completed: !task.is_completed,
+        });
+      };
+
       return (
-        <div className="flex w-[100px] items-center gap-2">
-          {status.icon ? (
+        <button
+          type="button"
+          onClick={handleStatusClick}
+          className="flex w-[100px] items-center gap-2 rounded-md p-1 -ml-1 text-left hover:bg-muted transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          aria-label={`Toggle status for ${row.original.title}. Current status: ${status.label}`}
+        >
+          {!!status.icon && (
             <status.icon className="text-muted-foreground h-4 w-4" />
-          ) : null}
+          )}
           <span className="capitalize">{status.label}</span>
-        </div>
+        </button>
       );
     },
     filterFn: (row, id, value) => {
@@ -137,11 +137,13 @@ export const columns = [
             <priority.icon className="text-muted-foreground h-4 w-4" />
           )} */}
           <Badge
-            variant={priority.value === 3
-              ? 'destructive'
-              : priority.value === 1
-                ? 'outline'
-                : 'default'}
+            variant={
+              priority.value === 3
+                ? 'destructive'
+                : priority.value === 1
+                  ? 'outline'
+                  : 'default'
+            }
           >
             {priority.label}
           </Badge>
@@ -178,8 +180,11 @@ export const columns = [
             <Edit className="mr-2 h-4 w-4" />
             <span>Edit</span>
           </DropdownMenuItem>
-
-          <DropdownMenuItem onClick={() => meta?.onToggleComplete(task)}>
+          <DropdownMenuItem
+            onClick={() =>
+              meta?.onPatchTask(task.id, { is_completed: !task.is_completed })
+            }
+          >
             {task.is_completed ? (
               <Undo2 className="mr-2 h-4 w-4" />
             ) : (

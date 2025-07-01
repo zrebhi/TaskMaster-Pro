@@ -24,6 +24,7 @@ import {
   createMockTask,
   waitForElementToBeRemoved,
   setupTest,
+  createMockApiError,
 } from '../../helpers/test-utils';
 import {
   TestProviders,
@@ -78,6 +79,44 @@ const renderComponent = (
           <Route path="/projects/:projectId" element={<ProjectTasksPage />} />
         </Routes>
       </TestProviders>
+    </MemoryRouter>
+  );
+};
+
+/**
+ * Renders the ProjectTasksPage with the real TaskProvider and mocked contexts for auth, project, and error.
+ * This is used for testing the full async logic within TaskContext, such as optimistic updates and error handling.
+ *
+ * @param {object} authContextOverrides - Overrides for the mock AuthContext.
+ * @param {object} projectContextOverrides - Overrides for the mock ProjectContext.
+ * @param {object} errorContextOverrides - Overrides for the mock ErrorContext.
+ * @returns {import('@testing-library/react').RenderResult} The result of the RTL render.
+ */
+const renderWithRealTaskProvider = (
+  authContextOverrides = {},
+  projectContextOverrides = {},
+  errorContextOverrides = {}
+) => {
+  const authValue = createAuthenticatedContext(authContextOverrides);
+  const projectValue = createMockProjectContext(projectContextOverrides);
+  const errorValue = createMockErrorContext(errorContextOverrides);
+
+  return render(
+    <MemoryRouter initialEntries={['/projects/proj-1']}>
+      <AuthContext.Provider value={authValue}>
+        <ErrorContext.Provider value={errorValue}>
+          <ProjectContext.Provider value={projectValue}>
+            <TaskProvider>
+              <Routes>
+                <Route
+                  path="/projects/:projectId"
+                  element={<ProjectTasksPage />}
+                />
+              </Routes>
+            </TaskProvider>
+          </ProjectContext.Provider>
+        </ErrorContext.Provider>
+      </AuthContext.Provider>
     </MemoryRouter>
   );
 };
@@ -274,63 +313,30 @@ describe('Integration Test: ProjectTasksPage', () => {
     });
 
     it('should display a toast notification if the deleteTask context function throws an error', async () => {
-      // 1. Setup Mocks
-      /**
-       * @typedef {Error & { processedError: { message: string, severity: string } }} TestError
-       */
-      const error = /** @type {TestError} */ (new Error('Deletion Failed'));
-      error.processedError = {
-        message: 'API Error: Could not delete',
-        severity: 'high',
-      };
-
-      // Mock the underlying API service calls
+      // GIVEN: An API that fails and necessary mocks
+      const error = createMockApiError(
+        500,
+        'API Error: Could not delete',
+        'high'
+      );
       const {
         deleteTaskById,
         getTasksForProjectAPI,
       } = require('../../../services/taskApiService');
       /** @type {jest.Mock} */ (deleteTaskById).mockRejectedValue(error);
-      // Mock the initial fetch that happens in the real TaskProvider
       /** @type {jest.Mock} */ (getTasksForProjectAPI).mockResolvedValue([
         task,
       ]);
-
       const showErrorToastMock = jest.fn();
 
-      // 2. Render with the REAL TaskProvider.
-      // This is necessary to test the actual error handling logic within the TaskContext,
-      // which is not possible when providing a mocked context value via `renderComponent`.
-      // By building the provider tree manually, we ensure that the component uses the
-      // real TaskProvider, which will catch the rejected promise from the mocked API service.
-      const authValue = createAuthenticatedContext({});
-      const projectValue = createMockProjectContext({
-        projects: [project],
-        isLoading: false,
-      });
-      const errorValue = createMockErrorContext({
-        showErrorToast: showErrorToastMock,
-      });
-
-      render(
-        <MemoryRouter initialEntries={['/projects/proj-1']}>
-          <AuthContext.Provider value={authValue}>
-            <ErrorContext.Provider value={errorValue}>
-              <ProjectContext.Provider value={projectValue}>
-                <TaskProvider>
-                  <Routes>
-                    <Route
-                      path="/projects/:projectId"
-                      element={<ProjectTasksPage />}
-                    />
-                  </Routes>
-                </TaskProvider>
-              </ProjectContext.Provider>
-            </ErrorContext.Provider>
-          </AuthContext.Provider>
-        </MemoryRouter>
+      // WHEN: The component is rendered using the real TaskProvider
+      renderWithRealTaskProvider(
+        {},
+        { projects: [project], isLoading: false },
+        { showErrorToast: showErrorToastMock }
       );
 
-      // 3. Perform the user action
+      // AND: The user performs the delete action
       // Wait for the page to finish loading initial data
       expect(await screen.findByText(task.title)).toBeInTheDocument();
 
@@ -422,43 +428,34 @@ describe('Integration Test: ProjectTasksPage', () => {
       const project = createMockProject({ id: 'proj-1' });
 
       // Test 1: The "Happy Path"
-      it('should call updateTask, apply a line-through style, and update the action text when a task is marked as complete', async () => {
-        // GIVEN: An incomplete task and a mock update function
+      it('should call patchTask, apply a line-through style, and update the action text when a task is marked as complete', async () => {
+        // GIVEN: An incomplete task and a mock patch function
         const incompleteTask = createMockTask({
           id: 'task-complete-1',
           title: 'Finish the report',
           is_completed: false,
           project_id: 'proj-1',
         });
-        const updateTaskMock = jest.fn().mockResolvedValue({});
+        const patchTaskMock = jest.fn().mockResolvedValue({});
         const updatedTask = { ...incompleteTask, is_completed: true };
 
         const { rerender } = renderComponent(
           { projects: [project] },
           {
             tasks: [incompleteTask],
-            updateTask: updateTaskMock,
+            patchTask: patchTaskMock,
             currentProjectIdForTasks: 'proj-1',
           }
         );
 
-        // WHEN: The user marks the task as complete
+        // WHEN: The user marks the task as complete by clicking the status cell
         const row = screen.getByText(incompleteTask.title).closest('tr');
-        await user.click(
-          within(row).getByRole('button', { name: /open menu/i })
-        );
-        await user.click(
-          await screen.findByRole('menuitem', { name: /mark as complete/i })
-        );
-
-        // THEN: The context function is called correctly
-        await waitFor(() => {
-          expect(updateTaskMock).toHaveBeenCalledWith(incompleteTask.id, {
-            is_completed: true,
-          });
+        const statusCell = within(row).getByRole('button', {
+          name: /toggle status/i,
         });
+        await user.click(statusCell);
 
-        // AND: The UI updates after the state changes (simulated via rerender)
+        // THEN: The UI updates after the state changes (simulated via rerender)
         rerender(
           <MemoryRouter initialEntries={['/projects/proj-1']}>
             <TestProviders
@@ -466,7 +463,7 @@ describe('Integration Test: ProjectTasksPage', () => {
               projectValue={createMockProjectContext({ projects: [project] })}
               taskValue={createMockTaskContext({
                 tasks: [updatedTask], // Simulate the state update
-                updateTask: updateTaskMock,
+                patchTask: patchTaskMock,
                 currentProjectIdForTasks: 'proj-1',
               })}
               errorValue={createMockErrorContext()}
@@ -484,7 +481,7 @@ describe('Integration Test: ProjectTasksPage', () => {
         expect(row).toHaveAttribute('data-completed', 'true');
         expect(within(row).getByText('Done')).toBeInTheDocument();
 
-        // Assert the behavioral text change
+        // Assert the behavioral text change in the dropdown
         await user.click(
           within(row).getByRole('button', { name: /open menu/i })
         );
@@ -494,7 +491,7 @@ describe('Integration Test: ProjectTasksPage', () => {
       });
 
       // Test 2: The "Reverse Path"
-      it('should correctly mark a completed task as incomplete', async () => {
+      it('should update the UI correctly when a task is marked as incomplete', async () => {
         // GIVEN: A completed task
         const completedTask = createMockTask({
           id: 'task-uncomplete-1',
@@ -502,107 +499,97 @@ describe('Integration Test: ProjectTasksPage', () => {
           is_completed: true,
           project_id: 'proj-1',
         });
-        const updateTaskMock = jest.fn().mockResolvedValue({});
+        const patchTaskMock = jest.fn().mockResolvedValue({});
+        const updatedTask = { ...completedTask, is_completed: false };
 
-        renderComponent(
+        const { rerender } = renderComponent(
           { projects: [project] },
           {
             tasks: [completedTask],
-            updateTask: updateTaskMock,
+            patchTask: patchTaskMock,
             currentProjectIdForTasks: 'proj-1',
           }
         );
 
-        // WHEN: The user marks the task as incomplete
+        // WHEN: The user marks the task as incomplete by clicking the status cell
         const row = screen.getByText(completedTask.title).closest('tr');
-        await user.click(
-          within(row).getByRole('button', { name: /open menu/i })
-        );
-        await user.click(
-          await screen.findByRole('menuitem', { name: /mark as incomplete/i })
+        const statusCell = within(row).getByRole('button', {
+          name: /toggle status/i,
+        });
+        await user.click(statusCell);
+
+        // THEN: The UI should reflect the change optimistically.
+        rerender(
+          <MemoryRouter initialEntries={['/projects/proj-1']}>
+            <TestProviders
+              authValue={createAuthenticatedContext()}
+              projectValue={createMockProjectContext({ projects: [project] })}
+              taskValue={createMockTaskContext({
+                tasks: [updatedTask], // Simulate the optimistic state update
+                patchTask: patchTaskMock,
+                currentProjectIdForTasks: 'proj-1',
+              })}
+              errorValue={createMockErrorContext()}
+            >
+              <Routes>
+                <Route
+                  path="/projects/:projectId"
+                  element={<ProjectTasksPage />}
+                />
+              </Routes>
+            </TestProviders>
+          </MemoryRouter>
         );
 
-        // THEN: The context function is called with the correct payload
-        await waitFor(() => {
-          expect(updateTaskMock).toHaveBeenCalledWith(completedTask.id, {
-            is_completed: false,
-          });
-        });
+        // Assert the data attribute has been removed/set to false
+        expect(row).toHaveAttribute('data-completed', 'false');
+        // Assert the user-visible status text has changed
+        expect(within(row).getByText('To Do')).toBeInTheDocument();
       });
 
-      // Test 3: The "Failure Path"
-      it('should display a toast notification and not change the UI if marking a task as complete fails', async () => {
-        // GIVEN: The API is mocked to fail, and we are using the REAL TaskProvider
-        const error = new Error('Update Failed');
-        error.processedError = {
-          message: 'API Error: Could not update',
-          severity: 'high',
-        };
-        const {
-          updateTaskDetails, // This is the function we need to mock now
-          getTasksForProjectAPI,
-        } = require('../../../services/taskApiService');
-        /** @type {jest.Mock} */ (updateTaskDetails).mockRejectedValue(error);
+      // Test 3: The "Error Path"
+      it('should display a toast and revert the UI if the update fails', async () => {
+        // GIVEN: A task and a patch API that will fail
         const task = createMockTask({
           id: 'task-fail-1',
           title: 'Task that will fail',
           is_completed: false,
           project_id: 'proj-1',
         });
+        const error = createMockApiError(500, 'Server is down', 'high');
+        const {
+          patchTaskAPI,
+          getTasksForProjectAPI,
+        } = require('../../../services/taskApiService');
+        /** @type {jest.Mock} */ (patchTaskAPI).mockRejectedValue(error);
         /** @type {jest.Mock} */ (getTasksForProjectAPI).mockResolvedValue([
           task,
         ]);
-
         const showErrorToastMock = jest.fn();
 
-        // Render with the real provider to test the real error handling logic
-        render(
-          <MemoryRouter initialEntries={['/projects/proj-1']}>
-            <AuthContext.Provider value={createAuthenticatedContext()}>
-              <ErrorContext.Provider
-                value={createMockErrorContext({
-                  showErrorToast: showErrorToastMock,
-                })}
-              >
-                <ProjectContext.Provider
-                  value={createMockProjectContext({ projects: [project] })}
-                >
-                  <TaskProvider>
-                    <Routes>
-                      <Route
-                        path="/projects/:projectId"
-                        element={<ProjectTasksPage />}
-                      />
-                    </Routes>
-                  </TaskProvider>
-                </ProjectContext.Provider>
-              </ErrorContext.Provider>
-            </AuthContext.Provider>
-          </MemoryRouter>
+        // WHEN: The component is rendered with the real TaskProvider
+        renderWithRealTaskProvider(
+          {},
+          { projects: [project], isLoading: false },
+          { showErrorToast: showErrorToastMock }
         );
+        expect(await screen.findByText(task.title)).toBeInTheDocument();
 
-        // WHEN: The user tries to mark the task as complete
-        const row = (await screen.findByText(task.title)).closest('tr');
-        await user.click(
-          within(row).getByRole('button', { name: /open menu/i })
-        );
-        await user.click(
-          await screen.findByRole('menuitem', { name: /mark as complete/i })
-        );
+        // AND: The user tries to mark the task as complete
+        const row = screen.getByText(task.title).closest('tr');
+        const statusCell = within(row).getByRole('button', {
+          name: /toggle status/i,
+        });
+        await user.click(statusCell);
 
-        // THEN: A toast notification is shown
+        // THEN: The error toast is displayed
         await waitFor(() => {
           expect(showErrorToastMock).toHaveBeenCalledWith(error.processedError);
         });
 
-        // AND: The UI has NOT changed
-        const titleSpan = screen.getByText(task.title);
-        expect(titleSpan).not.toHaveClass('line-through'); // Check style for absence
-
-        // Check data-attribute for state
-        const taskRow = screen.getByText(task.title).closest('tr');
-        expect(taskRow).toHaveAttribute('data-completed', 'false');
-        expect(within(taskRow).getByText('To Do')).toBeInTheDocument();
+        // AND: The UI reverts to its original state
+        expect(row).toHaveAttribute('data-completed', 'false');
+        expect(within(row).getByText('To Do')).toBeInTheDocument();
       });
     });
   });
@@ -957,14 +944,14 @@ describe('Integration Test: ProjectTasksPage', () => {
           project_id: 'proj-1',
         }),
       ];
-  
+
       it('should filter the table when a status is selected using the checkbox filter', async () => {
         renderComponent(
           { projects: [project] },
           { tasks, currentProjectIdForTasks: 'proj-1' }
         );
         const toolbar = screen.getByRole('toolbar');
-  
+
         // WHEN: The user opens the filter and checks "Done"
         await user.click(
           within(toolbar).getByRole('button', { name: /status/i })
@@ -973,7 +960,7 @@ describe('Integration Test: ProjectTasksPage', () => {
           name: /done/i,
         });
         await user.click(doneCheckbox);
-  
+
         // THEN: Only 'done' tasks are visible
         await waitFor(() => {
           expect(screen.getByText('Implement login page')).toBeInTheDocument();
@@ -981,27 +968,29 @@ describe('Integration Test: ProjectTasksPage', () => {
             screen.queryByText('Design database schema')
           ).not.toBeInTheDocument();
         });
-  
+
         // AND WHEN: The user also checks "To Do"
         const todoCheckbox = screen.getByRole('option', {
           name: /to do/i,
         });
         await user.click(todoCheckbox);
-  
+
         // THEN: All tasks are visible again
         await waitFor(() => {
           expect(screen.getByText('Implement login page')).toBeInTheDocument();
-          expect(screen.getByText('Design database schema')).toBeInTheDocument();
+          expect(
+            screen.getByText('Design database schema')
+          ).toBeInTheDocument();
         });
       });
-  
+
       it('should clear all active filters when the "Reset" button is clicked', async () => {
         renderComponent(
           { projects: [project] },
           { tasks, currentProjectIdForTasks: 'proj-1' }
         );
         const toolbar = screen.getByRole('toolbar');
-  
+
         // GIVEN: A filter is active
         await user.click(
           within(toolbar).getByRole('button', { name: /status/i })
@@ -1010,7 +999,7 @@ describe('Integration Test: ProjectTasksPage', () => {
           name: /done/i,
         });
         await user.click(doneCheckbox);
-  
+
         // Assert that the list is filtered
         await waitFor(() => {
           expect(screen.getByText('Implement login page')).toBeInTheDocument();
@@ -1018,17 +1007,19 @@ describe('Integration Test: ProjectTasksPage', () => {
             screen.queryByText('Design database schema')
           ).not.toBeInTheDocument();
         });
-  
+
         // WHEN: The user clicks the reset button
         const resetButton = within(toolbar).getByRole('button', {
           name: /reset/i,
         });
         await user.click(resetButton);
-  
+
         // THEN: All tasks are visible again
         await waitFor(() => {
           expect(screen.getByText('Implement login page')).toBeInTheDocument();
-          expect(screen.getByText('Design database schema')).toBeInTheDocument();
+          expect(
+            screen.getByText('Design database schema')
+          ).toBeInTheDocument();
           expect(
             screen.getByText('Implement user dashboard')
           ).toBeInTheDocument();
@@ -1040,7 +1031,7 @@ describe('Integration Test: ProjectTasksPage', () => {
           { tasks, currentProjectIdForTasks: 'proj-1' }
         );
         const toolbar = screen.getByRole('toolbar');
-  
+
         // GIVEN: The "Done" filter is active
         await user.click(
           within(toolbar).getByRole('button', { name: /status/i })
@@ -1049,7 +1040,7 @@ describe('Integration Test: ProjectTasksPage', () => {
           name: /done/i,
         });
         await user.click(doneCheckbox);
-  
+
         // Assert that the list is filtered
         await waitFor(() => {
           expect(screen.getByText('Implement login page')).toBeInTheDocument();
@@ -1057,14 +1048,16 @@ describe('Integration Test: ProjectTasksPage', () => {
             screen.queryByText('Design database schema')
           ).not.toBeInTheDocument();
         });
-  
+
         // WHEN: The user clicks the "Done" checkbox again
         await user.click(doneCheckbox);
-  
+
         // THEN: The filter is removed and all tasks are visible
         await waitFor(() => {
           expect(screen.getByText('Implement login page')).toBeInTheDocument();
-          expect(screen.getByText('Design database schema')).toBeInTheDocument();
+          expect(
+            screen.getByText('Design database schema')
+          ).toBeInTheDocument();
         });
       });
       it('should combine filters from different facets (status and priority)', async () => {
@@ -1073,7 +1066,7 @@ describe('Integration Test: ProjectTasksPage', () => {
           { tasks, currentProjectIdForTasks: 'proj-1' }
         );
         const toolbar = screen.getByRole('toolbar');
-  
+
         // GIVEN: The user applies a status filter
         await user.click(
           within(toolbar).getByRole('button', { name: /status/i })
@@ -1082,7 +1075,7 @@ describe('Integration Test: ProjectTasksPage', () => {
           name: /done/i,
         });
         await user.click(doneCheckbox);
-  
+
         // AND: the user applies a priority filter
         await user.click(
           within(toolbar).getByRole('button', { name: /priority/i })
@@ -1091,7 +1084,7 @@ describe('Integration Test: ProjectTasksPage', () => {
           name: /high/i,
         });
         await user.click(highPriorityCheckbox);
-  
+
         // THEN: Only the task matching both filters is visible
         await waitFor(() => {
           expect(screen.getByText('Implement login page')).toBeInTheDocument();
