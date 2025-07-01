@@ -18,6 +18,7 @@ class AppError extends Error {
 class ValidationError extends AppError {
   constructor(message, details = null) {
     super(message, 400, 'VALIDATION_ERROR');
+    this.name = 'ValidationError';
     this.details = details;
   }
 }
@@ -25,30 +26,35 @@ class ValidationError extends AppError {
 class AuthenticationError extends AppError {
   constructor(message = 'Authentication required') {
     super(message, 401, 'AUTHENTICATION_ERROR');
+    this.name = 'AuthenticationError';
   }
 }
 
 class AuthorizationError extends AppError {
   constructor(message = 'Insufficient permissions') {
     super(message, 403, 'AUTHORIZATION_ERROR');
+    this.name = 'AuthorizationError';
   }
 }
 
 class NotFoundError extends AppError {
   constructor(resource = 'Resource') {
     super(`${resource} not found`, 404, 'NOT_FOUND_ERROR');
+    this.name = 'NotFoundError';
   }
 }
 
 class ConflictError extends AppError {
   constructor(message = 'Resource conflict') {
     super(message, 409, 'CONFLICT_ERROR');
+    this.name = 'ConflictError';
   }
 }
 
 class DatabaseError extends AppError {
   constructor(message = 'Database operation failed', originalError = null) {
     super(message, 500, 'DATABASE_ERROR');
+    this.name = 'DatabaseError';
     this.originalError = originalError;
   }
 }
