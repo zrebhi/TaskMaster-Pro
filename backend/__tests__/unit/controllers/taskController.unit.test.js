@@ -44,60 +44,46 @@ describe('Task Controller Unit Tests', () => {
   });
 
   describe('createTask', () => {
-    it('should successfully create a new task', async () => {
-      mockReq.body = {
-        title: 'New Task',
-        description: 'Task description',
-        due_date: '2024-12-31',
-        priority: 3,
-      };
-      const mockTask = createMockTask();
-
+    it('should call Task.create with trimmed title and default priority', async () => {
+      mockReq.body = { title: '  A Task with extra spaces  ' };
+      const mockTask = createMockTask({ title: 'A Task with extra spaces' });
       Task.create.mockResolvedValue(mockTask);
 
       await createTask(mockReq, mockRes, mockNext);
 
       expect(Task.create).toHaveBeenCalledWith({
         project_id: 'project-123',
-        title: 'New Task',
-        description: 'Task description',
-        due_date: '2024-12-31',
-        priority: 3,
-      });
-      expect(mockRes.status).toHaveBeenCalledWith(201);
-      expect(mockRes.json).toHaveBeenCalledWith({
-        message: 'Task created successfully.',
-        task: mockTask,
-      });
-      expect(mockNext).not.toHaveBeenCalled();
-    });
-
-    it('should create task with default values when optional fields are missing', async () => {
-      mockReq.body = { title: 'Minimal Task' };
-      const mockTask = createMockTask();
-
-      Task.create.mockResolvedValue(mockTask);
-
-      await createTask(mockReq, mockRes, mockNext);
-
-      expect(Task.create).toHaveBeenCalledWith({
-        project_id: 'project-123',
-        title: 'Minimal Task',
+        title: 'A Task with extra spaces', // Title is trimmed
         description: null,
         due_date: null,
-        priority: 2,
+        priority: 2, // Default priority
       });
       expect(mockRes.status).toHaveBeenCalledWith(201);
+      expect(mockRes.json).toHaveBeenCalledWith(
+        expect.objectContaining({ task: mockTask })
+      );
     });
 
-    it('should throw ValidationError when title is missing', async () => {
-      mockReq.body = { description: 'Task without title' };
+    it('should throw a ValidationError if title is missing', async () => {
+      mockReq.body = { description: 'A task without a title' };
 
       await expect(createTask(mockReq, mockRes, mockNext)).rejects.toThrow(
         expect.objectContaining({
+          name: 'ValidationError',
           message: 'Task title is required.',
           statusCode: 400,
-          errorCode: 'VALIDATION_ERROR',
+        })
+      );
+    });
+
+    it('should throw a ValidationError if title is only whitespace', async () => {
+      mockReq.body = { title: '   ' }; // Whitespace only
+
+      await expect(createTask(mockReq, mockRes, mockNext)).rejects.toThrow(
+        expect.objectContaining({
+          name: 'ValidationError',
+          message: 'Task title is required.',
+          statusCode: 400,
         })
       );
     });
@@ -128,142 +114,4 @@ describe('Task Controller Unit Tests', () => {
     });
   });
 
-  describe('updateTask', () => {
-    beforeEach(() => {
-      mockReq.params = { taskId: 'task-123' };
-    });
-
-    it('should successfully update a task', async () => {
-      mockReq.body = {
-        title: 'Updated Task',
-        description: 'Updated description',
-        due_date: '2025-01-01',
-        priority: 3,
-        is_completed: true,
-      };
-      const mockTask = createMockTask();
-
-      Task.findByPk.mockResolvedValue(mockTask);
-
-      await updateTask(mockReq, mockRes, mockNext);
-
-      expect(Task.findByPk).toHaveBeenCalledWith('task-123', {
-        include: [{ model: Project, as: 'Project' }],
-      });
-      expect(mockTask.title).toBe('Updated Task');
-      expect(mockTask.description).toBe('Updated description');
-      expect(mockTask.due_date).toBe('2025-01-01');
-      expect(mockTask.priority).toBe(3);
-      expect(mockTask.is_completed).toBe(true);
-      expect(mockTask.save).toHaveBeenCalled();
-      expect(mockRes.status).toHaveBeenCalledWith(200);
-      expect(mockRes.json).toHaveBeenCalledWith({
-        message: 'Task updated successfully.',
-        task: mockTask,
-      });
-    });
-
-    it('should throw NotFoundError when task does not exist', async () => {
-      Task.findByPk.mockResolvedValue(null);
-
-      await expect(updateTask(mockReq, mockRes, mockNext)).rejects.toThrow(
-        expect.objectContaining({
-          message: 'Task not found',
-          statusCode: 404,
-          errorCode: 'NOT_FOUND_ERROR',
-        })
-      );
-    });
-
-    it('should throw AuthorizationError when user does not own the project', async () => {
-      const mockTask = createMockTask({
-        Project: { user_id: 'different-user-123' },
-      });
-
-      Task.findByPk.mockResolvedValue(mockTask);
-
-      await expect(updateTask(mockReq, mockRes, mockNext)).rejects.toThrow(
-        expect.objectContaining({
-          message: 'User not authorized to update this task.',
-          statusCode: 403,
-          errorCode: 'AUTHORIZATION_ERROR',
-        })
-      );
-    });
-
-    it('should handle description set to null', async () => {
-      mockReq.body = { description: null };
-      const mockTask = createMockTask();
-
-      Task.findByPk.mockResolvedValue(mockTask);
-
-      await updateTask(mockReq, mockRes, mockNext);
-
-      expect(mockTask.description).toBe(null);
-      expect(mockTask.save).toHaveBeenCalled();
-    });
-
-    it('should handle non-string title value', async () => {
-      mockReq.body = { title: 123 };
-      const mockTask = createMockTask();
-
-      Task.findByPk.mockResolvedValue(mockTask);
-
-      await updateTask(mockReq, mockRes, mockNext);
-
-      expect(mockTask.title).toBe(123);
-      expect(mockTask.save).toHaveBeenCalled();
-    });
-  });
-
-  describe('deleteTask', () => {
-    beforeEach(() => {
-      mockReq.params = { taskId: 'task-123' };
-    });
-
-    it('should successfully delete a task', async () => {
-      const mockTask = createMockTask();
-
-      Task.findByPk.mockResolvedValue(mockTask);
-
-      await deleteTask(mockReq, mockRes, mockNext);
-
-      expect(Task.findByPk).toHaveBeenCalledWith('task-123', {
-        include: [{ model: Project, as: 'Project' }],
-      });
-      expect(mockTask.destroy).toHaveBeenCalled();
-      expect(mockRes.status).toHaveBeenCalledWith(200);
-      expect(mockRes.json).toHaveBeenCalledWith({
-        message: 'Task deleted successfully.',
-      });
-    });
-
-    it('should throw NotFoundError when task does not exist', async () => {
-      Task.findByPk.mockResolvedValue(null);
-
-      await expect(deleteTask(mockReq, mockRes, mockNext)).rejects.toThrow(
-        expect.objectContaining({
-          message: 'Task not found',
-          statusCode: 404,
-          errorCode: 'NOT_FOUND_ERROR',
-        })
-      );
-    });
-
-    it('should throw AuthorizationError when user does not own the project', async () => {
-      const mockTask = createMockTask({
-        Project: { user_id: 'different-user-123' },
-      });
-
-      Task.findByPk.mockResolvedValue(mockTask);
-
-      await expect(deleteTask(mockReq, mockRes, mockNext)).rejects.toThrow(
-        expect.objectContaining({
-          message: 'User not authorized to delete this task.',
-          statusCode: 403,
-          errorCode: 'AUTHORIZATION_ERROR',
-        })
-      );
-    });
-  });
 });

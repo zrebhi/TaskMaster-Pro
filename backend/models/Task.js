@@ -27,7 +27,7 @@ module.exports = (sequelize, DataTypes) => {
         allowNull: true,
       },
       due_date: {
-        type: DataTypes.DATEONLY, // Use DATEONLY if you don't need time part
+        type: DataTypes.DATEONLY,
         allowNull: true,
       },
       priority: {

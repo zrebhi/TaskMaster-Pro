@@ -2,32 +2,27 @@ const express = require('express');
 const router = express.Router();
 const taskController = require('../controllers/taskController');
 const { protect } = require('../middleware/authMiddleware');
+// Import the new middleware
+const { verifyTaskOwnership } = require('../middleware/taskAuthMiddleware');
 
-/* --- Router-level Middleware ---
-Apply authentication middleware to all routes defined in this file.
-This ensures only authenticated users can access task-specific functionalities. */
 router.use(protect);
 
-/* --- Task-specific Routes ---
-These routes operate on individual tasks identified by :taskId
-
-NOTE: Task creation and fetching routes are located in projectRoutes.js
-as they operate within the context of a specific project:
-- POST /api/projects/:projectId/tasks (create task for project)
-- GET /api/projects/:projectId/tasks (get all tasks for project) */
+// All routes below now operate on a specific task and need ownership verification
 
 /**
  * @route   PUT /api/tasks/:taskId
- * @desc    Update a specific task (title, description, due_date, priority, completion status)
- * @access  Private (User must be authenticated and own the project containing the task)
+ * @route   PATCH /api/tasks/:taskId
+ * @desc    Update a specific task (full or partial update)
+ * @access  Private (User must own the task's project)
  */
-router.put('/:taskId', taskController.updateTask);
+router.put('/:taskId', verifyTaskOwnership, taskController.updateTask);
+router.patch('/:taskId', verifyTaskOwnership, taskController.updateTask);
 
 /**
  * @route   DELETE /api/tasks/:taskId
  * @desc    Delete a specific task
- * @access  Private (User must be authenticated and own the project containing the task)
+ * @access  Private (User must own the task's project)
  */
-router.delete('/:taskId', taskController.deleteTask);
+router.delete('/:taskId', verifyTaskOwnership, taskController.deleteTask);
 
 module.exports = router;

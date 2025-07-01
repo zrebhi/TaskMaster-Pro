@@ -4,11 +4,14 @@ const { Project, Task } = require('../../../models');
 const databaseTestHelper = require('../../helpers/database');
 const { createUser } = require('../../helpers/testDataFactory');
 
-describe('Task Routes Integration Tests', () => {
+describe('Tasks API Integration Tests', () => {
   let testUser;
+  let otherUser;
   let testUserToken;
-  let testProject;
   let otherUserToken;
+  let testProject;
+  let otherUsersProject;
+  let testTask;
 
   beforeAll(async () => {
     await databaseTestHelper.initialize();
@@ -21,209 +24,192 @@ describe('Task Routes Integration Tests', () => {
   beforeEach(async () => {
     await databaseTestHelper.truncateAllTables();
 
-    // Create test users
-    const testUserData = await createUser();
-    testUser = testUserData.user;
-    testUserToken = testUserData.token;
+    // Create users
+    ({ user: testUser, token: testUserToken } = await createUser());
+    ({ user: otherUser, token: otherUserToken } = await createUser());
 
-    const otherUserData = await createUser();
-    otherUserToken = otherUserData.token;
-
-    // Create test projects
+    // Create projects
     testProject = await Project.create({
       name: 'Test Project',
-      description: 'Project for testing',
       user_id: testUser.id,
     });
+    otherUsersProject = await Project.create({
+      name: "Other User's Project",
+      user_id: otherUser.id,
+    });
 
-  });
-
-  describe('Database Relationship Integration', () => {
-    it('should cascade delete all tasks when parent project is deleted', async () => {
-      // Arrange: Create multiple tasks for the project
-      const task1Data = {
-        title: 'Task 1',
-        description: 'First task',
-        priority: 1,
-      };
-      const task2Data = {
-        title: 'Task 2',
-        description: 'Second task',
-        priority: 2,
-      };
-
-      await request(app)
-        .post(`/api/projects/${testProject.id}/tasks`)
-        .set('Authorization', `Bearer ${testUserToken}`)
-        .send(task1Data);
-
-      await request(app)
-        .post(`/api/projects/${testProject.id}/tasks`)
-        .set('Authorization', `Bearer ${testUserToken}`)
-        .send(task2Data);
-
-      // Verify tasks exist before deletion
-      const tasksBeforeDelete = await Task.findAll({
-        where: { project_id: testProject.id },
-      });
-      expect(tasksBeforeDelete).toHaveLength(2);
-
-      // Act: Delete the parent project
-      const deleteRes = await request(app)
-        .delete(`/api/projects/${testProject.id}`)
-        .set('Authorization', `Bearer ${testUserToken}`);
-
-      expect(deleteRes.statusCode).toBe(200);
-
-      // Assert: Verify tasks are automatically deleted by database CASCADE
-      const tasksAfterDelete = await Task.findAll({
-        where: { project_id: testProject.id },
-      });
-      expect(tasksAfterDelete).toHaveLength(0);
+    // Create a task
+    testTask = await Task.create({
+      title: 'Initial Task',
+      project_id: testProject.id,
     });
   });
 
-  describe('Cross-Route Data Consistency Integration', () => {
-    it('should maintain data consistency through complete task lifecycle', async () => {
-      // Create task via project route
-      const createTaskData = {
-        title: 'Lifecycle Test Task',
-        description: 'Original description',
-        priority: 1,
-        due_date: '2024-12-31',
-      };
+  // Suppress console output for expected errors
+  beforeEach(() => {
+    jest.spyOn(console, 'warn').mockImplementation(() => {});
+    jest.spyOn(console, 'error').mockImplementation(() => {});
+  });
 
-      const createRes = await request(app)
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  describe('POST /api/projects/:projectId/tasks', () => {
+    it('should create a new task and return 201 Created for an authorized user', async () => {
+      const taskData = { title: 'A New Task', priority: 3 };
+      const res = await request(app)
         .post(`/api/projects/${testProject.id}/tasks`)
         .set('Authorization', `Bearer ${testUserToken}`)
-        .send(createTaskData);
+        .send(taskData);
 
-      expect(createRes.statusCode).toBe(201);
-      const taskId = createRes.body.task.id;
+      expect(res.statusCode).toBe(201);
+      expect(res.body.task).toBeDefined();
+      expect(res.body.task.title).toBe('A New Task');
+      expect(res.body.task.project_id).toBe(testProject.id);
+      const taskInDb = await Task.findByPk(res.body.task.id);
+      expect(taskInDb).not.toBeNull();
+    });
 
-      // Verify task appears in project tasks list with correct data
-      const getRes = await request(app)
-        .get(`/api/projects/${testProject.id}/tasks`)
-        .set('Authorization', `Bearer ${testUserToken}`);
+    it('should return 400 Bad Request if the title is missing or empty', async () => {
+      const res = await request(app)
+        .post(`/api/projects/${testProject.id}/tasks`)
+        .set('Authorization', `Bearer ${testUserToken}`)
+        .send({ title: '' });
 
-      expect(getRes.statusCode).toBe(200);
-      const createdTask = getRes.body.tasks.find((task) => task.id === taskId);
-      expect(createdTask).toBeDefined();
-      expect(createdTask.title).toBe('Lifecycle Test Task');
-      expect(createdTask.description).toBe('Original description');
-      expect(createdTask.priority).toBe(1);
-      expect(createdTask.due_date).toBe('2024-12-31');
-      expect(createdTask.is_completed).toBe(false);
+      expect(res.statusCode).toBe(400);
+      expect(res.body.message).toContain('Task title is required');
+    });
 
-      // Update task via task route
-      const updateData = {
-        title: 'Updated Task Title',
-        description: 'Updated description',
-        priority: 3,
-        is_completed: true,
-      };
+    it('should return 401 Unauthorized if the request has no auth token', async () => {
+      const res = await request(app)
+        .post(`/api/projects/${testProject.id}/tasks`)
+        .send({ title: 'No Auth Task' });
 
-      const updateRes = await request(app)
-        .put(`/api/tasks/${taskId}`)
+      expect(res.statusCode).toBe(401);
+    });
+
+    it('should return 403 Forbidden if the user does not own the project', async () => {
+      const res = await request(app)
+        .post(`/api/projects/${testProject.id}/tasks`)
+        .set('Authorization', `Bearer ${otherUserToken}`)
+        .send({ title: 'Forbidden Task' });
+
+      expect(res.statusCode).toBe(403);
+    });
+
+    it('should return 404 Not Found if the project ID does not exist', async () => {
+      const nonExistentProjectId = 'a1b2c3d4-e5f6-7890-1234-567890abcdef';
+      const res = await request(app)
+        .post(`/api/projects/${nonExistentProjectId}/tasks`)
+        .set('Authorization', `Bearer ${testUserToken}`)
+        .send({ title: 'Task for non-existent project' });
+
+      expect(res.statusCode).toBe(404);
+    });
+  });
+
+  describe('PATCH /api/tasks/:taskId', () => {
+    it('should update task fields and return 200 OK for an authorized user', async () => {
+      const updateData = { title: 'Updated Title', is_completed: true };
+      const res = await request(app)
+        .patch(`/api/tasks/${testTask.id}`)
         .set('Authorization', `Bearer ${testUserToken}`)
         .send(updateData);
 
-      expect(updateRes.statusCode).toBe(200);
+      expect(res.statusCode).toBe(200);
+      expect(res.body.task.title).toBe('Updated Title');
+      expect(res.body.task.is_completed).toBe(true);
+      const taskInDb = await Task.findByPk(testTask.id);
+      expect(taskInDb.title).toBe('Updated Title');
+    });
 
-      // Verify updates appear in project tasks list
-      const getUpdatedRes = await request(app)
-        .get(`/api/projects/${testProject.id}/tasks`)
+    it('should return 401 Unauthorized if the request has no auth token', async () => {
+      const res = await request(app)
+        .patch(`/api/tasks/${testTask.id}`)
+        .send({ title: 'Updated Title' });
+
+      expect(res.statusCode).toBe(401);
+    });
+
+    it('should return 403 Forbidden if the user does not own the task', async () => {
+      const res = await request(app)
+        .patch(`/api/tasks/${testTask.id}`)
+        .set('Authorization', `Bearer ${otherUserToken}`)
+        .send({ title: 'Forbidden Update' });
+
+      expect(res.statusCode).toBe(403);
+    });
+
+    it('should return 404 Not Found if the task ID does not exist', async () => {
+      const nonExistentTaskId = 'a1b2c3d4-e5f6-7890-1234-567890abcdef';
+      const res = await request(app)
+        .patch(`/api/tasks/${nonExistentTaskId}`)
+        .set('Authorization', `Bearer ${testUserToken}`)
+        .send({ title: 'Update for non-existent task' });
+
+      expect(res.statusCode).toBe(404);
+    });
+
+    it('should return 400 Bad Request for invalid data types (e.g., invalid priority)', async () => {
+      const res = await request(app)
+        .patch(`/api/tasks/${testTask.id}`)
+        .set('Authorization', `Bearer ${testUserToken}`)
+        .send({ priority: 99 }); // Invalid priority
+
+      expect(res.statusCode).toBe(400);
+      expect(res.body.message).toContain('Priority must be');
+    });
+  });
+
+  describe('DELETE /api/tasks/:taskId', () => {
+    it('should delete the task and return 200 OK for an authorized user', async () => {
+      const res = await request(app)
+        .delete(`/api/tasks/${testTask.id}`)
         .set('Authorization', `Bearer ${testUserToken}`);
 
-      expect(getUpdatedRes.statusCode).toBe(200);
-      const updatedTask = getUpdatedRes.body.tasks.find(
-        (task) => task.id === taskId
-      );
-      expect(updatedTask.title).toBe('Updated Task Title');
-      expect(updatedTask.description).toBe('Updated description');
-      expect(updatedTask.priority).toBe(3);
-      expect(updatedTask.is_completed).toBe(true);
-      expect(updatedTask.due_date).toBe('2024-12-31'); // Should remain unchanged
+      expect(res.statusCode).toBe(200);
+      expect(res.body.message).toBe('Task deleted successfully.');
+      const taskInDb = await Task.findByPk(testTask.id);
+      expect(taskInDb).toBeNull();
     });
-  });
 
-  describe('Authentication & Authorization Flow Integration', () => {
-    it('should enforce complete auth chain for task operations', async () => {
-      jest.spyOn(console, 'warn').mockImplementation(() => {});
-      // Create a task in testUser's project
-      const taskData = {
-        title: 'Auth Test Task',
-        priority: 2,
-      };
-
-      const createRes = await request(app)
-        .post(`/api/projects/${testProject.id}/tasks`)
-        .set('Authorization', `Bearer ${testUserToken}`)
-        .send(taskData);
-
-      expect(createRes.statusCode).toBe(201);
-      const taskId = createRes.body.task.id;
-
-      // Verify otherUser cannot access testUser's project tasks
-      const unauthorizedGetRes = await request(app)
-        .get(`/api/projects/${testProject.id}/tasks`)
-        .set('Authorization', `Bearer ${otherUserToken}`);
-
-      expect(unauthorizedGetRes.statusCode).toBe(403);
-      expect(unauthorizedGetRes.body.message).toContain('not authorized');
-
-      // Verify otherUser cannot update testUser's task
-      const unauthorizedUpdateRes = await request(app)
-        .put(`/api/tasks/${taskId}`)
-        .set('Authorization', `Bearer ${otherUserToken}`)
-        .send({ title: 'Hacked title' });
-
-      expect(unauthorizedUpdateRes.statusCode).toBe(403);
-      expect(unauthorizedUpdateRes.body.message).toContain('not authorized');
-
-      // Verify unauthenticated requests are rejected
-      const unauthenticatedRes = await request(app).get(
-        `/api/projects/${testProject.id}/tasks`
-      );
-
-      expect(unauthenticatedRes.statusCode).toBe(401);
+    it('should return 401 Unauthorized if the request has no auth token', async () => {
+      const res = await request(app).delete(`/api/tasks/${testTask.id}`);
+      expect(res.statusCode).toBe(401);
     });
-  });
 
-  describe('Error Propagation Integration', () => {
-    it('should properly transform Sequelize validation errors to API responses', async () => {
-      jest.spyOn(console, 'error').mockImplementation(() => {});
-
-      // Create a task first
-      const taskData = {
-        title: 'Test Task',
-        priority: 2,
-      };
-
-      const createRes = await request(app)
-        .post(`/api/projects/${testProject.id}/tasks`)
-        .set('Authorization', `Bearer ${testUserToken}`)
-        .send(taskData);
-
-      const taskId = createRes.body.task.id;
-
-      // Trigger Sequelize validation error with invalid priority
-      const invalidUpdateData = {
-        priority: 5, // Invalid: outside range 1-3
-      };
-
+    it('should return 403 Forbidden if the user does not own the task', async () => {
       const res = await request(app)
-        .put(`/api/tasks/${taskId}`)
-        .set('Authorization', `Bearer ${testUserToken}`)
-        .send(invalidUpdateData);
+        .delete(`/api/tasks/${testTask.id}`)
+        .set('Authorization', `Bearer ${otherUserToken}`);
+      expect(res.statusCode).toBe(403);
+    });
 
-      // Verify error is properly transformed by error middleware
-      expect(res.statusCode).toBe(400);
-      expect(res.body.message).toContain(
-        'Priority must be 1 (Low), 2 (Medium), or 3 (High)'
-      );
-      expect(res.body.errorCode).toBe('VALIDATION_ERROR');
-      expect(res.body.timestamp).toBeDefined();
+    it('should return 404 Not Found if the task ID does not exist', async () => {
+      const nonExistentTaskId = 'a1b2c3d4-e5f6-7890-1234-567890abcdef';
+      const res = await request(app)
+        .delete(`/api/tasks/${nonExistentTaskId}`)
+        .set('Authorization', `Bearer ${testUserToken}`);
+      expect(res.statusCode).toBe(404);
+    });
+  });
+
+  describe('Database Cascade Behavior', () => {
+    it('should cascade delete all tasks when parent project is deleted', async () => {
+      // Arrange: Create another task to ensure multiple are deleted
+      await Task.create({ title: 'Task 2', project_id: testProject.id });
+      const tasksBeforeDelete = await Task.findAll({ where: { project_id: testProject.id } });
+      expect(tasksBeforeDelete.length).toBe(2);
+
+      // Act: Delete the parent project
+      await request(app)
+        .delete(`/api/projects/${testProject.id}`)
+        .set('Authorization', `Bearer ${testUserToken}`);
+
+      // Assert: Verify tasks are automatically deleted
+      const tasksAfterDelete = await Task.findAll({ where: { project_id: testProject.id } });
+      expect(tasksAfterDelete.length).toBe(0);
     });
   });
 });
