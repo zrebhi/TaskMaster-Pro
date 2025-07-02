@@ -187,6 +187,14 @@ export const TaskProvider = ({ children }) => {
     async (taskId, partialTaskData) => {
       if (!taskId || !partialTaskData) return;
 
+      if (!isAuthenticated || !token) {
+        const fallbackMessage = 'Authentication required to update tasks.';
+        showErrorToast({ message: fallbackMessage, severity: 'medium' });
+        // We don't throw here because this is an optimistic update.
+        // The UI will revert, and the user is notified.
+        return;
+      }
+
       const originalTasks = [...tasks];
       // Optimistic UI Update: Update state immediately
       setTasks((prevTasks) =>
@@ -217,7 +225,7 @@ export const TaskProvider = ({ children }) => {
         throw err;
       }
     },
-    [tasks, showErrorToast] // 'tasks' is a dependency
+    [tasks, showErrorToast, token, isAuthenticated]
   );
 
   return (
