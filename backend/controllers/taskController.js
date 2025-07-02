@@ -1,8 +1,5 @@
 const { Task } = require('../models');
-const {
-  asyncHandler,
-  ValidationError,
-} = require('../utils/customErrors');
+const { asyncHandler, ValidationError } = require('../utils/customErrors');
 
 /**
  * @desc    Create a new task within a specific project
@@ -62,9 +59,31 @@ exports.updateTask = asyncHandler(async (req, res) => {
   // req.task is provided by the verifyTaskOwnership middleware
   const task = req.task;
 
+  const allowedFields = [
+    'title',
+    'description',
+    'due_date',
+    'priority',
+    'is_completed',
+  ];
+  const updateData = {};
+
+  allowedFields.forEach((field) => {
+    if (Object.prototype.hasOwnProperty.call(req.body, field)) {
+      updateData[field] = req.body[field];
+    }
+  });
+
+  // If no valid fields were provided in the request body, it's a bad request.
+  if (Object.keys(updateData).length === 0) {
+    throw new ValidationError(
+      'Request body must contain at least one valid field to update.'
+    );
+  }
+
   // The update method efficiently handles both full and partial updates.
-  // It only updates fields that are present in req.body.
-  await task.update(req.body);
+  // It only updates fields that are present in the sanitized updateData object.
+  await task.update(updateData);
 
   return res.status(200).json({
     message: 'Task updated successfully.',
