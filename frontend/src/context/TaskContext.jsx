@@ -195,7 +195,7 @@ export const TaskProvider = ({ children }) => {
         return;
       }
 
-      const originalTasks = [...tasks];
+      const originalTasks = JSON.parse(JSON.stringify(tasks));
       // Optimistic UI Update: Update state immediately
       setTasks((prevTasks) =>
         prevTasks.map((task) =>
@@ -222,10 +222,9 @@ export const TaskProvider = ({ children }) => {
           const fallbackMessage = 'Failed to update task. Please try again.';
           showErrorToast({ message: fallbackMessage, severity: 'medium' });
         }
-        throw err;
       }
     },
-    [tasks, showErrorToast, token, isAuthenticated]
+    [showErrorToast, token, isAuthenticated, tasks]
   );
 
   return (
