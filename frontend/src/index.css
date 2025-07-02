@@ -125,12 +125,12 @@
 }
 
 /* Task Completion Styling */
-tr[data-completed="true"] {
+tr[data-completed='true'] {
   color: hsl(var(--muted-foreground));
   text-decoration-line: line-through;
   opacity: 0.7;
 }
 
-tr[data-completed="true"]:hover {
+tr[data-completed='true']:hover {
   background-color: transparent;
 }
