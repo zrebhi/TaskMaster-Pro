@@ -2,9 +2,9 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
 import { BrowserRouter } from 'react-router-dom';
-import { AuthProvider } from '../../context/AuthContext';
-import { ProjectProvider } from '../../context/ProjectContext';
-import { ErrorProvider } from '../../context/ErrorContext';
+import { AuthProvider } from '@/context/AuthContext';
+import { ProjectProvider } from '@/context/ProjectContext';
+import { ErrorProvider } from '@/context/ErrorContext';
 
 /**
  * Custom render function that wraps components with all necessary providers

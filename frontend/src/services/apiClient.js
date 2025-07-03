@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { handleApiError, isAuthError } from '../utils/errorHandler';
+import { handleApiError, isAuthError } from '@/utils/errorHandler';
 
 /**
  * Centralized API client with global error handling

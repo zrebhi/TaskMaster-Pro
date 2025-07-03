@@ -322,7 +322,7 @@ describe('Integration Test: ProjectTasksPage', () => {
       const {
         deleteTaskById,
         getTasksForProjectAPI,
-      } = require('../../../../services/taskApiService');
+      } = require('@/services/taskApiService');
       /** @type {jest.Mock} */ (deleteTaskById).mockRejectedValue(error);
       /** @type {jest.Mock} */ (getTasksForProjectAPI).mockResolvedValue([
         task,
@@ -560,7 +560,7 @@ describe('Integration Test: ProjectTasksPage', () => {
         const {
           patchTaskAPI,
           getTasksForProjectAPI,
-        } = require('../../../../services/taskApiService');
+        } = require('@/services/taskApiService');
         /** @type {jest.Mock} */ (patchTaskAPI).mockRejectedValue(error);
         /** @type {jest.Mock} */ (getTasksForProjectAPI).mockResolvedValue([
           task,

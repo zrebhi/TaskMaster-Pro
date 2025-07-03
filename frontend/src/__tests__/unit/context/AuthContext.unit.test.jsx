@@ -1,10 +1,10 @@
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { useContext } from 'react';
-import AuthContext, { AuthProvider } from '../../../context/AuthContext';
-import { setupSessionStorageMock } from '../../helpers/mock-providers';
-import { setAuthContext } from '../../../services/apiClient';
+import AuthContext, { AuthProvider } from '@/context/AuthContext';
+import { setupSessionStorageMock } from '@/__tests__/helpers/mock-providers';
+import { setAuthContext } from '@/services/apiClient';
 
-jest.mock('../../../services/apiClient', () => ({
+jest.mock('@/services/apiClient', () => ({
   setAuthContext: jest.fn(),
   resetLogoutFlag: jest.fn(),
 }));

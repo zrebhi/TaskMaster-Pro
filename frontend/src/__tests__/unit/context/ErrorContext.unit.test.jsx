@@ -1,13 +1,13 @@
 import { render, renderHook, act } from '@testing-library/react';
 import toast from 'react-hot-toast';
-import { ErrorProvider, useError } from '../../../context/ErrorContext';
-import { ERROR_SEVERITY } from '../../../utils/errorHandler';
+import { ErrorProvider, useError } from '@/context/ErrorContext';
+import { ERROR_SEVERITY } from '@/utils/errorHandler';
 import {
   createMockApiError,
   createMockNetworkError,
   setupTest,
   cleanupMocks,
-} from '../../helpers/test-utils';
+} from '@/__tests__/helpers/test-utils';
 
 // Mock react-hot-toast
 jest.mock('react-hot-toast', () => {

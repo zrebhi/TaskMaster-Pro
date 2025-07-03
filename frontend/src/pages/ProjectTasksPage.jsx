@@ -10,20 +10,20 @@ import {
   getFacetedRowModel,
   getFacetedUniqueValues,
 } from '@tanstack/react-table';
-import EditTaskModal from '../components/Tasks/EditTaskModal';
-import ConfirmationModal from '../components/Common/ConfirmationModal';
-import AddTaskModal from '../components/Tasks/AddTaskModal';
-import TaskContext from '../context/TaskContext';
-import ProjectContext from '../context/ProjectContext';
-import { useError } from '../context/ErrorContext';
-import { handleApiError } from '../utils/errorHandler';
+import EditTaskModal from '@/components/Tasks/EditTaskModal';
+import ConfirmationModal from '@/components/Common/ConfirmationModal';
+import AddTaskModal from '@/components/Tasks/AddTaskModal';
+import TaskContext from '@/context/TaskContext';
+import ProjectContext from '@/context/ProjectContext';
+import { useError } from '@/context/ErrorContext';
+import { handleApiError } from '@/utils/errorHandler';
 
-import { DataTable } from '../components/ui/tables/data-table';
-import { DataTableToolbar } from '../components/ui/tables/data-table-toolbar';
-import { columns as taskTableColumns } from '../components/Tasks/Table/columns';
-import { Button } from '../components/ui/button';
+import { DataTable } from '@/components/ui/tables/data-table';
+import { DataTableToolbar } from '@/components/ui/tables/data-table-toolbar';
+import { columns as taskTableColumns } from '@/components/Tasks/Table/columns';
+import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
-import { priorities, statuses } from '../data/taskUIData';
+import { priorities, statuses } from '@/data/taskUIData';
 
 /**
  * @typedef {object} TableMeta

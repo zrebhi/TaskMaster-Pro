@@ -1,12 +1,12 @@
 import { screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import ProjectList from '../../../../components/Projects/ProjectList';
+import ProjectList from '@/components/Projects/ProjectList';
 import {
   renderWithMinimalProviders,
   createMockProject,
-} from '../../../helpers/test-utils';
+} from '@/__tests__/helpers/test-utils';
 
-jest.mock('../../../../components/Projects/ProjectListItem', () => {
+jest.mock('@/components/Projects/ProjectListItem', () => {
   return jest.fn(
     ({ project, onSelectProject, isActive, onEditClick, onDeleteClick }) => (
       <li
@@ -81,7 +81,7 @@ describe('ProjectList Unit Tests', () => {
   });
 
   test('renders list of projects when projects provided', () => {
-    const ProjectListItem = require('../../../../components/Projects/ProjectListItem');
+    const ProjectListItem = require('@/components/Projects/ProjectListItem');
 
     renderProjectList({ activeProjectId: '2' });
 
@@ -93,7 +93,7 @@ describe('ProjectList Unit Tests', () => {
   });
 
   test('passes correct props to ProjectListItem components', () => {
-    const ProjectListItem = require('../../../../components/Projects/ProjectListItem');
+    const ProjectListItem = require('@/components/Projects/ProjectListItem');
     const activeId = '2';
 
     renderProjectList({ activeProjectId: activeId });
@@ -148,7 +148,7 @@ describe('ProjectList Unit Tests', () => {
   });
 
   test('handles missing optional props gracefully', () => {
-    const ProjectListItem = require('../../../../components/Projects/ProjectListItem');
+    const ProjectListItem = require('@/components/Projects/ProjectListItem');
 
     renderProjectList({
       onEditProject: undefined,

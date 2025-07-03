@@ -17,24 +17,24 @@ import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { axe } from 'jest-axe';
 import 'jest-axe/extend-expect';
 
-import ProjectListPage from '../../../pages/ProjectListPage';
+import ProjectListPage from '@/pages/ProjectListPage';
 import {
   setupTest,
   createMockProject,
   waitForElementToBeRemoved,
-} from '../../helpers/test-utils';
+} from '@/__tests__/helpers/test-utils';
 import {
   TestProviders,
   createAuthenticatedContext,
   createMockProjectContext,
   createMockErrorContext,
-} from '../../helpers/mock-providers';
-import { ProjectProvider } from '../../../context/ProjectContext';
-import AuthContext from '../../../context/AuthContext';
-import ErrorContext from '../../../context/ErrorContext';
+} from '@/__tests__/helpers/mock-providers';
+import { ProjectProvider } from '@/context/ProjectContext';
+import AuthContext from '@/context/AuthContext';
+import ErrorContext from '@/context/ErrorContext';
 
 // Mock the underlying API service to isolate the frontend.
-jest.mock('../../../services/projectApiService');
+jest.mock('@/services/projectApiService');
 
 
 /**
@@ -363,7 +363,7 @@ describe('Integration Test: ProjectListPage', () => {
       const {
         getAllProjects,
         deleteProjectAPI,
-      } = require('../../../services/projectApiService');
+      } = require('@/services/projectApiService');
       /** @type {jest.Mock} */ (getAllProjects).mockResolvedValue([
         projectToDelete,
       ]);

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useError } from '../../context/ErrorContext';
-import { registerUser } from '../../services/authApiService';
+import { useError } from '@/context/ErrorContext';
+import { registerUser } from '@/services/authApiService';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import {

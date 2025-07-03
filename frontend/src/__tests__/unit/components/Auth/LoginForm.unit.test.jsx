@@ -1,24 +1,24 @@
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
-import LoginForm from '../../../../components/Auth/LoginForm';
+import LoginForm from '@/components/Auth/LoginForm';
 import {
   renderWithMinimalProviders,
   fillForm,
   submitForm,
-} from '../../../helpers/test-utils';
+} from '@/__tests__/helpers/test-utils';
 import {
   TestAuthProvider,
   TestErrorProvider,
-} from '../../../helpers/mock-providers';
+} from '@/__tests__/helpers/mock-providers';
 import {
   authApiMocks,
   setupSuccessfulAuthFlow,
   setupFailedAuthFlow,
   setupLoadingSimulation,
-} from '../../../helpers/api-mocks';
+} from '@/__tests__/helpers/api-mocks';
 
-jest.mock('../../../../services/authApiService');
+jest.mock('@/services/authApiService');
 
 const mockedNavigate = jest.fn();
 jest.mock('react-router-dom', () => ({

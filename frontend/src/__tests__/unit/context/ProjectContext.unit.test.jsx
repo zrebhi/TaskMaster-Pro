@@ -3,20 +3,20 @@ import '@testing-library/jest-dom';
 import React from 'react';
 import ProjectContext, {
   ProjectProvider,
-} from '../../../context/ProjectContext';
-import { setupSuccessfulProjectFlow } from '../../helpers/api-mocks';
+} from '@/context/ProjectContext';
+import { setupSuccessfulProjectFlow } from '@/__tests__/helpers/api-mocks';
 import {
   createAuthenticatedContext,
   createUnauthenticatedContext,
-} from '../../helpers/mock-providers';
+} from '@/__tests__/helpers/mock-providers';
 
-jest.mock('../../../services/projectApiService');
+jest.mock('@/services/projectApiService');
 
 const mockShowErrorToast = jest.fn();
 const mockShowSuccess = jest.fn();
 
-jest.mock('../../../context/ErrorContext', () => ({
-  ...jest.requireActual('../../../context/ErrorContext'),
+jest.mock('@/context/ErrorContext', () => ({
+  ...jest.requireActual('@/context/ErrorContext'),
   useError: () => ({
     showErrorToast: mockShowErrorToast,
     showSuccess: mockShowSuccess,
@@ -28,7 +28,7 @@ jest.mock('../../../context/ErrorContext', () => ({
   }),
 }));
 
-jest.mock('../../../context/AuthContext', () => {
+jest.mock('@/context/AuthContext', () => {
   const React = require('react');
   return {
     __esModule: true,
@@ -45,7 +45,7 @@ describe('ProjectContext Unit Tests', () => {
 
   const createWrapper = (authContextValue = createAuthenticatedContext()) => {
     return ({ children }) => {
-      const AuthContext = require('../../../context/AuthContext').default;
+      const AuthContext = require('@/context/AuthContext').default;
 
       return (
         <AuthContext.Provider value={authContextValue}>

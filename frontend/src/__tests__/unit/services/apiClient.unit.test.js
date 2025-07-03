@@ -1,12 +1,12 @@
 import axios from 'axios';
-import { handleApiError } from '../../../utils/errorHandler';
+import { handleApiError } from '@/utils/errorHandler';
 
 // Mock axios
 jest.mock('axios');
 const mockAxios = jest.mocked(axios);
 
 // Mock error handler
-jest.mock('../../../utils/errorHandler');
+jest.mock('@/utils/errorHandler');
 const mockHandleApiError = jest.mocked(handleApiError);
 
 // Create mock axios instance
@@ -46,7 +46,7 @@ describe('API Client Unit Tests', () => {
     });
 
     // Import after mocks are set up
-    apiClientModule = require('../../../services/apiClient');
+    apiClientModule = require('@/services/apiClient');
     api = apiClientModule.api;
   });
 

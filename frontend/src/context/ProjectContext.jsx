@@ -5,7 +5,7 @@ import {
   deleteProjectAPI,
   createProjectAPI,
   updateProjectAPI,
-} from '../services/projectApiService';
+} from '@/services/projectApiService';
 import { useError } from './ErrorContext';
 
 const ProjectContext = createContext(null);

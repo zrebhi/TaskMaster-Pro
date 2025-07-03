@@ -1,16 +1,16 @@
 // @ts-check
 /**
  * @file Unit tests for the TaskForm component.
- * @see ../../../../../components/Tasks/TaskForm.jsx
+ * @see @/components/Tasks/TaskForm.jsx
  */
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import TaskForm from '../../../../components/Tasks/TaskForm';
+import TaskForm from '@/components/Tasks/TaskForm';
 
 // The shadcn/ui Select component is complex and causes issues in JSDOM.
 // We mock it to provide a simple, standard <select> element, allowing us
 // to test the form's logic without fighting the component's implementation details.
-jest.mock('../../../../components/ui/select', () => ({
+jest.mock('@/components/ui/select', () => ({
   Select: ({ children, onValueChange, value }) => (
     <select
       onChange={(e) => onValueChange(e.target.value)}

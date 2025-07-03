@@ -5,9 +5,9 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '../../ui/select';
-import { Badge } from '../../ui/badge';
-import { priorities } from '../../../data/taskUIData';
+} from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
+import { priorities } from '@/data/taskUIData';
 
 // A dedicated component for the editable priority cell
 const EditablePriorityCell = ({ row, table }) => {

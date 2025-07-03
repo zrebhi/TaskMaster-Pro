@@ -1,7 +1,7 @@
 import { useContext } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import AuthContext from '../../context/AuthContext.jsx';
-import logoImage from '../../assets/TaskMasterPro_ClipboardRocketLeftLogo.png';
+import AuthContext from '@/context/AuthContext.jsx';
+import logoImage from '@/assets/TaskMasterPro_ClipboardRocketLeftLogo.png';
 import { Button } from '../ui/button';
 
 const Navbar = () => {

@@ -1,15 +1,15 @@
 import { screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import TaskList from '../../../../components/Tasks/TaskList';
+import TaskList from '@/components/Tasks/TaskList';
 import {
   renderWithMinimalProviders,
   createMockTask,
-} from '../../../helpers/test-utils';
+} from '@/__tests__/helpers/test-utils';
 
 /* eslint jest/expect-expect: ["error", { "assertFunctionNames": ["expect", "expectListStructure", "expectTasksWithTitles", "expectTaskItemsToBeRendered"] }] */
 
 // Mock TaskListItem to isolate TaskList testing
-jest.mock('../../../../components/Tasks/TaskListItem', () => {
+jest.mock('@/components/Tasks/TaskListItem', () => {
   return function MockTaskListItem({ task }) {
     // Handle tasks without IDs for testing
     const testId = task.id

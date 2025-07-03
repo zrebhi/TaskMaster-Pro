@@ -1,15 +1,15 @@
 import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
-import TaskListItem from '../../../../components/Tasks/TaskListItem';
+import TaskListItem from '@/components/Tasks/TaskListItem';
 import {
   renderWithMinimalProviders,
   createMockTask,
-} from '../../../helpers/test-utils';
+} from '@/__tests__/helpers/test-utils';
 import {
   createMockTaskContext,
   TestTaskProvider,
-} from '../../../helpers/mock-providers';
+} from '@/__tests__/helpers/mock-providers';
 
 describe('TaskListItem Unit Tests', () => {
   const renderTaskListItem = (props = {}, taskContextValue = {}) => {

@@ -1,25 +1,25 @@
 import { renderHook, act } from '@testing-library/react';
 import { useContext } from 'react';
-import TaskContext, { TaskProvider } from '../../../context/TaskContext';
+import TaskContext, { TaskProvider } from '@/context/TaskContext';
 import {
   createMockErrorContext,
   createAuthenticatedContext,
   createUnauthenticatedContext,
-} from '../../helpers/mock-providers';
-import { createMockTask, createMockApiError } from '../../helpers/test-utils';
+} from '@/__tests__/helpers/mock-providers';
+import { createMockTask, createMockApiError } from '@/__tests__/helpers/test-utils';
 
-jest.mock('../../../services/taskApiService', () => ({
+jest.mock('@/services/taskApiService', () => ({
   getTasksForProjectAPI: jest.fn(),
   createTaskInProjectAPI: jest.fn(),
   updateTaskDetails: jest.fn(),
   deleteTaskById: jest.fn(),
 }));
 
-jest.mock('../../../context/ErrorContext', () => ({
+jest.mock('@/context/ErrorContext', () => ({
   useError: jest.fn(),
 }));
 
-jest.mock('../../../context/AuthContext', () => {
+jest.mock('@/context/AuthContext', () => {
   const React = require('react');
   return {
     __esModule: true,
@@ -32,8 +32,8 @@ const {
   createTaskInProjectAPI,
   updateTaskDetails,
   deleteTaskById,
-} = require('../../../services/taskApiService');
-const { useError } = require('../../../context/ErrorContext');
+} = require('@/services/taskApiService');
+const { useError } = require('@/context/ErrorContext');
 
 describe('TaskContext', () => {
   let mockErrorContext;
@@ -46,7 +46,7 @@ describe('TaskContext', () => {
 
   const createWrapper = (authContextValue = createAuthenticatedContext()) => {
     return ({ children }) => {
-      const AuthContext = require('../../../context/AuthContext').default;
+      const AuthContext = require('@/context/AuthContext').default;
 
       return (
         <AuthContext.Provider value={authContextValue}>

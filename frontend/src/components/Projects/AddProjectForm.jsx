@@ -1,7 +1,7 @@
 import { useState, useContext } from 'react';
-import ProjectContext from '../../context/ProjectContext';
-import { getErrorMessage } from '../../utils/errorHandler';
-import { PROJECT_NAME_MAX_LENGTH } from '../../config/constants';
+import ProjectContext from '@/context/ProjectContext';
+import { getErrorMessage } from '@/utils/errorHandler';
+import { PROJECT_NAME_MAX_LENGTH } from '@/config/constants';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import {

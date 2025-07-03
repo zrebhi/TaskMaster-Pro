@@ -1,6 +1,6 @@
 import { ArrowDown, ArrowUp, ChevronsUpDown, EyeOff } from 'lucide-react';
 
-import { cn } from '../../../lib/utils'; // Adjusted path
+import { cn } from '@/lib/utils'; // Adjusted path
 import { Button } from '../button'; // Adjusted path
 import {
   DropdownMenu,

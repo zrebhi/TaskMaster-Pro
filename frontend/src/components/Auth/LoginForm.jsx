@@ -1,8 +1,8 @@
 import { useState, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
-import AuthContext from '../../context/AuthContext.jsx'; // Adjust path if needed
-import { useError } from '../../context/ErrorContext'; // Adjust path if needed
-import { loginUser } from '../../services/authApiService'; // Adjust path if needed
+import AuthContext from '@/context/AuthContext.jsx'; // Adjust path if needed
+import { useError } from '@/context/ErrorContext'; // Adjust path if needed
+import { loginUser } from '@/services/authApiService'; // Adjust path if needed
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import {

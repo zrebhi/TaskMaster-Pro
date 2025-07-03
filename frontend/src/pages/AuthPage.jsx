@@ -1,6 +1,6 @@
 import { useLocation, Link } from 'react-router-dom';
-import RegisterForm from '../components/Auth/RegisterForm.jsx';
-import LoginForm from '../components/Auth/LoginForm.jsx';
+import RegisterForm from '@/components/Auth/RegisterForm.jsx';
+import LoginForm from '@/components/Auth/LoginForm.jsx';
 
 /**
  * AuthPage - Page-level component responsible for:

@@ -234,7 +234,7 @@ export const createErrorContextWithErrors = (errors = [], overrides = {}) =>
  * @returns {import('react').JSX.Element} AuthContext provider wrapper.
  */
 export const TestAuthProvider = ({ children, value }) => {
-  const AuthContext = require('../../context/AuthContext').default;
+  const AuthContext = require('@/context/AuthContext').default;
   const mockValue = value || createMockAuthContext();
 
   return (
@@ -248,7 +248,7 @@ export const TestAuthProvider = ({ children, value }) => {
  * @returns {import('react').JSX.Element} AuthContext provider wrapper.
  */
 export const TestProjectProvider = ({ children, value }) => {
-  const ProjectContext = require('../../context/ProjectContext').default;
+  const ProjectContext = require('@/context/ProjectContext').default;
   const mockValue = value || createMockProjectContext();
 
   return (
@@ -264,7 +264,7 @@ export const TestProjectProvider = ({ children, value }) => {
  * @returns {import('react').JSX.Element} AuthContext provider wrapper.
  */
 export const TestTaskProvider = ({ children, value }) => {
-  const TaskContext = require('../../context/TaskContext').default;
+  const TaskContext = require('@/context/TaskContext').default;
   const mockValue = value || createMockTaskContext();
 
   return (
@@ -278,7 +278,7 @@ export const TestTaskProvider = ({ children, value }) => {
  * @returns {import('react').JSX.Element} AuthContext provider wrapper.
  */
 export const TestErrorProvider = ({ children, value }) => {
-  const ErrorContext = require('../../context/ErrorContext').default;
+  const ErrorContext = require('@/context/ErrorContext').default;
   const mockValue = value || createMockErrorContext();
 
   return (

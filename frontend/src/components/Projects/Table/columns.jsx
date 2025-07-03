@@ -1,12 +1,12 @@
 'use client';
 
 import { Link } from 'react-router-dom';
-import { DataTableColumnHeader } from '../../ui/tables/data-table-column-header';
-import { DataTableRowActions } from '../../ui/tables/data-table-row-actions';
+import { DataTableColumnHeader } from '@/components/ui/tables/data-table-column-header';
+import { DataTableRowActions } from '@/components/ui/tables/data-table-row-actions';
 import {
   DropdownMenuItem,
   DropdownMenuSeparator,
-} from '../../ui/dropdown-menu';
+} from '@/components/ui/dropdown-menu';
 import { Edit, Trash2 } from 'lucide-react';
 
 // Helper function for formatting dates

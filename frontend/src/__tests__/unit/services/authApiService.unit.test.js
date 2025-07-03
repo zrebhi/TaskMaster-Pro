@@ -1,8 +1,8 @@
-import * as authApiService from '../../../services/authApiService';
-import { authApiMocks, errorApiMocks } from '../../helpers/api-mocks';
+import * as authApiService from '@/services/authApiService';
+import { authApiMocks, errorApiMocks } from '@/__tests__/helpers/api-mocks';
 
 // Mock the apiClient
-jest.mock('../../../services/apiClient', () => ({
+jest.mock('@/services/apiClient', () => ({
   api: {
     post: jest.fn(),
   },
@@ -13,7 +13,7 @@ describe('authApiService Unit Tests', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    mockApi = require('../../../services/apiClient').api;
+    mockApi = require('@/services/apiClient').api;
   });
 
   describe('loginUser', () => {

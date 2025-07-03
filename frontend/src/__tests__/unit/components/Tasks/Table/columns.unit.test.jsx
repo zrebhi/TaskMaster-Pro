@@ -4,14 +4,14 @@
  */
 
 import { render, screen } from '@testing-library/react';
-import { columns } from '../../../../../components/Tasks/Table/columns';
+import { columns } from '@/components/Tasks/Table/columns';
 
 // Note: Mocks for Badge, icons, and row actions are no longer needed for
 // the remaining unit tests, but are kept here in case other simple, pure
 // cell renderers are added in the future.
 
 // Mock child components to isolate the logic in `columns.jsx`.
-jest.mock('../../../../../components/ui/badge', () => ({
+jest.mock('@/components/ui/badge', () => ({
   Badge: jest.fn(({ variant, children }) => (
     <div data-testid="badge" data-variant={variant}>
       {children}
@@ -27,7 +27,7 @@ jest.mock('lucide-react', () => ({
 }));
 
 // Mock the actions component to verify that the correct handlers are passed.
-jest.mock('../../../../../components/ui/tables/data-table-row-actions', () => ({
+jest.mock('@/components/ui/tables/data-table-row-actions', () => ({
   DataTableRowActions: jest.fn(() => (
     <div data-testid="row-actions">Actions</div>
   )),

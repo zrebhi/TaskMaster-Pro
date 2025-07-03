@@ -5,11 +5,11 @@
 import { render } from '@testing-library/react';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 
-import ProjectTasksPage from '../../pages/ProjectTasksPage';
-import { TaskProvider } from '../../context/TaskContext';
-import ProjectContext from '../../context/ProjectContext';
-import AuthContext from '../../context/AuthContext';
-import ErrorContext from '../../context/ErrorContext';
+import ProjectTasksPage from '@/pages/ProjectTasksPage';
+import { TaskProvider } from '@/context/TaskContext';
+import ProjectContext from '@/context/ProjectContext';
+import AuthContext from '@/context/AuthContext';
+import ErrorContext from '@/context/ErrorContext';
 
 import {
   TestProviders,

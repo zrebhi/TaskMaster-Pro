@@ -7,14 +7,14 @@ import {
   getSortedRowModel,
   getPaginationRowModel,
 } from '@tanstack/react-table';
-import ProjectContext from '../context/ProjectContext';
-import EditProjectModal from '../components/Projects/EditProjectModal';
-import ConfirmationModal from '../components/Common/ConfirmationModal';
-import { DataTable } from '../components/ui/tables/data-table';
-import { DataTableToolbar } from '../components/ui/tables/data-table-toolbar';
-import { columns as projectTableColumns } from '../components/Projects/Table/columns';
-import AddProjectModal from '../components/Projects/AddProjectModal';
-import { Button } from '../components/ui/button';
+import ProjectContext from '@/context/ProjectContext';
+import EditProjectModal from '@/components/Projects/EditProjectModal';
+import ConfirmationModal from '@/components/Common/ConfirmationModal';
+import { DataTable } from '@/components/ui/tables/data-table';
+import { DataTableToolbar } from '@/components/ui/tables/data-table-toolbar';
+import { columns as projectTableColumns } from '@/components/Projects/Table/columns';
+import AddProjectModal from '@/components/Projects/AddProjectModal';
+import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
 
 const ProjectListPage = () => {

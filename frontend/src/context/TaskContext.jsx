@@ -11,7 +11,7 @@ import {
   updateTaskDetails,
   deleteTaskById,
   patchTaskAPI, // Import the new function
-} from '../services/taskApiService';
+} from '@/services/taskApiService';
 import { useError } from './ErrorContext';
 import AuthContext from './AuthContext';
 

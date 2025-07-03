@@ -1,5 +1,5 @@
 import React from 'react';
-import { logError, ERROR_SEVERITY } from '../../utils/errorHandler';
+import { logError, ERROR_SEVERITY } from '@/utils/errorHandler';
 
 class ErrorBoundary extends React.Component {
   constructor(props) {

@@ -1,14 +1,14 @@
 'use client';
 
-// import { Checkbox } from "../../ui/checkbox"
-import { statuses } from '../../../data/taskUIData';
-import { DataTableColumnHeader } from '../../ui/tables/data-table-column-header';
-import { DataTableRowActions } from '../../ui/tables/data-table-row-actions';
+// import { Checkbox } from "@/components/ui/checkbox"
+import { statuses } from '@/data/taskUIData';
+import { DataTableColumnHeader } from '@/components/ui/tables/data-table-column-header';
+import { DataTableRowActions } from '@/components/ui/tables/data-table-row-actions';
 import EditablePriorityCell from './EditablePriorityCell';
 import {
   DropdownMenuItem,
   DropdownMenuSeparator,
-} from '../../ui/dropdown-menu';
+} from '@/components/ui/dropdown-menu';
 import { Edit, Trash2, Undo2, Check } from 'lucide-react';
 
 /** @file Defines the column structure for the Tasks data table. */

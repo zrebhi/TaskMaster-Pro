@@ -1,8 +1,8 @@
-import * as projectApiService from '../../../services/projectApiService';
-import { projectApiMocks, errorApiMocks } from '../../helpers/api-mocks';
+import * as projectApiService from '@/services/projectApiService';
+import { projectApiMocks, errorApiMocks } from '@/__tests__/helpers/api-mocks';
 
 // Mock the apiClient
-jest.mock('../../../services/apiClient', () => ({
+jest.mock('@/services/apiClient', () => ({
   api: {
     get: jest.fn(),
     post: jest.fn(),
@@ -17,7 +17,7 @@ describe('projectApiService Unit Tests', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    mockApi = require('../../../services/apiClient').api;
+    mockApi = require('@/services/apiClient').api;
   });
 
   describe('getAllProjects', () => {

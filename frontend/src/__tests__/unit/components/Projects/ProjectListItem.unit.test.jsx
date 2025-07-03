@@ -1,11 +1,11 @@
 import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
-import ProjectListItem from '../../../../components/Projects/ProjectListItem';
+import ProjectListItem from '@/components/Projects/ProjectListItem';
 import {
   renderWithMinimalProviders,
   createMockProject,
-} from '../../../helpers/test-utils';
+} from '@/__tests__/helpers/test-utils';
 
 describe('ProjectListItem Unit Tests', () => {
   let user;

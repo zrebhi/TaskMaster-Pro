@@ -8,13 +8,13 @@ import {
   logError,
   handleApiError,
   ERROR_SEVERITY,
-} from '../../../utils/errorHandler';
+} from '@/utils/errorHandler';
 import {
   createMockApiError,
   createMockNetworkError,
   setupTest,
   cleanupMocks,
-} from '../../helpers/test-utils';
+} from '@/__tests__/helpers/test-utils';
 
 describe('errorHandler', () => {
   let testSetup;

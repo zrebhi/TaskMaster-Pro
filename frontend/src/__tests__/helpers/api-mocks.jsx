@@ -199,7 +199,7 @@ export const setupApiServiceMocks = (scenarios = {}) => {
     const {
       loginUser,
       registerUser,
-    } = require('../../services/authApiService');
+    } = require('@/services/authApiService');
     mocks.loginUser = jest.mocked(loginUser);
     mocks.registerUser = jest.mocked(registerUser);
   }
@@ -211,7 +211,7 @@ export const setupApiServiceMocks = (scenarios = {}) => {
       createProjectAPI,
       updateProjectAPI,
       deleteProjectAPI,
-    } = require('../../services/projectApiService');
+    } = require('@/services/projectApiService');
 
     mocks.getAllProjects = jest.mocked(getAllProjects);
     mocks.createProjectAPI = jest.mocked(createProjectAPI);
@@ -224,7 +224,7 @@ export const setupApiServiceMocks = (scenarios = {}) => {
     const {
       getTasksForProjectAPI,
       createTaskInProjectAPI,
-    } = require('../../services/taskApiService');
+    } = require('@/services/taskApiService');
 
     mocks.getTasksForProjectAPI = jest.mocked(getTasksForProjectAPI);
     mocks.createTaskInProjectAPI = jest.mocked(createTaskInProjectAPI);

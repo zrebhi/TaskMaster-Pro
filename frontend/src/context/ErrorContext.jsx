@@ -7,7 +7,7 @@ import React, {
   useEffect,
 } from 'react';
 import toast from 'react-hot-toast';
-import { ERROR_SEVERITY } from '../utils/errorHandler';
+import { ERROR_SEVERITY } from '@/utils/errorHandler';
 
 const ErrorContext = createContext(null);
 

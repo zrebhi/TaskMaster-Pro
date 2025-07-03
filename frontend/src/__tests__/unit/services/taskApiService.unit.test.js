@@ -1,7 +1,7 @@
-import * as taskApiService from '../../../services/taskApiService';
-import { taskApiMocks } from '../../helpers/api-mocks';
+import * as taskApiService from '@/services/taskApiService';
+import { taskApiMocks } from '@/__tests__/helpers/api-mocks';
 
-jest.mock('../../../services/apiClient', () => ({
+jest.mock('@/services/apiClient', () => ({
   api: {
     get: jest.fn(),
     post: jest.fn(),
@@ -16,7 +16,7 @@ describe('taskApiService Unit Tests', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    mockApi = require('../../../services/apiClient').api;
+    mockApi = require('@/services/apiClient').api;
   });
 
   describe('getTasksForProjectAPI', () => {

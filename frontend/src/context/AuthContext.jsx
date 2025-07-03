@@ -1,5 +1,5 @@
 import { createContext, useState, useEffect } from 'react';
-import { setAuthContext, resetLogoutFlag } from '../services/apiClient';
+import { setAuthContext, resetLogoutFlag } from '@/services/apiClient';
 
 const AuthContext = createContext(null);
 
