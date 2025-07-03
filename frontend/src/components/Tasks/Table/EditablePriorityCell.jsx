@@ -83,12 +83,6 @@ const EditablePriorityCell = ({ row, table }) => {
     );
   }
 
-  const PRIORITY_VALUES = {
-    HIGH: 3,
-    LOW: 1,
-    MEDIUM: 2,
-  };
-
   return (
     <button
       type="button"
@@ -100,9 +94,9 @@ const EditablePriorityCell = ({ row, table }) => {
     >
       <Badge
         variant={
-          priority?.value === PRIORITY_VALUES.HIGH
+          priority?.label === 'High'
             ? 'destructive'
-            : priority?.value === PRIORITY_VALUES.LOW
+            : priority?.label === 'Low'
               ? 'outline'
               : 'default'
         }
