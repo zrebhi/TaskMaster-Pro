@@ -18,30 +18,30 @@ import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { axe } from 'jest-axe';
 import 'jest-axe/extend-expect';
 
-import ProjectTasksPage from '../../../pages/ProjectTasksPage';
+import ProjectTasksPage from '@/pages/ProjectTasksPage';
 import {
   createMockProject,
   createMockTask,
   waitForElementToBeRemoved,
   setupTest,
   createMockApiError,
-} from '../../helpers/test-utils';
+} from '@/__tests__/helpers/test-utils';
 import {
   TestProviders,
   createAuthenticatedContext,
   createMockProjectContext,
   createMockTaskContext,
   createMockErrorContext,
-} from '../../helpers/mock-providers';
+} from '@/__tests__/helpers/mock-providers';
 
 // Import the actual providers and contexts needed for the integration test
-import { TaskProvider } from '../../../context/TaskContext';
-import ProjectContext from '../../../context/ProjectContext';
-import AuthContext from '../../../context/AuthContext';
-import ErrorContext from '../../../context/ErrorContext';
+import { TaskProvider } from '@/context/TaskContext';
+import ProjectContext from '@/context/ProjectContext';
+import AuthContext from '@/context/AuthContext';
+import ErrorContext from '@/context/ErrorContext';
 
 // Mock the underlying API service to isolate the frontend.
-jest.mock('../../../services/taskApiService');
+jest.mock('@/services/taskApiService');
 
 /**
  * A custom render function for the ProjectTasksPage component.
@@ -322,7 +322,7 @@ describe('Integration Test: ProjectTasksPage', () => {
       const {
         deleteTaskById,
         getTasksForProjectAPI,
-      } = require('../../../services/taskApiService');
+      } = require('../../../../services/taskApiService');
       /** @type {jest.Mock} */ (deleteTaskById).mockRejectedValue(error);
       /** @type {jest.Mock} */ (getTasksForProjectAPI).mockResolvedValue([
         task,
@@ -560,7 +560,7 @@ describe('Integration Test: ProjectTasksPage', () => {
         const {
           patchTaskAPI,
           getTasksForProjectAPI,
-        } = require('../../../services/taskApiService');
+        } = require('../../../../services/taskApiService');
         /** @type {jest.Mock} */ (patchTaskAPI).mockRejectedValue(error);
         /** @type {jest.Mock} */ (getTasksForProjectAPI).mockResolvedValue([
           task,

@@ -1,10 +1,10 @@
 'use client';
 
-import { Badge } from '../../ui/badge';
 // import { Checkbox } from "../../ui/checkbox"
-import { priorities, statuses } from '../../../data/taskUIData';
+import { statuses } from '../../../data/taskUIData';
 import { DataTableColumnHeader } from '../../ui/tables/data-table-column-header';
 import { DataTableRowActions } from '../../ui/tables/data-table-row-actions';
+import EditablePriorityCell from './EditablePriorityCell';
 import {
   DropdownMenuItem,
   DropdownMenuSeparator,
@@ -118,38 +118,7 @@ export const columns = [
     meta: {
       headerTitle: 'Priority',
     },
-    cell: ({ row }) => {
-      const priorityValue = row.getValue('priority');
-      const priority = priorities.find((p) => p.value === priorityValue);
-
-      if (!priority) {
-        // Fallback for numeric priorities if not found in the array
-        if (priorityValue === 1) return <Badge variant="outline">Low</Badge>;
-        if (priorityValue === 2) return <Badge variant="default">Medium</Badge>;
-        if (priorityValue === 3)
-          return <Badge variant="destructive_table">High</Badge>;
-        return <span>{priorityValue || 'N/A'}</span>;
-      }
-
-      return (
-        <div className="flex items-center gap-2">
-          {/* {priority.icon && (
-            <priority.icon className="text-muted-foreground h-4 w-4" />
-          )} */}
-          <Badge
-            variant={
-              priority.value === 3
-                ? 'destructive'
-                : priority.value === 1
-                  ? 'outline'
-                  : 'default'
-            }
-          >
-            {priority.label}
-          </Badge>
-        </div>
-      );
-    },
+    cell: EditablePriorityCell,
     filterFn: (row, id, value) => {
       return value.includes(row.getValue(id));
     },

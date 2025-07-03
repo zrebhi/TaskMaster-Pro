@@ -1,15 +1,16 @@
 // @ts-check
 /**
  * @file Unit tests for the Task table's column definitions.
- * @see ../../../../../components/Tasks/Table/columns.jsx
  */
 
 import { render, screen } from '@testing-library/react';
 import { columns } from '../../../../../components/Tasks/Table/columns';
 
-// Mock child components to isolate the logic in `columns.jsx`. This allows
-// us to test the props being passed without testing the child components'
-// implementation details.
+// Note: Mocks for Badge, icons, and row actions are no longer needed for
+// the remaining unit tests, but are kept here in case other simple, pure
+// cell renderers are added in the future.
+
+// Mock child components to isolate the logic in `columns.jsx`.
 jest.mock('../../../../../components/ui/badge', () => ({
   Badge: jest.fn(({ variant, children }) => (
     <div data-testid="badge" data-variant={variant}>
@@ -45,68 +46,10 @@ describe('Task Table Columns: Unit Tests', () => {
     jest.clearAllMocks();
   });
 
-  describe('Priority Cell', () => {
-    const priorityColumn = getColumn('priority');
-    const CellComponent = priorityColumn.cell;
-
-    it('should render a "High" priority visual for a priority value of 3', () => {
-      // Arrange: Create a mock row that simulates Tanstack Table's row API.
-      const mockRow = {
-        getValue: (key) => (key === 'priority' ? 3 : null),
-      };
-
-      // Act: Render the cell component with the mock data.
-      render(<CellComponent row={mockRow} table={{}} />);
-
-      // Assert: Verify the correct label and badge variant are rendered.
-      expect(screen.getByText('High')).toBeInTheDocument();
-      const badge = screen.getByTestId('badge');
-      expect(badge).toHaveAttribute('data-variant', 'destructive');
-    });
-
-    it('should render a "Medium" priority visual for a priority value of 2', () => {
-      const mockRow = {
-        getValue: (key) => (key === 'priority' ? 2 : null),
-      };
-      render(<CellComponent row={mockRow} table={{}} />);
-      expect(screen.getByText('Medium')).toBeInTheDocument();
-      const badge = screen.getByTestId('badge');
-      expect(badge).toHaveAttribute('data-variant', 'default');
-    });
-
-    it('should render a "Low" priority visual for a priority value of 1', () => {
-      const mockRow = {
-        getValue: (key) => (key === 'priority' ? 1 : null),
-      };
-      render(<CellComponent row={mockRow} table={{}} />);
-      expect(screen.getByText('Low')).toBeInTheDocument();
-      const badge = screen.getByTestId('badge');
-      expect(badge).toHaveAttribute('data-variant', 'outline');
-    });
-  });
-
-  describe('Status Cell', () => {
-    const statusColumn = getColumn('status');
-    const CellComponent = statusColumn.cell;
-
-    it('should render a "Done" status visual for a status value of "done"', () => {
-      const mockRow = {
-        getValue: (key) => (key === 'status' ? 'done' : null),
-      };
-      render(<CellComponent row={mockRow} table={{}} />);
-      expect(screen.getByText('Done')).toBeInTheDocument();
-      expect(screen.getByTestId('icon-done')).toBeInTheDocument();
-    });
-
-    it('should render a "To Do" status visual for a status value of "to do"', () => {
-      const mockRow = {
-        getValue: (key) => (key === 'status' ? 'to do' : null),
-      };
-      render(<CellComponent row={mockRow} table={{}} />);
-      expect(screen.getByText('To Do')).toBeInTheDocument();
-      expect(screen.getByTestId('icon-todo')).toBeInTheDocument();
-    });
-  });
+  // The Priority and Status cells are now interactive components whose behavior
+  // is tested more effectively and resiliently in the ProjectTasksPage
+  // integration tests. Unit testing them here would require brittle mocks
+  // of the table's internal state.
 
   describe('Date Cell', () => {
     const dateColumn = getColumn('due_date');

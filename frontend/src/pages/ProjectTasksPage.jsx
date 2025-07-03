@@ -30,6 +30,8 @@ import { priorities, statuses } from '../data/taskUIData';
  * @property {(task: object) => void} onEdit - Handler to trigger the edit modal.
  * @property {(task: object) => void} onDelete - Handler to trigger the delete confirmation modal.
  * @property {(taskId: string, data: object) => void} onPatchTask - Handler to patch a task with partial data.
+ * @property {object | null} editingCell - The currently editing cell's state.
+ * @property {React.Dispatch<React.SetStateAction<object | null>>} setEditingCell - Setter for the editing cell state.
  * @property {Array<{columnId: string, title: string, options: Array<{value: string | number, label: string, icon?: React.ComponentType<{className?: string}>}>}>} [filtersConfig] - Configuration for faceted filters.
  */
 
@@ -55,7 +57,8 @@ const ProjectTasksPage = () => {
   const [isDeleteTaskModalOpen, setIsDeleteTaskModalOpen] = useState(false);
   const [taskToDelete, setTaskToDelete] = useState(null);
   const [isAddTaskModalOpen, setIsAddTaskModalOpen] = useState(false);
-  const [isDeletingTask, setIsDeletingTask] = useState(false); // New state for delete loading
+  const [isDeletingTask, setIsDeletingTask] = useState(false);
+  const [editingCell, setEditingCell] = useState(null); // So that we edit one cell at a time
 
   const VISIBILITY_STORAGE_KEY = 'tasks-table-column-visibility';
 
@@ -81,11 +84,12 @@ const ProjectTasksPage = () => {
   };
 
   // State for Tanstack Table
-  const [columnVisibility, setColumnVisibility] = useState(getInitialVisibility);
+  const [columnVisibility, setColumnVisibility] =
+    useState(getInitialVisibility);
   const [columnFilters, setColumnFilters] = useState(() => []);
   const [sorting, setSorting] = useState([]);
   const [rowSelection, setRowSelection] = useState({});
-  
+
   useEffect(() => {
     if (projects.length === 0) {
       fetchProjects();
@@ -94,7 +98,10 @@ const ProjectTasksPage = () => {
 
   // Effect to save column visibility changes to localStorage
   useEffect(() => {
-    localStorage.setItem(VISIBILITY_STORAGE_KEY, JSON.stringify(columnVisibility));
+    localStorage.setItem(
+      VISIBILITY_STORAGE_KEY,
+      JSON.stringify(columnVisibility)
+    );
   }, [columnVisibility]);
 
   useEffect(() => {
@@ -194,6 +201,8 @@ const ProjectTasksPage = () => {
       onEdit: handleEditTask,
       onDelete: handleDeleteTask,
       onPatchTask: handlePatchTask,
+      editingCell: editingCell,
+      setEditingCell: setEditingCell,
       filtersConfig: [
         {
           columnId: 'priority',
@@ -219,7 +228,6 @@ const ProjectTasksPage = () => {
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
   });
-
 
   if (isLoadingProjects) {
     return <p>Loading project details...</p>;
