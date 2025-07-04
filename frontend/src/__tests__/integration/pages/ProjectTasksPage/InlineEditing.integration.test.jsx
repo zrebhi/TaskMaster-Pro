@@ -3,7 +3,7 @@
  * @file Integration tests for inline editing features on the ProjectTasksPage.
  */
 
-import { screen, within, waitFor } from '@testing-library/react';
+import { screen, within, waitFor, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
 
@@ -26,8 +26,9 @@ const {
 } = require('@/services/taskApiService');
 
 const mockedPatchTaskAPI = /** @type {jest.Mock} */ (patchTaskAPI);
-const mockedGetTasksForProjectAPI =
-  /** @type {jest.Mock} */ (getTasksForProjectAPI);
+const mockedGetTasksForProjectAPI = /** @type {jest.Mock} */ (
+  getTasksForProjectAPI
+);
 
 describe('Inline Priority Editing', () => {
   let user;
@@ -124,5 +125,205 @@ describe('Inline Priority Editing', () => {
     expect(within(row).getByText('Medium')).toBeInTheDocument();
     expect(screen.queryByText('Low')).not.toBeInTheDocument();
     expect(mockedPatchTaskAPI).not.toHaveBeenCalled();
+  });
+});
+
+describe('Inline Due Date Editing', () => {
+  let user;
+  const project = createMockProject({ id: 'proj-1' });
+  const originalDate = Date;
+
+  beforeEach(() => {
+    user = userEvent.setup();
+    jest.clearAllMocks();
+    // Fix the current date to ensure the calendar is consistent across test runs
+    const fixedDate = new Date('2024-06-15T00:00:00.000Z'); // Set to midnight UTC to avoid timezone issues
+
+    // @ts-ignore - Mocking the global Date object for test consistency
+    global.Date = class extends originalDate {
+      constructor(...args) {
+        // If called with arguments, pass them to the real Date constructor.
+        // If called with no arguments (`new Date()`), use our fixed date.
+        if (args.length > 0) {
+          // @ts-ignore - Spreading args on a constructor with multiple overloads is not type-safe.
+          super(...args);
+        } else {
+          super(fixedDate);
+        }
+      }
+    };
+  });
+
+  afterEach(() => {
+    // Restore the original Date object
+    global.Date = originalDate;
+  });
+
+  describe('Success Path', () => {
+    it('should set a new date for a task that has no due date', async () => {
+      // Arrange
+      const taskWithoutDate = createMockTask({
+        id: 'task-date-1',
+        title: 'Task without a due date',
+        due_date: null,
+        project_id: 'proj-1',
+      });
+      mockedPatchTaskAPI.mockResolvedValue({
+        ...taskWithoutDate,
+        due_date: '2024-06-25',
+      });
+      mockedGetTasksForProjectAPI.mockResolvedValue([taskWithoutDate]);
+
+      renderWithRealTaskProvider({ projects: [project] });
+
+      const row = (await screen.findByText(taskWithoutDate.title)).closest(
+        'tr'
+      );
+      const dateTrigger = within(row).getByRole('button', {
+        name: /change due date for .* current: N\/A/i,
+      });
+
+      // Act
+      await user.click(dateTrigger);
+      const dayToSelect = await screen.findByText('25');
+      await user.click(dayToSelect);
+
+      // Assert
+      await waitFor(() => {
+        expect(mockedPatchTaskAPI).toHaveBeenCalledWith(taskWithoutDate.id, {
+          due_date: '2024-06-25',
+        });
+      });
+
+      // UI should now display the new date. 'toLocaleDateString' for 'en-US' locale.
+      await waitFor(() => {
+        expect(within(row).getByText('6/25/2024')).toBeInTheDocument();
+      });
+    });
+
+    it('should clear an existing due date', async () => {
+      // Arrange
+      const taskWithDate = createMockTask({
+        id: 'task-date-2',
+        title: 'Task with a due date',
+        due_date: '2024-06-20T00:00:00.000Z',
+        project_id: 'proj-1',
+      });
+      mockedPatchTaskAPI.mockResolvedValue({ ...taskWithDate, due_date: null });
+      mockedGetTasksForProjectAPI.mockResolvedValue([taskWithDate]);
+
+      renderWithRealTaskProvider({ projects: [project] });
+
+      const row = (await screen.findByText(taskWithDate.title)).closest('tr');
+      const dateTrigger = within(row).getByRole('button', {
+        name: /change due date for .* current: 6\/20\/2024/i,
+      });
+
+      // Act
+      await user.click(dateTrigger);
+      const clearButton = await screen.findByRole('button', {
+        name: /clear due date/i,
+      });
+      await user.click(clearButton);
+
+      // Assert
+      await waitFor(() => {
+        expect(mockedPatchTaskAPI).toHaveBeenCalledWith(taskWithDate.id, {
+          due_date: null,
+        });
+      });
+      await waitFor(() => {
+        const updatedDateButton = within(row).getByRole('button', { name: /current: N\/A/i });
+        expect(updatedDateButton).toBeInTheDocument();
+      });
+    });
+  });
+
+  describe('Failure Path', () => {
+    it('should revert the UI and show a toast if clearing the date fails', async () => {
+      // Arrange
+      const taskWithDate = createMockTask({
+        id: 'task-date-fail',
+        title: 'Task that will fail',
+        due_date: '2024-06-20T00:00:00.000Z',
+        project_id: 'proj-1',
+      });
+      const error = createMockApiError(500, 'Server is on fire', 'high');
+      mockedPatchTaskAPI.mockRejectedValue(error);
+      mockedGetTasksForProjectAPI.mockResolvedValue([taskWithDate]);
+      const showErrorToastMock = jest.fn();
+
+      renderWithRealTaskProvider(
+        { projects: [project] },
+        { showErrorToast: showErrorToastMock }
+      );
+
+      const row = (await screen.findByText(taskWithDate.title)).closest('tr');
+      const dateTrigger = within(row).getByText('6/20/2024');
+
+      // Act
+      await user.click(dateTrigger);
+      const clearButton = await screen.findByRole('button', {
+        name: /clear due date/i,
+      });
+      await user.click(clearButton);
+
+      // Assert
+      // 1. UI optimistically updates
+      await waitFor(() => {
+        expect(within(row).getByText('N/A')).toBeInTheDocument();
+      });
+
+      // 2. After API failure, toast is shown
+      await waitFor(() => {
+        expect(showErrorToastMock).toHaveBeenCalledWith(
+          /** @type {any} */ (error).processedError
+        );
+      });
+
+      // 3. UI reverts to original state
+      await waitFor(() => {
+        expect(within(row).getByText('6/20/2024')).toBeInTheDocument();
+      });
+    });
+  });
+
+  describe('Reversal Path', () => {
+    it('should close the editor and not save changes when clicking outside', async () => {
+      // Arrange
+      const taskWithDate = createMockTask({
+        id: 'task-date-cancel',
+        title: 'Task to cancel editing',
+        due_date: '2024-06-20T00:00:00.000Z',
+        project_id: 'proj-1',
+      });
+      mockedGetTasksForProjectAPI.mockResolvedValue([taskWithDate]);
+
+      renderWithRealTaskProvider({ projects: [project] });
+
+      const row = (await screen.findByText(taskWithDate.title)).closest('tr');
+      const dateTrigger = within(row).getByText('6/20/2024');
+
+      // Act
+      await user.click(dateTrigger);
+      // Verify editor is open by checking for its unique button
+      expect(
+        await screen.findByRole('button', { name: /clear due date/i })
+      ).toBeInTheDocument();
+      // Use fireEvent for a generic 'mousedown' that the component's effect listens for.
+      fireEvent.mouseDown(document.body);
+
+      // Assert
+      await waitFor(() => {
+        // The editor's unique button is a good proxy for the editor itself
+        expect(
+          screen.queryByRole('button', { name: /clear due date/i })
+        ).not.toBeInTheDocument();
+      });
+      // The original date should still be there
+      expect(within(row).getByText('6/20/2024')).toBeInTheDocument();
+      // No API call should have been made
+      expect(mockedPatchTaskAPI).not.toHaveBeenCalled();
+    });
   });
 });

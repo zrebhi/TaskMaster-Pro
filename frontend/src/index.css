@@ -1,3 +1,4 @@
+@import 'react-datepicker/dist/react-datepicker.css';
 @import 'tailwindcss';
 
 @layer base {
@@ -18,9 +19,15 @@
     --secondary: 210 40% 96%;
     --secondary-foreground: 222.2 84% 4.9%;
 
-    /* Muted colors */
-    --muted: 210 40% 96%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+  /* Muted colors */
+--muted: 210 40% 96%;
+
+/* Define the H, S, L components for muted-foreground */
+--muted-foreground-h: 215.4;
+--muted-foreground-s: 16.3%;
+--muted-foreground-l: 46.9%;
+/* Recompose the original variable using the new components */
+--muted-foreground: var(--muted-foreground-h) var(--muted-foreground-s) var(--muted-foreground-l);
 
     /* Accent colors */
     --accent: 210 40% 96%;
@@ -124,11 +131,10 @@
   }
 }
 
-/* Task Completion Styling */
 tr[data-completed='true'] {
-  color: hsl(var(--muted-foreground));
+  color: hsla(var(--muted-foreground-h), var(--muted-foreground-s), var(--muted-foreground-l), 0.7);
+  text-decoration-color: hsla(var(--muted-foreground-h), var(--muted-foreground-s), var(--muted-foreground-l), 0.5);
   text-decoration-line: line-through;
-  opacity: 0.7;
 }
 
 tr[data-completed='true']:hover {

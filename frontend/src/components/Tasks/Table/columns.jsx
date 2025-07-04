@@ -5,6 +5,7 @@ import { statuses } from '@/data/taskUIData';
 import { DataTableColumnHeader } from '@/components/ui/tables/data-table-column-header';
 import { DataTableRowActions } from '@/components/ui/tables/data-table-row-actions';
 import EditablePriorityCell from './EditablePriorityCell';
+import EditableDueDateCell from './EditableDueDateCell';
 import {
   DropdownMenuItem,
   DropdownMenuSeparator,
@@ -12,16 +13,6 @@ import {
 import { Edit, Trash2, Undo2, Check } from 'lucide-react';
 
 /** @file Defines the column structure for the Tasks data table. */
-
-// Helper function for formatting dates, can be moved to a utils file
-const formatDate = (dateString) => {
-  if (!dateString) return 'N/A';
-  try {
-    return new Date(dateString).toLocaleDateString();
-  } catch {
-    return dateString;
-  }
-};
 
 export const columns = [
   // {
@@ -131,10 +122,7 @@ export const columns = [
     meta: {
       headerTitle: 'Due Date',
     },
-    cell: ({ row }) => {
-      const dueDate = row.getValue('due_date');
-      return <div className="w-[100px]">{formatDate(dueDate)}</div>;
-    },
+    cell: EditableDueDateCell,
   },
   {
     id: 'actions',
