@@ -19,11 +19,37 @@ export function DataTableToolbar({
   const filtersConfig = table.options.meta?.filtersConfig;
 
   return (
+    // The main toolbar container. It wraps its direct children and justifies space between them.
     <div
       role="toolbar"
-      className="flex flex-col-reverse sm:flex-row items-center justify-between gap-2"
+      className="flex flex-1 flex-row flex-wrap justify-end items-end gap-2"
     >
-      <div className="flex flex-1 items-center gap-2">
+      {/* Search Input: On small screens it grows, on larger screens it has a fixed width. */}
+
+      {/* Filters Group */}
+      <div className="flex gap-1 order-1 sm:order-2 min-w-full sm:min-w-0 justify-end">
+        {!!isFiltered && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => table.resetColumnFilters()}
+            className="px-2 flex"
+          >
+            Reset
+            <Cross2Icon className="ml-2 h-4 w-4" />
+          </Button>
+        )}
+        {filtersConfig?.map((filter) => (
+          <DataTableFacetedFilter
+            key={filter.columnId}
+            column={table.getColumn(filter.columnId)}
+            title={filter.title}
+            options={filter.options}
+          />
+        ))}
+      </div>
+      <div className="flex flex-1 order-2 sm:order-1 min-w-100px justify-start">
+        {/* Search Input */}
         {!!filterColumnId && (
           <Input
             placeholder={
@@ -31,44 +57,25 @@ export function DataTableToolbar({
             }
             value={table.getColumn(filterColumnId)?.getFilterValue() ?? ''}
             onChange={(event) =>
-              table.getColumn(filterColumnId)?.setFilterValue(event.target.value)
+              table
+                .getColumn(filterColumnId)
+                ?.setFilterValue(event.target.value)
             }
-            className="h-8 w-full sm:w-[200px] lg:w-[280px]"
+            className="flex max-w-[300px]"
           />
         )}
       </div>
-      <div className="flex w-full sm:w-auto justify-end items-center gap-2 flex-wrap">
-        <div className="flex justify-end items-end">
-          {!!isFiltered && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => table.resetColumnFilters()}
-              className="-m-2"
-            >
-              Reset
-              <Cross2Icon />
-            </Button>
-          )}
-        </div>
-        {filtersConfig?.map((filter) => {
-          const column = table.getColumn(filter.columnId);
-          if (!column) {
-            return null;
-          }
-          return (
-            <DataTableFacetedFilter
-              key={filter.columnId}
-              column={column}
-              title={filter.title}
-              options={filter.options}
-            />
-          );
-        })}
+      <div className="flex justify-end items-center gap-2 order-3">
+        {/* View Toggle and Add Button Group */}
         <DataTableColumnToggle table={table} />
         {!!onAdd && !!addButtonText && (
-          <Button role="button" onClick={onAdd} variant="outline">
-            <Plus className="mr-1 h-3 w-3 sm:h-4 sm:w-4" /> {addButtonText}
+          <Button
+            role="button"
+            onClick={onAdd}
+            variant="default"
+            size="sm"
+          >
+            <Plus className="h-4 w-4" /> {addButtonText}
           </Button>
         )}
       </div>
