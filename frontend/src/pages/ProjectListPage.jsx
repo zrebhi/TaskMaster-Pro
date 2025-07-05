@@ -119,12 +119,11 @@ const ProjectListPage = () => {
                 table={table}
                 onAdd={() => setIsAddProjectModalOpen(true)}
                 addButtonText="Add Project"
+                filterColumnId="name"
+                filterColumnPlaceholder="Search by project title..."
               />
             </div>
-            <DataTable
-              table={table}
-              columns={projectTableColumns}
-            />
+            <DataTable table={table} columns={projectTableColumns} />
           </div>
         ) : (
           <div className="flex flex-1 items-center justify-center rounded-lg border border-dashed shadow-sm">

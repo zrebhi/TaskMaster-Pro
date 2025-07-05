@@ -269,6 +269,8 @@ const ProjectTasksPage = () => {
                   table={table}
                   onAdd={() => setIsAddTaskModalOpen(true)}
                   addButtonText="Add Task"
+                  filterColumnId="title"
+                  filterColumnPlaceholder="Search by task title..."
                 />
               </div>
               <DataTable table={table} columns={taskTableColumns} />
