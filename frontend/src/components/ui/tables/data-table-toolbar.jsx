@@ -8,6 +8,15 @@ import { DataTableColumnToggle } from './data-table-column-toggle';
 
 import { Plus } from 'lucide-react';
 
+/**
+ * @template TData
+ * @param {object} props
+ * @param {import('@tanstack/react-table').Table<TData>} props.table
+ * @param {() => void} [props.onAdd]
+ * @param {string} [props.addButtonText]
+ * @param {string} [props.filterColumnId]
+ * @param {string} [props.filterColumnPlaceholder]
+ */
 export function DataTableToolbar({
   table,
   onAdd,
