@@ -48,6 +48,7 @@ const ProjectTasksPage = () => {
     fetchTasks,
     deleteTask,
     patchTask,
+    clearTasks,
   } = useContext(TaskContext);
   const { showErrorToast } = useError();
 
@@ -107,7 +108,11 @@ const ProjectTasksPage = () => {
     if (projectId) {
       fetchTasks(projectId);
     }
-  }, [projectId, fetchTasks]);
+    return () => {
+      // Clear tasks when leaving the project page
+      clearTasks();
+    }
+  }, [projectId, fetchTasks, clearTasks]);
 
   const selectedProject = projects.find((p) => p.id.toString() === projectId);
 
