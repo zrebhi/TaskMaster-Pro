@@ -53,7 +53,14 @@ export function DataTable({
                   key={row.id}
                   data-state={row.getIsSelected() && 'selected'}
                   data-completed={row.original.is_completed}
-                >
+                  onClick={
+                    table.options.meta?.onRowClick
+                      ? (event) => table.options.meta.onRowClick(row, event)
+                      : undefined
+                  }
+                  // Conditionally apply the cursor style for better UX
+                  className=
+                  {table.options.meta?.onRowClick ? 'cursor-pointer' : ''}>
                   {row.getVisibleCells().map((cell) => (
                     <TableCell
                       key={cell.id}

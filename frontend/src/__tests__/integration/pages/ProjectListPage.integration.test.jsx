@@ -405,7 +405,8 @@ describe('Integration Test: ProjectListPage', () => {
     });
   });
   describe('Story 4: Navigating to a Project', () => {
-    it('should render a link for each project that navigates to the correct project tasks page', async () => {
+    it('should navigate to the correct project tasks page when a project row is clicked', async () => {
+      // 1. ARRANGE: Set up the project data and render the component.
       const project = createMockProject({
         id: 'proj-1',
         name: 'My Test Project',
@@ -416,19 +417,20 @@ describe('Integration Test: ProjectListPage', () => {
 
       const { user } = renderComponent(projectContextValue);
 
-      const projectLink = screen.getByRole('link', {
+      // 2. ACT: Find the project row by its content and click it.
+      // The "accessible name" of a row is derived from the text within its cells.
+      const projectRow = screen.getByRole('row', {
         name: /my test project/i,
       });
-      expect(projectLink).toHaveAttribute('href', '/projects/proj-1');
+      await user.click(projectRow);
 
-      // Click the link to navigate
-      await user.click(projectLink);
-
-      // Verify that the app has navigated to the mock tasks page,
-      // which silences the router warning and confirms navigation occurred.
-      expect(
-        screen.getByText(/mock project tasks page/i)
-      ).toBeInTheDocument();
+      // 3. ASSERT: Verify that navigation was successful by checking for
+      // the content of the destination page, as defined in our test setup.
+      await waitFor(() => {
+        expect(
+          screen.getByText(/mock project tasks page/i)
+        ).toBeInTheDocument();
+      });
     });
   });
 

@@ -56,13 +56,10 @@ const ProjectListPage = () => {
     setProjectToEdit(null);
   }, []);
 
-  const handleDeleteClick = useCallback(
-    (project) => {
-      setProjectToDelete(project);
-      setIsDeleteModalOpen(true);
-    },
-    []
-  );
+  const handleDeleteClick = useCallback((project) => {
+    setProjectToDelete(project);
+    setIsDeleteModalOpen(true);
+  }, []);
 
   const handleCloseDeleteModal = useCallback(() => {
     setIsDeleteModalOpen(false);
@@ -93,8 +90,13 @@ const ProjectListPage = () => {
     meta: {
       onEdit: handleEditClick,
       onDelete: handleDeleteClick,
-      onSelect: handleSelectProject,
+      onRowClick: (row, event) => {
+        if (!event.target.closest('.project-actions-cell')) {
+          handleSelectProject(row.original.id);
+        }
+      },
     },
+
     enableRowSelection: true,
     onRowSelectionChange: setRowSelection,
     onSortingChange: setSorting,

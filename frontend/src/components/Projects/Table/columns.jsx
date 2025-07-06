@@ -1,13 +1,12 @@
 'use client';
 
-import { Link } from 'react-router-dom';
 import { DataTableColumnHeader } from '@/components/ui/tables/data-table-column-header';
 import { DataTableRowActions } from '@/components/ui/tables/data-table-row-actions';
 import {
   DropdownMenuItem,
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
-import { Edit, Trash2 } from 'lucide-react';
+import { Edit, Trash2, ChevronRight } from 'lucide-react';
 
 // Helper function for formatting dates
 const formatDate = (dateString) => {
@@ -35,15 +34,15 @@ export const columns = [
       return (
         // Use a Link for proper navigation semantics.
         // The Link now gets the padding, making the whole padded area clickable.
-        <Link
-          to={`/projects/${row.original.id}`}
-          className="flex items-center h-full w-full p-2 hover:underline"
-          title={`View tasks for ${row.getValue('name')}`}
-        >
-          <span className="max-w-[300px] md:max-w-[400px] truncate font-medium">
-            {row.getValue('name')}
-          </span>
-        </Link>
+        // <Link
+        //   to={`/projects/${row.original.id}`}
+        //   className="flex items-center h-full w-full p-2 hover:underline underline md:no-underline"
+        //   title={`View tasks for ${row.getValue('name')}`}
+        // >
+        <span className="flex items-center truncate h-full w-full p-2 max-w-[300px] md:max-w-[400px] underline md:no-underline">
+          {row.getValue('name')}
+        </span>
+        // </Link>
       );
     },
     enableHiding: false,
@@ -62,11 +61,23 @@ export const columns = [
     },
   },
   {
+    id: 'navigation',
+    header: () => <span className="sr-only">Go to project</span>,
+    meta: {
+      cellClassName: 'w-[40px]', // Control column width
+    },
+    cell: () => <ChevronRight className="h-4 w-4 text-muted-foreground" />,
+    enableSorting: false,
+    enableHiding: false,
+  },
+  {
     id: 'actions',
     header: () => <span className="sr-only">Actions</span>,
     cell: ({ row, table }) => {
       const project = row.original;
-      const meta = table.options.meta;
+      const { meta } = table.options;
+
+      // Determine if this specific row's menu should be open
 
       return (
         <DataTableRowActions>
@@ -86,6 +97,9 @@ export const columns = [
           </DropdownMenuItem>
         </DataTableRowActions>
       );
+    },
+    meta: {
+      cellClassName: 'project-actions-cell',
     },
     enableHiding: false,
   },
