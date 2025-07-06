@@ -81,18 +81,19 @@ const EditableDueDateCell = ({ row, table }) => {
   }
 
   return (
-    <button
+    <Button
       type="button"
-      onClick={() =>
-        meta.setEditingCell({ taskId: task.id, field: 'due_date' })
-      }
-      className="w-full rounded-md p-1 -ml-1 text-left hover:bg-muted transition-colors"
+      variant={'ghost'}
+      onClick={() => {
+        meta.setEditingCell({ taskId: task.id, field: 'due_date' });
+      }}
+      className=""
       aria-label={`Change due date for ${task.title}. Current: ${formatDate(
         task.due_date
       )}`}
     >
       {formatDate(task.due_date)}
-    </button>
+    </Button>
   );
 };
 

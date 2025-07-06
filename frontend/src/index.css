@@ -19,15 +19,16 @@
     --secondary: 210 40% 96%;
     --secondary-foreground: 222.2 84% 4.9%;
 
-  /* Muted colors */
---muted: 210 40% 96%;
+    /* Muted colors */
+    --muted: 210 40% 96%;
 
-/* Define the H, S, L components for muted-foreground */
---muted-foreground-h: 215.4;
---muted-foreground-s: 16.3%;
---muted-foreground-l: 46.9%;
-/* Recompose the original variable using the new components */
---muted-foreground: var(--muted-foreground-h) var(--muted-foreground-s) var(--muted-foreground-l);
+    /* Define the H, S, L components for muted-foreground */
+    --muted-foreground-h: 215.4;
+    --muted-foreground-s: 16.3%;
+    --muted-foreground-l: 46.9%;
+    /* Recompose the original variable using the new components */
+    --muted-foreground: var(--muted-foreground-h) var(--muted-foreground-s)
+      var(--muted-foreground-l);
 
     /* Accent colors */
     --accent: 210 40% 96%;
@@ -47,6 +48,8 @@
 
     /* Border radius */
     --radius: 0.5rem;
+
+    --success: 142.1 76.2% 36.3%;
   }
 
   /* Future dark theme - uncomment when implementing */
@@ -119,6 +122,10 @@
     color: hsl(var(--destructive-foreground)) !important;
   }
 
+  .text-success {
+    color: hsl(var(--success)) !important;
+  }
+
   .bg-destructive {
     background-color: hsl(var(--destructive));
   }
@@ -132,8 +139,18 @@
 }
 
 tr[data-completed='true'] {
-  color: hsla(var(--muted-foreground-h), var(--muted-foreground-s), var(--muted-foreground-l), 0.7);
-  text-decoration-color: hsla(var(--muted-foreground-h), var(--muted-foreground-s), var(--muted-foreground-l), 0.5);
+  color: hsla(
+    var(--muted-foreground-h),
+    var(--muted-foreground-s),
+    var(--muted-foreground-l),
+    0.7
+  );
+  text-decoration-color: hsla(
+    var(--muted-foreground-h),
+    var(--muted-foreground-s),
+    var(--muted-foreground-l),
+    0.5
+  );
   text-decoration-line: line-through;
 }
 

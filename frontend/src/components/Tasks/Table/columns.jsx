@@ -10,6 +10,7 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
+import { Button } from '@/components/ui/button';
 import { Edit, Trash2, Undo2, Check } from 'lucide-react';
 
 /** @file Defines the column structure for the Tasks data table. */
@@ -70,30 +71,39 @@ export const columns = [
       const status = statuses.find(
         (s) => s.value === row.getValue('status')
       );
-
+      const task = row.original;
+      
       if (!status) {
         return null;
       }
 
-      const handleStatusClick = () => {
-        const task = row.original;
+      const handleStatusClick = (e) => {
+        e.stopPropagation();
         table.options.meta?.onPatchTask(task.id, {
           is_completed: !task.is_completed,
         });
       };
 
       return (
-        <button
-          type="button"
+        <Button
+          variant="ghost"
           onClick={handleStatusClick}
-          className="flex w-[100px] items-center gap-2 rounded-md p-1 -ml-1 text-left hover:bg-muted transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          // className="flex w-[100px] items-center gap-2 rounded-md text-left hover:bg-muted transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="justify-start flex"
           aria-label={`Toggle status for ${row.original.title}. Current status: ${status.label}`}
         >
-          {!!status.icon && (
-            <status.icon className="text-muted-foreground h-4 w-4" />
+          {!!status.icon && task.is_completed ? (
+            <>
+              <status.icon className="text-success h-4 w-4" />
+              <span className="capitalize text-success">{status.label}</span>
+            </>
+          ) : (
+            <>
+              <status.icon className="text-muted-foreground h-4 w-4" />
+              <span className="capitalize text-muted-foreground">{status.label}</span>
+            </>
           )}
-          <span className="capitalize">{status.label}</span>
-        </button>
+        </Button>
       );
     },
     filterFn: (row, id, value) => {

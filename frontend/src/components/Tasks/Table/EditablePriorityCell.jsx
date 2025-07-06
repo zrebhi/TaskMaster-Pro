@@ -7,6 +7,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { priorities } from '@/data/taskUIData';
 
 // A dedicated component for the editable priority cell
@@ -84,12 +85,13 @@ const EditablePriorityCell = ({ row, table }) => {
   }
 
   return (
-    <button
+    <Button
       type="button"
       onClick={() =>
         meta.setEditingCell({ taskId: task.id, field: 'priority' })
       }
-      className="flex w-full items-center gap-2 rounded-md p-1 -ml-1 text-left hover:bg-muted transition-colors"
+      variant={'ghost'}
+      className="flex"
       aria-label={`Change priority for ${task.title}. Current: ${priority?.label}`}
     >
       <Badge
@@ -103,7 +105,7 @@ const EditablePriorityCell = ({ row, table }) => {
       >
         {priority?.label || 'N/A'}
       </Badge>
-    </button>
+    </Button>
   );
 };
 
