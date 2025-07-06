@@ -5,7 +5,6 @@ import {
   getCoreRowModel,
   getFilteredRowModel,
   getSortedRowModel,
-  getPaginationRowModel,
 } from '@tanstack/react-table';
 import ProjectContext from '@/context/ProjectContext';
 import EditProjectModal from '@/components/Projects/EditProjectModal';
@@ -104,7 +103,6 @@ const ProjectListPage = () => {
     onColumnVisibilityChange: setColumnVisibility,
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
   });
 
