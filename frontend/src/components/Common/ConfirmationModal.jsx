@@ -40,7 +40,10 @@ const ConfirmationModal = ({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogPortal>
         <DialogOverlay />
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent
+          className="sm:max-w-[425px]"
+          onPointerDownOutside={(e) => e.preventDefault()}
+        >
           <DialogHeader className="min-w-0">
             <DialogTitle>{title || 'Confirm Action'}</DialogTitle>
             <DialogDescription>{message || 'Are you sure?'}</DialogDescription>
@@ -50,7 +53,9 @@ const ConfirmationModal = ({
               type="button"
               onClick={onConfirm}
               disabled={isLoading}
-              variant={confirmButtonStyle === 'danger' ? 'destructive' : 'default'}
+              variant={
+                confirmButtonStyle === 'danger' ? 'destructive' : 'default'
+              }
             >
               {isLoading ? loadingText : confirmText}
             </Button>

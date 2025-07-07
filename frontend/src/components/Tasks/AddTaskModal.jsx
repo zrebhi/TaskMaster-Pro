@@ -25,7 +25,10 @@ const AddTaskModal = ({ isOpen, onClose, projectId }) => {
       open={isOpen}
       onOpenChange={(open) => !isLoadingTasks && onClose(open)}
     >
-      <DialogContent className="sm:max-w-[425px] flex flex-col max-h-[90vh]">
+      <DialogContent
+        className="sm:max-w-[425px] flex flex-col max-h-[90vh]"
+        onPointerDownOutside={(e) => e.preventDefault()}
+      >
         <DialogHeader>
           <DialogTitle>Create New Task</DialogTitle>
           <DialogDescription>
