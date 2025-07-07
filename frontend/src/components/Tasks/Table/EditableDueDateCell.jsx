@@ -1,12 +1,21 @@
-import { useEffect, useRef } from 'react';
-import DatePicker from 'react-datepicker';
+import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { getToday } from '@/lib/utils';
+import { useError } from '@/context/ErrorContext';
+import { ERROR_SEVERITY } from '@/utils/errorHandler';
+
 
 // Helper to format the date for display
 const formatDate = (dateString) => {
   if (!dateString) return 'N/A';
   try {
-    return new Date(dateString).toLocaleDateString();
+    // The date from the DB is 'YYYY-MM-DD'. JS treats this as UTC midnight.
+    // To prevent the date from shifting to the previous day in some timezones,
+    // we adjust it by the user's timezone offset before formatting.
+    const date = new Date(dateString);
+    date.setMinutes(date.getMinutes() + date.getTimezoneOffset());
+    return date.toLocaleDateString();
   } catch {
     return dateString;
   }
@@ -15,68 +24,69 @@ const formatDate = (dateString) => {
 const EditableDueDateCell = ({ row, table }) => {
   const { meta } = table.options;
   const task = row.original;
+
+  const { showErrorToast } = useError();
   const isEditing =
     meta.editingCell?.taskId === task.id &&
     meta.editingCell?.field === 'due_date';
 
-  // Create a ref for the entire editing widget container
-  const wrapperRef = useRef(null);
+  const [currentValue, setCurrentValue] = useState('');
+  const inputRef = useRef(null);
 
-  const handleDateChange = (date) => {
-    if (!date) return;
-    date.setMinutes(date.getMinutes() - date.getTimezoneOffset());
-    const formattedDate = date.toISOString().slice(0, 10);
-    meta.onPatchTask(task.id, { due_date: formattedDate });
-    meta.setEditingCell(null);
-  };
-
-  const handleClearDate = () => {
-    meta.onPatchTask(task.id, { due_date: null });
-    meta.setEditingCell(null);
-  };
-
-  // We add an effect to handle clicks outside our entire component.
+  // Focus and initialize value when editing starts
   useEffect(() => {
-    function handleClick(event) {
-      if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
-        meta.setEditingCell(null);
-      }
-    }
     if (isEditing) {
-      document.addEventListener('mousedown', handleClick);
+      // Format date for the input field which expects YYYY-MM-DD
+      const initialValue = task.due_date ? task.due_date.split('T')[0] : '';
+      setCurrentValue(initialValue);
+      inputRef.current?.focus();
     }
-    return () => {
-      document.removeEventListener('mousedown', handleClick);
-    };
-  }, [isEditing, meta]);
+  }, [isEditing, task.due_date]);
+
+  const handleBlur = () => {
+    // Prevent saving if the user manually entered a past date.
+    if (currentValue && currentValue < getToday()) {
+      showErrorToast({
+        message: 'The due date cannot be in the past.',
+        severity: ERROR_SEVERITY.LOW, // Use a low severity for validation issues
+      });
+      meta.setEditingCell(null); // Exit editing mode without saving
+      return;
+    }
+
+    const originalValue = task.due_date ? task.due_date.split('T')[0] : '';
+    // Only send an update if the value has actually changed
+
+    if (currentValue !== originalValue) {
+      meta.onPatchTask(task.id, { due_date: currentValue || null });
+    }
+    meta.setEditingCell(null);
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      // onBlur will handle saving and closing
+      e.target.blur();
+    } else if (e.key === 'Escape') {
+      // Exit without saving
+      meta.setEditingCell(null);
+    }
+  };
 
   if (isEditing) {
     return (
-      // Use the ref on the wrapper div
-      <div ref={wrapperRef} className="flex items-center gap-1">
-        <DatePicker
-          selected={task.due_date ? new Date(task.due_date) : null}
-          onChange={handleDateChange}
-          minDate={new Date()}
-          showPopperArrow={false}
-          popperClassName="z-50"
-          startOpen
-          // We no longer need the library's outside click handler
-          // onClickOutside={handleClickOutside}
-          // We render the input and button as siblings. The wrapperRef handles outside clicks.
-          className="w-[110px] rounded-md border border-input bg-background px-2 py-1 text-sm h-8"
+      <form>
+        <Input
+          ref={inputRef}
+          type="date"
+          value={currentValue}
+          onChange={(e) => setCurrentValue(e.target.value)}
+          onBlur={handleBlur}
+          onKeyDown={handleKeyDown}
+          min={getToday()} // Prevent past dates
+          aria-label="Edit due date"
         />
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={handleClearDate}
-          className="text-xs"
-          aria-label="Clear due date"
-        >
-          Clear
-        </Button>
-      </div>
+      </form>
     );
   }
 
@@ -87,7 +97,7 @@ const EditableDueDateCell = ({ row, table }) => {
       onClick={() => {
         meta.setEditingCell({ taskId: task.id, field: 'due_date' });
       }}
-      className=""
+      className="w-full justify-start text-left font-normal"
       aria-label={`Change due date for ${task.title}. Current: ${formatDate(
         task.due_date
       )}`}

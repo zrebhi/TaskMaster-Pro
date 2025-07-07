@@ -1,7 +1,7 @@
 // src/components/Tasks/TaskForm.jsx
 
 import { useState, useEffect } from 'react';
-import { cn } from '@/lib/utils';
+import { cn, getToday } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -153,6 +153,7 @@ const TaskForm = ({
           value={due_date}
           onChange={handleChange}
           disabled={isLoading}
+          min={getToday()} // Prevent past dates
         />
       </div>
       <div className="grid gap-3">

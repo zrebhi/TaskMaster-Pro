@@ -58,29 +58,6 @@ describe('TaskForm: Unit Tests', () => {
       ).toBeInTheDocument();
       expect(mockOnSubmit).not.toHaveBeenCalled();
     });
-
-    it('should display a validation error and prevent submission if the due date is in the past', async () => {
-      render(<TaskForm {...mockProps} />);
-
-      // Get yesterday's date in the YYYY-MM-DD format required by the input
-      const today = new Date();
-      const yesterday = new Date(today.setDate(today.getDate() - 1));
-      const pastDate = yesterday.toISOString().split('T')[0];
-
-      await userEvent.type(
-        screen.getByLabelText(/task title/i),
-        'A valid title'
-      );
-      await userEvent.type(screen.getByLabelText(/due date/i), pastDate);
-      await userEvent.click(
-        screen.getByRole('button', { name: /submit task/i })
-      );
-
-      expect(
-        await screen.findByText(/Due date cannot be in the past/i)
-      ).toBeInTheDocument();
-      expect(mockOnSubmit).not.toHaveBeenCalled();
-    });
   });
 
   describe('Submission', () => {

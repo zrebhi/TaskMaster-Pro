@@ -136,26 +136,27 @@ describe('Inline Due Date Editing', () => {
   beforeEach(() => {
     user = userEvent.setup();
     jest.clearAllMocks();
-    // Fix the current date to ensure the calendar is consistent across test runs
-    const fixedDate = new Date('2024-06-15T00:00:00.000Z'); // Set to midnight UTC to avoid timezone issues
+    // Fix the current date to ensure getToday() is consistent.
+    const fixedDate = new Date('2024-06-15T12:00:00.000Z');
 
-    // @ts-ignore - Mocking the global Date object for test consistency
+    // @ts-ignore
     global.Date = class extends originalDate {
       constructor(...args) {
-        // If called with arguments, pass them to the real Date constructor.
-        // If called with no arguments (`new Date()`), use our fixed date.
         if (args.length > 0) {
-          // @ts-ignore - Spreading args on a constructor with multiple overloads is not type-safe.
+          // @ts-ignore
           super(...args);
         } else {
           super(fixedDate);
         }
       }
+      // Mock getTimezoneOffset to ensure consistent date string formatting
+      static getTimezoneOffset() {
+        return 0;
+      }
     };
   });
 
   afterEach(() => {
-    // Restore the original Date object
     global.Date = originalDate;
   });
 
@@ -170,7 +171,7 @@ describe('Inline Due Date Editing', () => {
       });
       mockedPatchTaskAPI.mockResolvedValue({
         ...taskWithoutDate,
-        due_date: '2024-06-25',
+        due_date: '2024-06-25T00:00:00.000Z', // API returns full timestamp
       });
       mockedGetTasksForProjectAPI.mockResolvedValue([taskWithoutDate]);
 
@@ -185,8 +186,10 @@ describe('Inline Due Date Editing', () => {
 
       // Act
       await user.click(dateTrigger);
-      const dayToSelect = await screen.findByText('25');
-      await user.click(dayToSelect);
+      const dateInput = screen.getByLabelText(/edit due date/i);
+      // Interact with the input directly, which is robust and mimics user behavior.
+      fireEvent.change(dateInput, { target: { value: '2024-06-25' } });
+      fireEvent.blur(dateInput); // Blurring triggers the save action.
 
       // Assert
       await waitFor(() => {
@@ -221,10 +224,10 @@ describe('Inline Due Date Editing', () => {
 
       // Act
       await user.click(dateTrigger);
-      const clearButton = await screen.findByRole('button', {
-        name: /clear due date/i,
-      });
-      await user.click(clearButton);
+      const dateInput = screen.getByLabelText(/edit due date/i);
+      // To clear the date, we set the input value to an empty string.
+      fireEvent.change(dateInput, { target: { value: '' } });
+      fireEvent.blur(dateInput);
 
       // Assert
       await waitFor(() => {
@@ -233,14 +236,16 @@ describe('Inline Due Date Editing', () => {
         });
       });
       await waitFor(() => {
-        const updatedDateButton = within(row).getByRole('button', { name: /current: N\/A/i });
+        const updatedDateButton = within(row).getByRole('button', {
+          name: /current: N\/A/i,
+        });
         expect(updatedDateButton).toBeInTheDocument();
       });
     });
   });
 
   describe('Failure Path', () => {
-    it('should revert the UI and show a toast if clearing the date fails', async () => {
+    it('should revert the UI to its original state and show a toast if saving fails', async () => {
       // Arrange
       const taskWithDate = createMockTask({
         id: 'task-date-fail',
@@ -261,35 +266,78 @@ describe('Inline Due Date Editing', () => {
       const row = (await screen.findByText(taskWithDate.title)).closest('tr');
       const dateTrigger = within(row).getByText('6/20/2024');
 
-      // Act
+      // Act: Try to change the date
       await user.click(dateTrigger);
-      const clearButton = await screen.findByRole('button', {
-        name: /clear due date/i,
-      });
-      await user.click(clearButton);
+      const dateInput = screen.getByLabelText(/edit due date/i);
+      fireEvent.change(dateInput, { target: { value: '2024-06-25' } });
+      fireEvent.blur(dateInput);
 
       // Assert
-      // 1. UI optimistically updates
-      await waitFor(() => {
-        expect(within(row).getByText('N/A')).toBeInTheDocument();
-      });
-
-      // 2. After API failure, toast is shown
+      // 1. After API failure, toast is shown
       await waitFor(() => {
         expect(showErrorToastMock).toHaveBeenCalledWith(
           /** @type {any} */ (error).processedError
         );
       });
 
-      // 3. UI reverts to original state
+      // 2. The editor closes and UI reverts to original state.
       await waitFor(() => {
         expect(within(row).getByText('6/20/2024')).toBeInTheDocument();
       });
+      expect(
+        within(row).queryByLabelText(/edit due date/i)
+      ).not.toBeInTheDocument();
+    });
+
+    it('should show a validation error and not save if a past date is entered', async () => {
+      // Arrange
+      const taskWithDate = createMockTask({
+        id: 'task-date-validation',
+        title: 'Task for validation',
+        // Date is June 20th. Our mocked 'today' is June 15th.
+        due_date: '2024-06-20T00:00:00.000Z',
+        project_id: 'proj-1',
+      });
+      mockedGetTasksForProjectAPI.mockResolvedValue([taskWithDate]);
+      const showErrorToastMock = jest.fn();
+
+      // We must provide our mocked toast function to the provider
+      renderWithRealTaskProvider(
+        { projects: [project] },
+        { showErrorToast: showErrorToastMock }
+      );
+
+      const row = (await screen.findByText(taskWithDate.title)).closest('tr');
+      const dateTrigger = within(row).getByText('6/20/2024');
+
+      // Act: Try to change the date to one day before our mocked "today"
+      await user.click(dateTrigger);
+      const dateInput = screen.getByLabelText(/edit due date/i);
+      fireEvent.change(dateInput, { target: { value: '2024-06-14' } });
+      fireEvent.blur(dateInput); // Trigger the validation and save logic
+
+      // Assert
+      // 1. The correct validation toast was shown.
+      await waitFor(() => {
+        expect(showErrorToastMock).toHaveBeenCalledWith({
+          message: 'The due date cannot be in the past.',
+          severity: 'low',
+        });
+      });
+
+      // 2. The UI reverted to the original state.
+      expect(within(row).getByText('6/20/2024')).toBeInTheDocument();
+      expect(
+        screen.queryByLabelText(/edit due date/i)
+      ).not.toBeInTheDocument();
+
+      // 3. Crucially, no attempt was made to patch the task.
+      expect(mockedPatchTaskAPI).not.toHaveBeenCalled();
     });
   });
 
   describe('Reversal Path', () => {
-    it('should close the editor and not save changes when clicking outside', async () => {
+    it('should close the editor and not save changes when Escape is pressed', async () => {
       // Arrange
       const taskWithDate = createMockTask({
         id: 'task-date-cancel',
@@ -306,18 +354,18 @@ describe('Inline Due Date Editing', () => {
 
       // Act
       await user.click(dateTrigger);
-      // Verify editor is open by checking for its unique button
-      expect(
-        await screen.findByRole('button', { name: /clear due date/i })
-      ).toBeInTheDocument();
-      // Use fireEvent for a generic 'mousedown' that the component's effect listens for.
-      fireEvent.mouseDown(document.body);
+      const dateInput = screen.getByLabelText(/edit due date/i);
+      expect(dateInput).toBeInTheDocument(); // Verify editor is open
+
+      // Change the value, then press Escape to cancel
+      fireEvent.change(dateInput, { target: { value: '2024-06-25' } });
+      await user.keyboard('{escape}');
 
       // Assert
       await waitFor(() => {
-        // The editor's unique button is a good proxy for the editor itself
+        // The editor's input should be gone
         expect(
-          screen.queryByRole('button', { name: /clear due date/i })
+          screen.queryByLabelText(/edit due date/i)
         ).not.toBeInTheDocument();
       });
       // The original date should still be there
