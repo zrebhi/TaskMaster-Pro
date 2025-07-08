@@ -16,7 +16,7 @@ export function DataTableColumnHeader({ column, title, className }) {
   }
 
   return (
-    <div className={cn('flex items-center gap-2', className)}>
+    <div className={cn('flex items-center gap-2 px-2', className)}>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
