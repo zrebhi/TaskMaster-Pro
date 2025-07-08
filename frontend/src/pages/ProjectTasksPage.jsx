@@ -12,6 +12,7 @@ import {
 import EditTaskModal from '@/components/Tasks/EditTaskModal';
 import ConfirmationModal from '@/components/Common/ConfirmationModal';
 import AddTaskModal from '@/components/Tasks/AddTaskModal';
+import TaskDetailSheet from '@/components/Tasks/TaskDetailSheet';
 import TaskContext from '@/context/TaskContext';
 import ProjectContext from '@/context/ProjectContext';
 import { useError } from '@/context/ErrorContext';
@@ -32,6 +33,7 @@ import { priorities, statuses } from '@/data/taskUIData';
  * @property {object | null} editingCell - The currently editing cell's state.
  * @property {React.Dispatch<React.SetStateAction<object | null>>} setEditingCell - Setter for the editing cell state.
  * @property {Array<{columnId: string, title: string, options: Array<{value: string | number, label: string, icon?: React.ComponentType<{className?: string}>}>}>} [filtersConfig] - Configuration for faceted filters.
+ * @property {(task: object) => void} [onViewTask] - Handler to trigger viewing a task's details.
  */
 
 const ProjectTasksPage = () => {
@@ -59,6 +61,7 @@ const ProjectTasksPage = () => {
   const [isAddTaskModalOpen, setIsAddTaskModalOpen] = useState(false);
   const [isDeletingTask, setIsDeletingTask] = useState(false);
   const [editingCell, setEditingCell] = useState(null); // So that we edit one cell at a time
+  const [selectedTask, setSelectedTask] = useState(null);
 
   const VISIBILITY_STORAGE_KEY = 'tasks-table-column-visibility';
 
@@ -207,6 +210,9 @@ const ProjectTasksPage = () => {
       onPatchTask: handlePatchTask,
       editingCell: editingCell,
       setEditingCell: setEditingCell,
+      onViewTask: (task) => {
+        setSelectedTask(task);
+      },
       filtersConfig: [
         {
           columnId: 'priority',
@@ -294,6 +300,12 @@ const ProjectTasksPage = () => {
             </div>
           ))}
       </div>
+
+      <TaskDetailSheet
+        task={selectedTask}
+        isOpen={!!selectedTask}
+        onClose={() => setSelectedTask(null)}
+      />
 
       <AddTaskModal
         isOpen={isAddTaskModalOpen}

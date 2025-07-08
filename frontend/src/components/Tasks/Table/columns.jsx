@@ -6,6 +6,7 @@ import { DataTableColumnHeader } from '@/components/ui/tables/data-table-column-
 import { DataTableRowActions } from '@/components/ui/tables/data-table-row-actions';
 import EditablePriorityCell from './EditablePriorityCell';
 import EditableDueDateCell from './EditableDueDateCell';
+import ViewTaskTitleCell from './ViewTaskTitleCell';
 import {
   DropdownMenuItem,
   DropdownMenuSeparator,
@@ -47,16 +48,11 @@ export const columns = [
     ),
     meta: {
       headerTitle: 'Title',
+      // It's good practice to remove padding from the <td> so the
+      // interactive element can control its own spacing.
+      cellClassName: 'p-0',
     },
-    cell: ({ row }) => {
-      return (
-        <div className="flex">
-          <span className="max-w-[300px] md:max-w-[400px] truncate font-medium">
-            {row.getValue('title')}
-          </span>
-        </div>
-      );
-    },
+    cell: ViewTaskTitleCell,
     enableHiding: false,
   },
   {
