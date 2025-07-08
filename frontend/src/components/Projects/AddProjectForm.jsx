@@ -1,4 +1,5 @@
 import { useState, useContext } from 'react';
+import { useNavigate } from 'react-router-dom';
 import ProjectContext from '@/context/ProjectContext';
 import { getErrorMessage } from '@/utils/errorHandler';
 import { PROJECT_NAME_MAX_LENGTH } from '@/config/constants';
@@ -13,6 +14,7 @@ const AddProjectForm = ({ className, onSuccess, ...props }) => {
   const [projectName, setProjectName] = useState('');
   const [error, setError] = useState('');
   const { addProject, isLoading } = useContext(ProjectContext);
+  const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -23,9 +25,12 @@ const AddProjectForm = ({ className, onSuccess, ...props }) => {
     }
 
     try {
-      await addProject({ name: projectName.trim() });
+      const newProject = await addProject({ name: projectName.trim() });
       setProjectName('');
       if (onSuccess) onSuccess();
+      if (newProject?.id) {
+        navigate(`/projects/${newProject.id}`);
+      }
     } catch (err) {
       setError(getErrorMessage(err, 'creating the project'));
     }
