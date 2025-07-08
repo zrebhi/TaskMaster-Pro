@@ -149,8 +149,7 @@ describe('Inline Due Date Editing', () => {
           super(fixedDate);
         }
       }
-      // Mock getTimezoneOffset to ensure consistent date string formatting
-      static getTimezoneOffset() {
+      getTimezoneOffset() {
         return 0;
       }
     };
@@ -327,9 +326,7 @@ describe('Inline Due Date Editing', () => {
 
       // 2. The UI reverted to the original state.
       expect(within(row).getByText('6/20/2024')).toBeInTheDocument();
-      expect(
-        screen.queryByLabelText(/edit due date/i)
-      ).not.toBeInTheDocument();
+      expect(screen.queryByLabelText(/edit due date/i)).not.toBeInTheDocument();
 
       // 3. Crucially, no attempt was made to patch the task.
       expect(mockedPatchTaskAPI).not.toHaveBeenCalled();
