@@ -119,6 +119,21 @@ const ProjectTasksPage = () => {
 
   const selectedProject = projects.find((p) => p.id.toString() === projectId);
 
+  // Effect to sync selectedTask with the main tasks list
+  useEffect(() => {
+    // If a task is selected (i.e., the sheet is open)
+    if (selectedTask) {
+      // Find the latest version of that task from the main tasks array
+      const updatedTask = tasks.find((task) => task.id === selectedTask.id);
+
+      // If the task still exists and is different from what we have in state, update it.
+      // This prevents an infinite loop.
+      if (updatedTask && JSON.stringify(updatedTask) !== JSON.stringify(selectedTask)) {
+        setSelectedTask(updatedTask);
+      }
+    }
+  }, [tasks, selectedTask]); // This effect runs whenever `tasks` or `selectedTask` changes
+
   const handleEditTask = useCallback((task) => {
     setTaskToEdit(task);
     setIsEditTaskModalOpen(true);
@@ -179,6 +194,24 @@ const ProjectTasksPage = () => {
     },
     [patchTask]
   );
+
+  const handleToggleComplete = useCallback(
+    (task) => {
+      // Only dispatch the update. Do not close the sheet.
+      handlePatchTask(task.id, { is_completed: !task.is_completed });
+    },
+    [handlePatchTask]
+  );
+
+  const handleEditClick = (task) => {
+    handleEditTask(task); // This opens the edit modal
+    setSelectedTask(null); // This closes the detail sheet
+  };
+
+  const handleDeleteClick = (task) => {
+    handleDeleteTask(task); // This opens the delete modal
+    setSelectedTask(null); // This closes the detail sheet
+  };
 
   // Transform tasks for the DataTable
   const transformedTasks = useMemo(() => {
@@ -305,6 +338,9 @@ const ProjectTasksPage = () => {
         task={selectedTask}
         isOpen={!!selectedTask}
         onClose={() => setSelectedTask(null)}
+        onEdit={handleEditClick}
+        onDelete={handleDeleteClick}
+        onToggleComplete={handleToggleComplete}
       />
 
       <AddTaskModal
