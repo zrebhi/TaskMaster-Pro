@@ -1,4 +1,4 @@
-import { ArrowDown, ArrowUp, ChevronsUpDown, EyeOff } from 'lucide-react';
+import { ArrowDown, ArrowUp, ChevronsUpDown, EyeOff, Eraser } from 'lucide-react';
 
 import { cn } from '@/lib/utils'; // Adjusted path
 import { Button } from '../button'; // Adjusted path
@@ -43,6 +43,12 @@ export function DataTableColumnHeader({ column, title, className }) {
             <ArrowDown className="mr-2 h-3.5 w-3.5 text-muted-foreground/70" />
             Desc
           </DropdownMenuItem>
+          {column.getIsSorted() && (
+            <DropdownMenuItem onClick={() => column.clearSorting()}>
+              <Eraser className="mr-2 h-3.5 w-3.5 text-muted-foreground/70" />
+              Clear
+            </DropdownMenuItem>
+          )}
           <DropdownMenuSeparator />
           {column.getCanHide() && (
             <DropdownMenuItem onClick={() => column.toggleVisibility(false)}>
