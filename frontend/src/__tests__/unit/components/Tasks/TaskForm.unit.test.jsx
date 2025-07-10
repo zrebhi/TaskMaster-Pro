@@ -1,32 +1,11 @@
 // @ts-check
-/**
- * @file Unit tests for the TaskForm component.
- * @see @/components/Tasks/TaskForm.jsx
- */
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import TaskForm from '@/components/Tasks/TaskForm';
 
-// The shadcn/ui Select component is complex and causes issues in JSDOM.
-// We mock it to provide a simple, standard <select> element, allowing us
-// to test the form's logic without fighting the component's implementation details.
-jest.mock('@/components/ui/select', () => ({
-  Select: ({ children, onValueChange, value }) => (
-    <select
-      onChange={(e) => onValueChange(e.target.value)}
-      value={value}
-      aria-label="Priority"
-    >
-      {children}
-    </select>
-  ),
-  SelectTrigger: ({ children }) => <>{children}</>,
-  SelectContent: ({ children }) => <>{children}</>,
-  SelectItem: ({ children, value }) => (
-    <option value={value}>{children}</option>
-  ),
-  SelectValue: () => null,
-}));
+// We are no longer mocking the Select component to ensure our tests
+// accurately reflect the real user interaction with the complex
+// shadcn/ui component.
 
 describe('TaskForm: Unit Tests', () => {
   const mockOnSubmit = jest.fn();
@@ -37,23 +16,21 @@ describe('TaskForm: Unit Tests', () => {
     loadingButtonText: 'Submitting...',
   };
 
-  // Before each test, reset mock function call history
   beforeEach(() => {
     mockOnSubmit.mockClear();
   });
 
   describe('Validation', () => {
     it('should display a validation error and prevent submission if the title contains only spaces', async () => {
+      const user = userEvent.setup();
       render(<TaskForm {...mockProps} />);
 
-      await userEvent.type(screen.getByLabelText(/task title/i), '   ');
-      await userEvent.click(
-        screen.getByRole('button', { name: /submit task/i })
-      );
+      await user.type(screen.getByLabelText(/task title/i), '   ');
+      await user.click(screen.getByRole('button', { name: /submit task/i }));
 
       expect(
         await screen.findByText(
-          /Task title cannot be empty or contain only spaces/i
+          /Task title is required/i
         )
       ).toBeInTheDocument();
       expect(mockOnSubmit).not.toHaveBeenCalled();
@@ -62,6 +39,7 @@ describe('TaskForm: Unit Tests', () => {
 
   describe('Submission', () => {
     it('should call the onSubmit prop with correctly formatted data upon successful submission', async () => {
+      const user = userEvent.setup();
       render(<TaskForm {...mockProps} />);
 
       const futureDate = new Date();
@@ -69,25 +47,24 @@ describe('TaskForm: Unit Tests', () => {
       const futureDateString = futureDate.toISOString().split('T')[0];
 
       // Fill out the form with valid data
-      await userEvent.type(
+      await user.type(
         screen.getByLabelText(/task title/i),
         '  A new task title  '
       );
-      await userEvent.type(
+      await user.type(
         screen.getByLabelText(/description/i),
         '  A description.  '
       );
-      await userEvent.type(
-        screen.getByLabelText(/due date/i),
-        futureDateString
-      );
-      await userEvent.selectOptions(
-        screen.getByRole('combobox', { name: /priority/i }),
-        '3' // 'High'
-      );
-      await userEvent.click(
-        screen.getByRole('button', { name: /submit task/i })
-      );
+      await user.type(screen.getByLabelText(/due date/i), futureDateString);
+
+      // Interact with the real Select component
+      // 1. Click the trigger to open the dropdown
+      await user.click(screen.getByRole('combobox', { name: /priority/i }));
+      // 2. Click the desired option. `findByRole` waits for it to appear.
+      await user.click(await screen.findByRole('option', { name: /high/i }));
+
+      // 3. Submit the form
+      await user.click(screen.getByRole('button', { name: /submit task/i }));
 
       // Assert that the onSubmit handler was called with trimmed and formatted data
       expect(mockOnSubmit).toHaveBeenCalledTimes(1);
@@ -95,7 +72,7 @@ describe('TaskForm: Unit Tests', () => {
         title: 'A new task title',
         description: 'A description.',
         due_date: futureDateString,
-        priority: 3,
+        priority: 3, // 'High' corresponds to value 3
       });
     });
   });
@@ -106,7 +83,7 @@ describe('TaskForm: Unit Tests', () => {
         title: 'Existing Task Title',
         description: 'Existing task description.',
         due_date: '2025-12-01T00:00:00.000Z',
-        priority: 1, // Low
+        priority: 1, // Corresponds to "Low"
       };
 
       render(<TaskForm {...mockProps} initialData={initialData} />);
@@ -120,14 +97,18 @@ describe('TaskForm: Unit Tests', () => {
       );
       // The component formats the date to YYYY-MM-DD for the input
       expect(screen.getByLabelText(/due date/i)).toHaveValue('2025-12-01');
-      expect(screen.getByRole('combobox', { name: /priority/i })).toHaveValue(
-        initialData.priority.toString()
-      );
+
+      // For the real Select, we check the displayed text inside the trigger,
+      // not the element's `value` attribute. The component correctly displays "Low" for priority 1.
+      expect(
+        screen.getByRole('combobox', { name: /priority/i })
+      ).toHaveTextContent(/low/i);
     });
   });
 
   describe('Submission Failure', () => {
     it('should display an API error message within the form if the onSubmit promise rejects', async () => {
+      const user = userEvent.setup();
       // Mock the onSubmit prop to simulate a failed API call
       const apiErrorMessage = 'API Error: This title is a duplicate.';
       const failingOnSubmit = jest
@@ -137,13 +118,8 @@ describe('TaskForm: Unit Tests', () => {
       render(<TaskForm {...mockProps} onSubmit={failingOnSubmit} />);
 
       // Fill out the form with valid data and submit
-      await userEvent.type(
-        screen.getByLabelText(/task title/i),
-        'A valid title'
-      );
-      await userEvent.click(
-        screen.getByRole('button', { name: /submit task/i })
-      );
+      await user.type(screen.getByLabelText(/task title/i), 'A valid title');
+      await user.click(screen.getByRole('button', { name: /submit task/i }));
 
       // Assert that the error message from the rejected promise is displayed
       expect(await screen.findByText(apiErrorMessage)).toBeInTheDocument();

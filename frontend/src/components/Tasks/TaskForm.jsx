@@ -1,6 +1,6 @@
 // src/components/Tasks/TaskForm.jsx
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { cn, getToday } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,7 +18,7 @@ const DEFAULT_FORM_STATE = {
   title: '',
   description: '',
   due_date: '',
-  priority: 2,
+  priority: '2', // priority must be a string for the Select component
 };
 
 /**
@@ -39,51 +39,52 @@ const TaskForm = ({
   className,
   ...props
 }) => {
-  const [formData, setFormData] = useState(DEFAULT_FORM_STATE);
   const [error, setError] = useState('');
 
-  useEffect(() => {
-    // If initialData is provided (i.e., we are editing), populate the form.
-    // Otherwise, ensure the form is reset to its default state.
+  const [formData, setFormData] = useState(() => {
     if (initialData) {
-      setFormData({
+      return {
         title: initialData.title || '',
         description: initialData.description || '',
-        // Format date for the input field which expects YYYY-MM-DD
         due_date: initialData.due_date
           ? initialData.due_date.split('T')[0]
           : '',
-        priority: initialData.priority || 2,
-      });
-    } else {
-      setFormData(DEFAULT_FORM_STATE);
+
+        priority: (initialData.priority || 2).toString(),
+      };
     }
-  }, [initialData]); // This effect re-runs whenever the task being edited changes.
+    return DEFAULT_FORM_STATE;
+  });
 
   const { title, description, due_date, priority } = formData;
-
+  
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
   const onSelectChange = (value) => {
-    setFormData({ ...formData, priority: parseInt(value) });
+    setFormData({ ...formData, priority: value });
   };
 
   const validateForm = () => {
-    if (title && !title.trim()) {
-      setError('Task title cannot be empty or contain only spaces.');
+    // Validate title to match backend model: not null, len [1, 255]
+    if (!title.trim()) {
+      setError('Task title is required.');
       return false;
     }
-    if (due_date) {
-      const selectedDate = new Date(due_date);
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      if (selectedDate < today) {
-        setError('Due date cannot be in the past.');
-        return false;
-      }
+    if (title.trim().length > 255) {
+      setError('Task title must be 255 characters or less.');
+      return false;
     }
+
+    // The `min` prop on the input prevents past dates in the UI,
+    // but this JS check provides a robust fallback and clear error message.
+    if (due_date && due_date < getToday()) {
+      setError('Due date cannot be in the past.');
+      return false;
+    }
+
+    // Priority is handled by the <Select> component, so no JS validation needed.
     return true;
   };
 
@@ -97,7 +98,7 @@ const TaskForm = ({
         title: title.trim(),
         description: description.trim() || null,
         due_date: due_date || null,
-        priority: parseInt(priority),
+        priority: parseInt(priority, 10), // Parse to integer ONLY on submission
       };
       // The component doesn't know what the action is, it just calls the function from props.
       await onSubmit(taskData);
@@ -161,7 +162,7 @@ const TaskForm = ({
           Priority
         </Label>
         <Select
-          value={priority.toString()}
+          value={priority}
           onValueChange={onSelectChange}
           disabled={isLoading}
         >
