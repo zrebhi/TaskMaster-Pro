@@ -33,7 +33,7 @@ module.exports = (sequelize, DataTypes) => {
       priority: {
         // Example: 1: Low, 2: Medium, 3: High
         type: DataTypes.INTEGER,
-        allowNull: true,
+        allowNull: false,
         defaultValue: 2, // Default to Medium
         validate: {
           isIn: {
