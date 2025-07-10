@@ -69,7 +69,7 @@ export const TaskProvider = ({ children }) => {
 
   const clearTasks = useCallback(() => {
     setTasks([]);
-    setCurrentProjectIdForTasks(null);
+
     setTaskError(null);
   }, []);
 

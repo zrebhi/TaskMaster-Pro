@@ -219,7 +219,6 @@ describe('TaskContext', () => {
       });
 
       expect(result.current.tasks).toEqual([]);
-      expect(result.current.currentProjectIdForTasks).toBeNull();
       expect(result.current.taskError).toBeNull();
       expect(result.current.isLoadingTasks).toBe(false);
     });
@@ -242,7 +241,6 @@ describe('TaskContext', () => {
       });
 
       expect(result.current.tasks).toEqual([]);
-      expect(result.current.currentProjectIdForTasks).toBeNull();
       expect(result.current.taskError).toBeNull();
     });
   });
