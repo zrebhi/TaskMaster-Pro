@@ -44,7 +44,14 @@ const EditableDueDateCell = ({ row, table }) => {
   }, [isEditing, task.due_date]);
 
   const handleBlur = () => {
-    // Prevent saving if the user manually entered a past date.
+    const originalValue = task.due_date ? task.due_date.split('T')[0] : '';
+
+    // If the value hasn't changed, simply exit edit mode. No validation, no save.
+    if (currentValue === originalValue) {
+      meta.setEditingCell(null);
+      return;
+    }
+
     if (currentValue && currentValue < getToday()) {
       showErrorToast({
         message: 'The due date cannot be in the past.',
@@ -54,12 +61,7 @@ const EditableDueDateCell = ({ row, table }) => {
       return;
     }
 
-    const originalValue = task.due_date ? task.due_date.split('T')[0] : '';
-    // Only send an update if the value has actually changed
-
-    if (currentValue !== originalValue) {
-      meta.onPatchTask(task.id, { due_date: currentValue || null });
-    }
+    meta.onPatchTask(task.id, { due_date: currentValue || null });
     meta.setEditingCell(null);
   };
 
@@ -90,6 +92,12 @@ const EditableDueDateCell = ({ row, table }) => {
     );
   }
 
+  const isOverdue =
+    !task.is_completed &&
+    task.due_date &&
+    new Date(task.due_date) <
+      new Date(getToday());
+
   return (
     <Button
       type="button"
@@ -102,7 +110,9 @@ const EditableDueDateCell = ({ row, table }) => {
         task.due_date
       )}`}
     >
-      {formatDate(task.due_date)}
+      <span className={isOverdue ? 'text-destructive' : ''}>
+        {formatDate(task.due_date)}
+      </span>
     </Button>
   );
 };
