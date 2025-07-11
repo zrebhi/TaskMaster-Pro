@@ -108,34 +108,6 @@ describe('API Client Unit Tests', () => {
       // Assert
       expect(result).toBe(mockResponse);
     });
-
-    test('processes errors through handleApiError', async () => {
-      // Arrange
-      const responseErrorHandler = getResponseErrorHandler();
-      const mockError = {
-        response: { status: 400, data: { message: 'Bad Request' } },
-        config: { metadata: { context: 'test operation' } },
-      };
-
-      const processedError = {
-        message: 'Processed error message',
-        severity: 'medium',
-      };
-      mockHandleApiError.mockReturnValue(processedError);
-
-      // Act & Assert
-      await expect(responseErrorHandler(mockError)).rejects.toEqual(
-        expect.objectContaining({
-          processedError,
-        })
-      );
-
-      expect(mockHandleApiError).toHaveBeenCalledWith(
-        mockError,
-        'test operation',
-        undefined
-      );
-    });
   });
 
   describe('Enhanced API Methods', () => {
@@ -235,34 +207,6 @@ describe('API Client Unit Tests', () => {
       process.env.NODE_ENV = originalEnv;
     });
 
-    test('logs errors to console in development environment', () => {
-      process.env.NODE_ENV = 'development';
-      const consoleSpy = jest.spyOn(console, 'group').mockImplementation();
-      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
-      const consoleGroupEndSpy = jest
-        .spyOn(console, 'groupEnd')
-        .mockImplementation();
-
-      const responseErrorHandler = getResponseErrorHandler();
-      const error = {
-        response: { status: 500, data: { message: 'Server Error' } },
-        config: { metadata: { context: 'test operation' } },
-      };
-
-      responseErrorHandler(error).catch(() => {});
-
-      expect(consoleSpy).toHaveBeenCalledWith('🚨 API Error: test operation');
-      expect(consoleErrorSpy).toHaveBeenCalledWith('Original error:', error);
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        'Processed error:',
-        expect.any(Object)
-      );
-      expect(consoleGroupEndSpy).toHaveBeenCalled();
-
-      consoleSpy.mockRestore();
-      consoleErrorSpy.mockRestore();
-      consoleGroupEndSpy.mockRestore();
-    });
 
     test('does not log to console in production environment', () => {
       process.env.NODE_ENV = 'production';

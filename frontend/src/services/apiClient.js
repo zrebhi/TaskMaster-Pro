@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { handleApiError, isAuthError } from '@/utils/errorHandler';
+import { isAuthError } from '@/utils/errorHandler';
 
 /**
  * Centralized API client with global error handling
@@ -47,7 +47,6 @@ apiClient.interceptors.request.use(
   }
 );
 
-// Response interceptor - Global error handling
 apiClient.interceptors.response.use(
   (response) => {
     // Success response - just return it
@@ -57,29 +56,12 @@ apiClient.interceptors.response.use(
     // Check for an auth error to de-duplicate logout actions
     if (isAuthError(error)) {
       if (isLoggingOut) {
-        // A logout is already in progress. Suppress this error to prevent
-        // duplicate toasts and logout calls.
         error.isSuppressed = true;
         return Promise.reject(error);
       }
       isLoggingOut = true;
+      authContextRef?.logout();
     }
-
-    // Global error handling
-    const context = error.config?.metadata?.context || 'performing this action';
-    const errorResult = handleApiError(error, context, authContextRef?.logout);
-
-    // Attach processed error info to the error object
-    error.processedError = errorResult;
-
-    // Log for debugging (can be removed in production)
-    if (process.env.NODE_ENV === 'development') {
-      console.group(`🚨 API Error: ${context}`);
-      console.error('Original error:', error);
-      console.error('Processed error:', errorResult);
-      console.groupEnd();
-    }
-
     return Promise.reject(error);
   }
 );

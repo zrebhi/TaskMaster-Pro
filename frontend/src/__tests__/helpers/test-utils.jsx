@@ -5,6 +5,7 @@ import { BrowserRouter } from 'react-router-dom';
 import { AuthProvider } from '@/context/AuthContext';
 import { ProjectProvider } from '@/context/ProjectContext';
 import { ErrorProvider } from '@/context/ErrorContext';
+import { QueryClient } from '@tanstack/react-query';
 
 /**
  * Custom render function that wraps components with all necessary providers
@@ -308,3 +309,23 @@ export const setupRouterMocks = () => {
 
   return { mockNavigate };
 };
+
+/**
+ * Creates a new QueryClient for each test to ensure test isolation.
+ * Retries are disabled to make tests faster and more deterministic.
+ * @returns {QueryClient}
+ */
+export const createTestQueryClient = () =>
+  new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+      },
+    },
+    // Silence query error logs in the test console
+    logger: {
+      log: console.log,
+      warn: console.warn,
+      error: () => {},
+    },
+  });

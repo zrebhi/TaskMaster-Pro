@@ -8,9 +8,10 @@ import { screen, render, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
+import { QueryClientProvider } from '@tanstack/react-query';
 
 import ProjectListPage from '@/pages/ProjectListPage';
-import { createMockProject } from '@/__tests__/helpers/test-utils';
+import { createMockProject, createTestQueryClient } from '@/__tests__/helpers/test-utils';
 import {
   TestProviders,
   createAuthenticatedContext,
@@ -18,9 +19,10 @@ import {
   createMockErrorContext,
 } from '@/__tests__/helpers/mock-providers';
 
-// The service is not directly used by this component (it relies on context),
-// but it's good practice to mock it to ensure isolation.
+// The service is mocked to ensure isolation.
 jest.mock('@/services/projectApiService');
+// We need to import the mocked service to control its behavior during tests.
+const { getAllProjects } = require('@/services/projectApiService');
 
 /**
  * A custom render function for the ProjectListPage component.
@@ -31,18 +33,21 @@ jest.mock('@/services/projectApiService');
  */
 const renderComponent = (projectContextValue) => {
   const user = userEvent.setup();
+  const queryClient = createTestQueryClient();
   const renderResult = render(
-    <MemoryRouter>
-      <TestProviders
-        authValue={createAuthenticatedContext()}
-        projectValue={projectContextValue}
-        errorValue={createMockErrorContext()}
-      >
-        <Routes>
-          <Route path="/" element={<ProjectListPage />} />
-        </Routes>
-      </TestProviders>
-    </MemoryRouter>
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter>
+        <TestProviders
+          authValue={createAuthenticatedContext()}
+          projectValue={projectContextValue}
+          errorValue={createMockErrorContext()}
+        >
+          <Routes>
+            <Route path="/" element={<ProjectListPage />} />
+          </Routes>
+        </TestProviders>
+      </MemoryRouter>
+    </QueryClientProvider>
   );
   return { ...renderResult, user };
 };
@@ -55,16 +60,24 @@ describe('ProjectListPage: Filter and Search', () => {
     createMockProject({ id: 'proj-omega', name: 'Omega Initiative' }),
   ];
 
+  // This context is still needed as ProjectListPage uses it for mutations (e.g., deleteProject).
   const projectContextValue = createMockProjectContext({
-    projects,
+    projects: [], // This is no longer used by the component to render the list.
     isLoading: false,
     error: null,
+  });
+
+  beforeEach(() => {
+    // Mock the API call that the `useProjects` hook will make on render.
+    /** @type {jest.Mock} */
+    (getAllProjects).mockResolvedValue(projects);
   });
 
   it('should filter the table to show only projects matching the search term', async () => {
     // Arrange
     const { user } = renderComponent(projectContextValue);
-    const searchInput = screen.getByPlaceholderText(
+    // Data is now fetched asynchronously, so wait for it to appear.
+    const searchInput = await screen.findByPlaceholderText(
       'Search by project title...'
     );
 
@@ -87,7 +100,7 @@ describe('ProjectListPage: Filter and Search', () => {
   it('should display a "No results." message when the search term finds no matches', async () => {
     // Arrange
     const { user } = renderComponent(projectContextValue);
-    const searchInput = screen.getByPlaceholderText(
+    const searchInput = await screen.findByPlaceholderText(
       'Search by project title...'
     );
 
@@ -107,7 +120,7 @@ describe('ProjectListPage: Filter and Search', () => {
   it('should restore the full list of projects when the search filter is cleared', async () => {
     // Arrange
     const { user } = renderComponent(projectContextValue);
-    const searchInput = screen.getByPlaceholderText(
+    const searchInput = await screen.findByPlaceholderText(
       'Search by project title...'
     );
 
@@ -133,7 +146,7 @@ describe('ProjectListPage: Filter and Search', () => {
   it('should match projects in a case-insensitive manner', async () => {
     // Arrange
     const { user } = renderComponent(projectContextValue);
-    const searchInput = screen.getByPlaceholderText(
+    const searchInput = await screen.findByPlaceholderText(
       'Search by project title...'
     );
 

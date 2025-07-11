@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useContext } from 'react';
+import { useState, useCallback, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   useReactTable,
@@ -7,6 +7,7 @@ import {
   getSortedRowModel,
 } from '@tanstack/react-table';
 import ProjectContext from '@/context/ProjectContext';
+import { useProjects } from '@/hooks/useProjects';
 import EditProjectModal from '@/components/Projects/EditProjectModal';
 import ConfirmationModal from '@/components/Common/ConfirmationModal';
 import { DataTable } from '@/components/ui/tables/data-table';
@@ -17,8 +18,7 @@ import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
 
 const ProjectListPage = () => {
-  const { projects, fetchProjects, deleteProject, isLoading, error } =
-    useContext(ProjectContext);
+  const { deleteProject } = useContext(ProjectContext);
   const navigate = useNavigate();
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -34,9 +34,8 @@ const ProjectListPage = () => {
   const [columnVisibility, setColumnVisibility] = useState({});
   const [rowSelection, setRowSelection] = useState({});
 
-  useEffect(() => {
-    fetchProjects();
-  }, [fetchProjects]);
+  const { data: projects = [], isLoading, isError} = useProjects();
+
 
   const handleSelectProject = useCallback(
     (projectId) => {
@@ -109,10 +108,12 @@ const ProjectListPage = () => {
   return (
     <div className="flex flex-col flex-1 h-full p-4 md:p-8 gap-8">
       {isLoading ? <p>Loading projects...</p> : null}
-      {error ? <p className="text-destructive">{error}</p> : null}
-      {!isLoading &&
-        !error &&
-        (projects.length > 0 ? (
+      {isError && !projects.length ? (
+        <p className="text-destructive text-center">
+          Could not load projects. Please try again later.
+        </p>
+      ) : null}
+      {!isLoading && !isError && (projects.length > 0 ?(
           <div className="space-y-4">
             <div className="flex items-center justify-end mb-2 gap-2">
               <DataTableToolbar
