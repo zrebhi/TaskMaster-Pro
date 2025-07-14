@@ -14,7 +14,7 @@ import ConfirmationModal from '@/components/Common/ConfirmationModal';
 import AddTaskModal from '@/components/Tasks/AddTaskModal';
 import TaskDetailSheet from '@/components/Tasks/TaskDetailSheet';
 import TaskContext from '@/context/TaskContext';
-import ProjectContext from '@/context/ProjectContext';
+import { useProjects } from '@/hooks/useProjects';
 import { useError } from '@/context/ErrorContext';
 import { handleApiError } from '@/utils/errorHandler';
 
@@ -38,11 +38,7 @@ import { priorities, statuses } from '@/data/taskUIData';
 
 const ProjectTasksPage = () => {
   const { projectId } = useParams();
-  const {
-    projects,
-    fetchProjects,
-    isLoading: isLoadingProjects,
-  } = useContext(ProjectContext);
+  const { data: projects = [], isLoading: isLoadingProjects } = useProjects();
   const {
     tasks,
     isLoadingTasks,
@@ -92,12 +88,6 @@ const ProjectTasksPage = () => {
   const [columnFilters, setColumnFilters] = useState(() => []);
   const [sorting, setSorting] = useState([]);
   const [rowSelection, setRowSelection] = useState({});
-
-  useEffect(() => {
-    if (projects.length === 0) {
-      fetchProjects();
-    }
-  }, [projects, fetchProjects]);
 
   // Effect to save column visibility changes to localStorage
   useEffect(() => {

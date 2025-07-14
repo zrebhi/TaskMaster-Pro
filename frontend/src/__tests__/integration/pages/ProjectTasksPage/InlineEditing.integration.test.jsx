@@ -1,38 +1,30 @@
-// @ts-check
 /**
  * @file Integration tests for inline editing features on the ProjectTasksPage.
  */
 
-import { screen, within, waitFor, fireEvent } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import '@testing-library/jest-dom';
-
 import {
-  renderWithRealTaskProvider, // Use the real provider for all tests to ensure correct prop drilling
-} from '@/__tests__/helpers/ProjectTasksPage.TestSetup';
+  // Import from our modern, shared test setup
+  setupPageTests,
+  renderTaskPageWithProvider,
+  taskApiService,
+  screen,
+  within,
+  waitFor,
+  fireEvent,
+} from './ProjectTasksPage.TestSetup';
 import {
   createMockProject,
   createMockTask,
   createMockApiError,
 } from '@/__tests__/helpers/test-utils';
 
-// Mock the entire service layer to isolate the frontend.
-jest.mock('@/services/taskApiService');
-
-// After mocking, we can import the specific functions to control their behavior.
-const {
-  patchTaskAPI,
-  getTasksForProjectAPI,
-} = require('@/services/taskApiService');
-
-const mockedPatchTaskAPI = /** @type {jest.Mock} */ (patchTaskAPI);
-const mockedGetTasksForProjectAPI = /** @type {jest.Mock} */ (
-  getTasksForProjectAPI
-);
+// The API service is mocked in the shared setup file.
 
 describe('Inline Priority Editing', () => {
   let user;
-  const project = createMockProject({ id: 'proj-1' });
+  let queryClient;
+  const testState = setupPageTests();
+  const mockProject = createMockProject({ id: 'proj-1' });
   const task = createMockTask({
     id: 'task-prio-1',
     title: 'Task for priority editing',
@@ -41,116 +33,113 @@ describe('Inline Priority Editing', () => {
   });
 
   beforeEach(() => {
-    user = userEvent.setup();
+    user = testState.user;
+    queryClient = testState.queryClient;
     // Reset mocks to a clean state before each test.
     jest.clearAllMocks();
   });
 
   it('should display the new priority after it has been changed and saved (Success Path)', async () => {
-    // Arrange
-    mockedPatchTaskAPI.mockResolvedValue({ ...task, priority: 3 });
-    mockedGetTasksForProjectAPI.mockResolvedValue([task]);
+    // ARRANGE: Mock API responses
+    (taskApiService.getTasksForProjectAPI).mockResolvedValue([task]);
+    (taskApiService.patchTaskAPI).mockResolvedValue({
+      ...task,
+      priority: 3,
+    });
 
-    renderWithRealTaskProvider({ projects: [project], isLoading: false });
-
-    const row = (await screen.findByText(task.title)).closest('tr');
+    renderTaskPageWithProvider(queryClient, { projects: [mockProject] });
+    const row = await screen.findByText(task.title).then((el) => el.closest('tr'));
     const priorityTrigger = within(row).getByText('Medium');
 
-    // Act
+    // ACT
     await user.click(priorityTrigger);
-    const highOption = await screen.findByText('High');
+    const highOption = await screen.findByRole('option', { name: 'High' });
     await user.click(highOption);
 
-    // Assert
-    // 1. Verify the correct service layer contract was used.
+    // ASSERT
+    // 1. Verify the correct API call was made.
     await waitFor(() => {
-      expect(mockedPatchTaskAPI).toHaveBeenCalledWith(task.id, { priority: 3 });
+      expect(taskApiService.patchTaskAPI).toHaveBeenCalledWith(task.id, {
+        priority: 3,
+      });
     });
 
-    // 2. Verify the UI reflects the change.
-    await waitFor(() => {
-      expect(within(row).getByText('High')).toBeInTheDocument();
-    });
+    // 2. Verify the UI reflects the change based on user-visible text.
+    expect(await within(row).findByText('High')).toBeInTheDocument();
     expect(within(row).queryByText('Medium')).not.toBeInTheDocument();
   });
 
   it('should show an error toast and not change the displayed priority if saving fails (Failure Path)', async () => {
-    // Arrange
-    const error = createMockApiError(
-      500,
-      'Could not save new priority',
-      'high'
-    );
-
-    mockedPatchTaskAPI.mockRejectedValue(error);
-    mockedGetTasksForProjectAPI.mockResolvedValue([task]);
+    // ARRANGE
+    const error = createMockApiError(500, 'Could not save new priority');
     const showErrorToastMock = jest.fn();
+    (taskApiService.getTasksForProjectAPI).mockResolvedValue([task]);
+    (taskApiService.patchTaskAPI).mockRejectedValue(error);
 
-    renderWithRealTaskProvider(
-      { projects: [project], isLoading: false },
-      { showErrorToast: showErrorToastMock }
-    );
-    const row = (await screen.findByText(task.title)).closest('tr');
+    renderTaskPageWithProvider(queryClient, {
+      projects: [mockProject],
+      errorContext: { showErrorToast: showErrorToastMock },
+    });
+    const row = await screen.findByText(task.title).then((el) => el.closest('tr'));
     const priorityTrigger = within(row).getByText('Medium');
 
-    // Act
+    // ACT
     await user.click(priorityTrigger);
-    const highOption = await screen.findByText('High');
+    const highOption = await screen.findByRole('option', { name: 'High' });
     await user.click(highOption);
 
-    // Assert
+    // ASSERT
     await waitFor(() => {
-      expect(showErrorToastMock).toHaveBeenCalledWith(
-        /** @type {any} */ (error).processedError
-      );
+      expect(showErrorToastMock).toHaveBeenCalledWith(error.processedError);
     });
     expect(within(row).getByText('Medium')).toBeInTheDocument();
     expect(within(row).queryByText('High')).not.toBeInTheDocument();
   });
 
   it('should not save a change and should revert to display mode when Escape is pressed (Reversal Path)', async () => {
-    // Arrange
-    mockedGetTasksForProjectAPI.mockResolvedValue([task]);
-    renderWithRealTaskProvider({ projects: [project], isLoading: false });
-
-    const row = (await screen.findByText(task.title)).closest('tr');
+    // ARRANGE
+    (taskApiService.getTasksForProjectAPI).mockResolvedValue([task]);
+    renderTaskPageWithProvider(queryClient, { projects: [mockProject] });
+    const row = await screen.findByText(task.title).then((el) => el.closest('tr'));
     const priorityTrigger = within(row).getByText('Medium');
 
-    // Act
+    // ACT
     await user.click(priorityTrigger);
-    await screen.findByText('Low');
+    await screen.findByRole('option', { name: 'Low' }); // Wait for menu to be open
     await user.keyboard('{escape}');
 
-    // Assert
+    // ASSERT
+    // The menu should be gone, but the original value remains.
+    expect(screen.queryByRole('option', { name: 'Low' })).not.toBeInTheDocument();
     expect(within(row).getByText('Medium')).toBeInTheDocument();
-    expect(screen.queryByText('Low')).not.toBeInTheDocument();
-    expect(mockedPatchTaskAPI).not.toHaveBeenCalled();
+    expect(taskApiService.patchTaskAPI).not.toHaveBeenCalled();
   });
 });
 
 describe('Inline Due Date Editing', () => {
   let user;
-  const project = createMockProject({ id: 'proj-1' });
+  let queryClient;
+  const testState = setupPageTests();
+  const mockProject = createMockProject({ id: 'proj-1' });
   const originalDate = Date;
 
   beforeEach(() => {
-    user = userEvent.setup();
+    user = testState.user;
+    queryClient = testState.queryClient;
     jest.clearAllMocks();
     // Fix the current date to ensure getToday() is consistent.
     const fixedDate = new Date('2024-06-15T12:00:00.000Z');
-
-    // @ts-ignore
     global.Date = class extends originalDate {
       constructor(...args) {
         if (args.length > 0) {
           // @ts-ignore
           super(...args);
         } else {
-          super(fixedDate);
+          return fixedDate;
         }
       }
-      getTimezoneOffset() {
-        return 0;
+      static now() {
+        return fixedDate.getTime();
       }
     };
   });
@@ -161,214 +150,164 @@ describe('Inline Due Date Editing', () => {
 
   describe('Success Path', () => {
     it('should set a new date for a task that has no due date', async () => {
-      // Arrange
+      // ARRANGE
       const taskWithoutDate = createMockTask({
         id: 'task-date-1',
-        title: 'Task without a due date',
         due_date: null,
         project_id: 'proj-1',
       });
-      mockedPatchTaskAPI.mockResolvedValue({
+      (taskApiService.getTasksForProjectAPI).mockResolvedValue([
+        taskWithoutDate,
+      ]);
+      (taskApiService.patchTaskAPI).mockResolvedValue({
         ...taskWithoutDate,
-        due_date: '2024-06-25T00:00:00.000Z', // API returns full timestamp
+        due_date: '2024-06-25T00:00:00.000Z',
       });
-      mockedGetTasksForProjectAPI.mockResolvedValue([taskWithoutDate]);
+      renderTaskPageWithProvider(queryClient, { projects: [mockProject] });
+      const row = await screen.findByText(taskWithoutDate.title).then((el) => el.closest('tr'));
+      const dateTrigger = within(row).getByRole('button', { name: /current: n\/a/i });
 
-      renderWithRealTaskProvider({ projects: [project] });
-
-      const row = (await screen.findByText(taskWithoutDate.title)).closest(
-        'tr'
-      );
-      const dateTrigger = within(row).getByRole('button', {
-        name: /change due date for .* current: N\/A/i,
-      });
-
-      // Act
+      // ACT
       await user.click(dateTrigger);
-      const dateInput = screen.getByLabelText(/edit due date/i);
-      // Interact with the input directly, which is robust and mimics user behavior.
+      const dateInput = await screen.findByLabelText(/edit due date/i);
       fireEvent.change(dateInput, { target: { value: '2024-06-25' } });
-      fireEvent.blur(dateInput); // Blurring triggers the save action.
+      fireEvent.blur(dateInput);
 
-      // Assert
+      // ASSERT
       await waitFor(() => {
-        expect(mockedPatchTaskAPI).toHaveBeenCalledWith(taskWithoutDate.id, {
+        expect(taskApiService.patchTaskAPI).toHaveBeenCalledWith(taskWithoutDate.id, {
           due_date: '2024-06-25',
         });
       });
-
-      // UI should now display the new date. 'toLocaleDateString' for 'en-US' locale.
-      await waitFor(() => {
-        expect(within(row).getByText('6/25/2024')).toBeInTheDocument();
-      });
+      expect(await within(row).findByText('6/25/2024')).toBeInTheDocument();
     });
 
     it('should clear an existing due date', async () => {
-      // Arrange
+        // ARRANGE
       const taskWithDate = createMockTask({
         id: 'task-date-2',
-        title: 'Task with a due date',
         due_date: '2024-06-20T00:00:00.000Z',
         project_id: 'proj-1',
       });
-      mockedPatchTaskAPI.mockResolvedValue({ ...taskWithDate, due_date: null });
-      mockedGetTasksForProjectAPI.mockResolvedValue([taskWithDate]);
-
-      renderWithRealTaskProvider({ projects: [project] });
-
-      const row = (await screen.findByText(taskWithDate.title)).closest('tr');
-      const dateTrigger = within(row).getByRole('button', {
-        name: /change due date for .* current: 6\/20\/2024/i,
+      (taskApiService.getTasksForProjectAPI).mockResolvedValue([
+        taskWithDate,
+      ]);
+      (taskApiService.patchTaskAPI).mockResolvedValue({
+        ...taskWithDate,
+        due_date: null,
       });
+      renderTaskPageWithProvider(queryClient, { projects: [mockProject] });
+      const row = await screen.findByText(taskWithDate.title).then((el) => el.closest('tr'));
+      const dateTrigger = within(row).getByRole('button', { name: /current: 6\/20\/2024/i });
 
-      // Act
+      // ACT
       await user.click(dateTrigger);
-      const dateInput = screen.getByLabelText(/edit due date/i);
-      // To clear the date, we set the input value to an empty string.
+      const dateInput = await screen.findByLabelText(/edit due date/i);
       fireEvent.change(dateInput, { target: { value: '' } });
       fireEvent.blur(dateInput);
 
-      // Assert
+      // ASSERT
       await waitFor(() => {
-        expect(mockedPatchTaskAPI).toHaveBeenCalledWith(taskWithDate.id, {
+        expect(taskApiService.patchTaskAPI).toHaveBeenCalledWith(taskWithDate.id, {
           due_date: null,
         });
       });
-      await waitFor(() => {
-        const updatedDateButton = within(row).getByRole('button', {
-          name: /current: N\/A/i,
-        });
-        expect(updatedDateButton).toBeInTheDocument();
-      });
+      expect(await within(row).findByRole('button', { name: /current: n\/a/i })).toBeInTheDocument();
     });
   });
 
   describe('Failure Path', () => {
-    it('should revert the UI to its original state and show a toast if saving fails', async () => {
-      // Arrange
+    it('should revert UI and show a toast if saving fails', async () => {
+      // ARRANGE
       const taskWithDate = createMockTask({
         id: 'task-date-fail',
-        title: 'Task that will fail',
         due_date: '2024-06-20T00:00:00.000Z',
         project_id: 'proj-1',
       });
-      const error = createMockApiError(500, 'Server is on fire', 'high');
-      mockedPatchTaskAPI.mockRejectedValue(error);
-      mockedGetTasksForProjectAPI.mockResolvedValue([taskWithDate]);
+      const error = createMockApiError(500, 'Server is on fire');
       const showErrorToastMock = jest.fn();
-
-      renderWithRealTaskProvider(
-        { projects: [project] },
-        { showErrorToast: showErrorToastMock }
-      );
-
-      const row = (await screen.findByText(taskWithDate.title)).closest('tr');
+      (taskApiService.getTasksForProjectAPI).mockResolvedValue([
+        taskWithDate,
+      ]);
+      (taskApiService.patchTaskAPI).mockRejectedValue(error);
+      renderTaskPageWithProvider(queryClient, {
+        projects: [mockProject],
+        errorContext: { showErrorToast: showErrorToastMock },
+      });
+      const row = await screen.findByText(taskWithDate.title).then((el) => el.closest('tr'));
       const dateTrigger = within(row).getByText('6/20/2024');
 
-      // Act: Try to change the date
+      // ACT
       await user.click(dateTrigger);
-      const dateInput = screen.getByLabelText(/edit due date/i);
+      const dateInput = await screen.findByLabelText(/edit due date/i);
       fireEvent.change(dateInput, { target: { value: '2024-06-25' } });
       fireEvent.blur(dateInput);
 
-      // Assert
-      // 1. After API failure, toast is shown
+      // ASSERT
       await waitFor(() => {
-        expect(showErrorToastMock).toHaveBeenCalledWith(
-          /** @type {any} */ (error).processedError
-        );
+        expect(showErrorToastMock).toHaveBeenCalledWith(error.processedError);
       });
-
-      // 2. The editor closes and UI reverts to original state.
-      await waitFor(() => {
-        expect(within(row).getByText('6/20/2024')).toBeInTheDocument();
-      });
-      expect(
-        within(row).queryByLabelText(/edit due date/i)
-      ).not.toBeInTheDocument();
+      expect(within(row).getByText('6/20/2024')).toBeInTheDocument();
+      expect(screen.queryByLabelText(/edit due date/i)).not.toBeInTheDocument();
     });
 
     it('should show a validation error and not save if a past date is entered', async () => {
-      // Arrange
-      const taskWithDate = createMockTask({
-        id: 'task-date-validation',
-        title: 'Task for validation',
-        // Date is June 20th. Our mocked 'today' is June 15th.
+        // ARRANGE
+      const task = createMockTask({
         due_date: '2024-06-20T00:00:00.000Z',
         project_id: 'proj-1',
       });
-      mockedGetTasksForProjectAPI.mockResolvedValue([taskWithDate]);
       const showErrorToastMock = jest.fn();
-
-      // We must provide our mocked toast function to the provider
-      renderWithRealTaskProvider(
-        { projects: [project] },
-        { showErrorToast: showErrorToastMock }
-      );
-
-      const row = (await screen.findByText(taskWithDate.title)).closest('tr');
+      (taskApiService.getTasksForProjectAPI).mockResolvedValue([task]);
+      renderTaskPageWithProvider(queryClient, {
+        projects: [mockProject],
+        errorContext: { showErrorToast: showErrorToastMock },
+      });
+      const row = await screen.findByText(task.title).then((el) => el.closest('tr'));
       const dateTrigger = within(row).getByText('6/20/2024');
 
-      // Act: Try to change the date to one day before our mocked "today"
+      // ACT
       await user.click(dateTrigger);
-      const dateInput = screen.getByLabelText(/edit due date/i);
+      const dateInput = await screen.findByLabelText(/edit due date/i);
+      // Mocked "today" is June 15th, so June 14th is in the past.
       fireEvent.change(dateInput, { target: { value: '2024-06-14' } });
-      fireEvent.blur(dateInput); // Trigger the validation and save logic
+      fireEvent.blur(dateInput);
 
-      // Assert
-      // 1. The correct validation toast was shown.
+      // ASSERT
       await waitFor(() => {
         expect(showErrorToastMock).toHaveBeenCalledWith({
           message: 'The due date cannot be in the past.',
           severity: 'low',
         });
       });
-
-      // 2. The UI reverted to the original state.
       expect(within(row).getByText('6/20/2024')).toBeInTheDocument();
       expect(screen.queryByLabelText(/edit due date/i)).not.toBeInTheDocument();
-
-      // 3. Crucially, no attempt was made to patch the task.
-      expect(mockedPatchTaskAPI).not.toHaveBeenCalled();
+      expect(taskApiService.patchTaskAPI).not.toHaveBeenCalled();
     });
   });
 
   describe('Reversal Path', () => {
-    it('should close the editor and not save changes when Escape is pressed', async () => {
-      // Arrange
-      const taskWithDate = createMockTask({
-        id: 'task-date-cancel',
-        title: 'Task to cancel editing',
+    it('should close the editor and not save when Escape is pressed', async () => {
+      // ARRANGE
+      const task = createMockTask({
         due_date: '2024-06-20T00:00:00.000Z',
         project_id: 'proj-1',
       });
-      mockedGetTasksForProjectAPI.mockResolvedValue([taskWithDate]);
-
-      renderWithRealTaskProvider({ projects: [project] });
-
-      const row = (await screen.findByText(taskWithDate.title)).closest('tr');
+      (taskApiService.getTasksForProjectAPI).mockResolvedValue([task]);
+      renderTaskPageWithProvider(queryClient, { projects: [mockProject] });
+      const row = await screen.findByText(task.title).then((el) => el.closest('tr'));
       const dateTrigger = within(row).getByText('6/20/2024');
 
-      // Act
+      // ACT
       await user.click(dateTrigger);
-      const dateInput = screen.getByLabelText(/edit due date/i);
-      expect(dateInput).toBeInTheDocument(); // Verify editor is open
-
-      // Change the value, then press Escape to cancel
+      const dateInput = await screen.findByLabelText(/edit due date/i);
       fireEvent.change(dateInput, { target: { value: '2024-06-25' } });
       await user.keyboard('{escape}');
 
-      // Assert
-      await waitFor(() => {
-        // The editor's input should be gone
-        expect(
-          screen.queryByLabelText(/edit due date/i)
-        ).not.toBeInTheDocument();
-      });
-      // The original date should still be there
+      // ASSERT
+      expect(screen.queryByLabelText(/edit due date/i)).not.toBeInTheDocument();
       expect(within(row).getByText('6/20/2024')).toBeInTheDocument();
-      // No API call should have been made
-      expect(mockedPatchTaskAPI).not.toHaveBeenCalled();
+      expect(taskApiService.patchTaskAPI).not.toHaveBeenCalled();
     });
   });
 });

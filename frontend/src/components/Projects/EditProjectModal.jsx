@@ -1,5 +1,5 @@
-import { useState, useEffect, useContext } from 'react';
-import ProjectContext from '@/context/ProjectContext';
+import { useState, useEffect } from 'react';
+import { useUpdateProject } from '@/hooks/useProjects';
 import { getErrorMessage } from '@/utils/errorHandler';
 import { PROJECT_NAME_MAX_LENGTH } from '@/config/constants';
 import { Button } from '@/components/ui/button';
@@ -17,7 +17,8 @@ import { Label } from '@/components/ui/label';
 const EditProjectModal = ({ project, isOpen, onClose }) => {
   const [projectName, setProjectName] = useState('');
   const [error, setError] = useState('');
-  const { updateProject, isLoading } = useContext(ProjectContext);
+
+  const { mutate: updateProject, isPending: isLoading } = useUpdateProject();
 
   useEffect(() => {
     if (project) {
@@ -33,12 +34,19 @@ const EditProjectModal = ({ project, isOpen, onClose }) => {
       return;
     }
 
-    try {
-      await updateProject(project.id, { name: projectName.trim() });
-      onClose();
-    } catch (err) {
-      setError(getErrorMessage(err, 'updating the project'));
-    }
+    const projectData = { name: projectName.trim() };
+
+    updateProject(
+      { projectId: project.id, projectData },
+      {
+        onSuccess: () => {
+          onClose();
+        },
+        onError: (err) => {
+          setError(getErrorMessage(err, 'updating the project'));
+        },
+      }
+    );
   };
 
   // Use onOpenChange for controlled dialog state

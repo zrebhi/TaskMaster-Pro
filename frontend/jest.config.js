@@ -4,7 +4,7 @@ export default {
 
   // Test file patterns
   testMatch: [
-    '<rootDir>/src/**/*.test.jsx', 
+    '<rootDir>/src/**/*.test.jsx',
     '<rootDir>/src/**/*.test.js'
   ],
 

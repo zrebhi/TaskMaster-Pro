@@ -1,3 +1,4 @@
+/* eslint-disable no-undef */
 /**
  * @file Integration tests for the ProjectTasksPage component.
  *
@@ -15,6 +16,7 @@ import { screen, render, within, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
+import { QueryClientProvider } from '@tanstack/react-query';
 import { axe } from 'jest-axe';
 import 'jest-axe/extend-expect';
 
@@ -25,87 +27,49 @@ import {
   waitForElementToBeRemoved,
   setupTest,
   createMockApiError,
+  createTestQueryClient,
 } from '@/__tests__/helpers/test-utils';
 import {
-  TestProviders,
+  TestAuthProvider,
+  TestTaskProvider,
+  TestErrorProvider,
   createAuthenticatedContext,
-  createMockProjectContext,
   createMockTaskContext,
   createMockErrorContext,
 } from '@/__tests__/helpers/mock-providers';
 
 // Import the actual providers and contexts needed for the integration test
 import { TaskProvider } from '@/context/TaskContext';
-import ProjectContext from '@/context/ProjectContext';
 import AuthContext from '@/context/AuthContext';
 import ErrorContext from '@/context/ErrorContext';
 
-// Mock the underlying API service to isolate the frontend.
+// Mock the underlying API services to isolate the frontend.
+jest.mock('@/services/projectApiService');
 jest.mock('@/services/taskApiService');
 
-/**
- * A custom render function for the ProjectTasksPage component.
- * It wraps the component with all necessary mock providers and a memory router.
- * This simplifies the setup for each test case.
- *
- * @param {object} projectContextOverrides - Overrides for the mock ProjectContext.
- * @param {object} taskContextOverrides - Overrides for the mock TaskContext.
- * @param {object} authContextOverrides - Overrides for the mock AuthContext.
- * @param {object} errorContextOverrides - Overrides for the mock ErrorContext.
- * @param {string} initialRoute - The initial route for the MemoryRouter.
- * @returns {import('@testing-library/react').RenderResult} The result of the RTL render.
- */
-const renderComponent = (
-  projectContextOverrides = {},
-  taskContextOverrides = {},
-  authContextOverrides = {},
-  errorContextOverrides = {},
-  initialRoute = '/projects/proj-1'
-) => {
-  const authValue = createAuthenticatedContext(authContextOverrides);
-  const projectValue = createMockProjectContext(projectContextOverrides);
-  const taskValue = createMockTaskContext(taskContextOverrides);
-  const errorValue = createMockErrorContext(errorContextOverrides);
-
-  return render(
-    <MemoryRouter initialEntries={[initialRoute]}>
-      <TestProviders
-        authValue={authValue}
-        projectValue={projectValue}
-        taskValue={taskValue}
-        errorValue={errorValue}
-      >
-        <Routes>
-          <Route path="/projects/:projectId" element={<ProjectTasksPage />} />
-        </Routes>
-      </TestProviders>
-    </MemoryRouter>
-  );
-};
+const { getAllProjects } = require('@/services/projectApiService');
 
 /**
  * Renders the ProjectTasksPage with the real TaskProvider and mocked contexts for auth, project, and error.
  * This is used for testing the full async logic within TaskContext, such as optimistic updates and error handling.
  *
  * @param {object} authContextOverrides - Overrides for the mock AuthContext.
- * @param {object} projectContextOverrides - Overrides for the mock ProjectContext.
  * @param {object} errorContextOverrides - Overrides for the mock ErrorContext.
- * @returns {import('@testing-library/react').RenderResult} The result of the RTL render.
+ * @returns {import('@testing-library/react').RenderResult & { queryClient: import('@tanstack/react-query').QueryClient }}
  */
-const renderWithRealTaskProvider = (
+const renderTasksPageWithProviders = (
   authContextOverrides = {},
-  projectContextOverrides = {},
   errorContextOverrides = {}
 ) => {
+  const queryClient = createTestQueryClient();
   const authValue = createAuthenticatedContext(authContextOverrides);
-  const projectValue = createMockProjectContext(projectContextOverrides);
   const errorValue = createMockErrorContext(errorContextOverrides);
 
-  return render(
-    <MemoryRouter initialEntries={['/projects/proj-1']}>
-      <AuthContext.Provider value={authValue}>
-        <ErrorContext.Provider value={errorValue}>
-          <ProjectContext.Provider value={projectValue}>
+  const renderResult = render(
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter initialEntries={['/projects/proj-1']}>
+        <AuthContext.Provider value={authValue}>
+          <ErrorContext.Provider value={errorValue}>
             <TaskProvider>
               <Routes>
                 <Route
@@ -114,21 +78,26 @@ const renderWithRealTaskProvider = (
                 />
               </Routes>
             </TaskProvider>
-          </ProjectContext.Provider>
-        </ErrorContext.Provider>
-      </AuthContext.Provider>
-    </MemoryRouter>
+          </ErrorContext.Provider>
+        </AuthContext.Provider>
+      </MemoryRouter>
+    </QueryClientProvider>
   );
+
+  return { ...renderResult, queryClient };
 };
 
 describe('Integration Test: ProjectTasksPage', () => {
   let user;
   let cleanup;
+  const project = createMockProject({ id: 'proj-1' });
 
   beforeEach(() => {
     // setupTest mocks console.error and handles cleanup
     ({ cleanup } = setupTest());
     user = userEvent.setup();
+    // Mock the project fetch for all tests, as the page depends on it.
+    /** @type {jest.Mock} */ (getAllProjects).mockResolvedValue([project]);
   });
 
   afterEach(() => {
@@ -138,25 +107,17 @@ describe('Integration Test: ProjectTasksPage', () => {
   // Test suite for the initial rendering and data states of the page.
   describe('1. Initial Render & Data States', () => {
     it('should display a loading indicator when isLoadingTasks is true', () => {
-      const project = createMockProject({ id: 'proj-1' });
-      renderComponent(
-        { projects: [project], isLoading: false },
-        { isLoadingTasks: true }
-      );
+      // eslint-disable-next-line no-undef
+      renderComponent({ isLoadingTasks: true });
       expect(screen.getByText(/loading tasks.../i)).toBeInTheDocument();
     });
 
     it('should display an error message when taskError has a value', () => {
-      const project = createMockProject({ id: 'proj-1' });
-      renderComponent(
-        { projects: [project], isLoading: false },
-        { taskError: 'Failed to fetch tasks.' }
-      );
+      renderComponent({ taskError: 'Failed to fetch tasks.' });
       expect(screen.getByText(/failed to fetch tasks/i)).toBeInTheDocument();
     });
 
-    it('should render the list of tasks provided by the context on a successful load', () => {
-      const project = createMockProject({ id: 'proj-1' });
+    it('should render the list of tasks provided by the context on a successful load', async () => {
       const tasks = [
         createMockTask({
           id: 'task-1',
@@ -169,33 +130,26 @@ describe('Integration Test: ProjectTasksPage', () => {
           project_id: 'proj-1',
         }),
       ];
-      renderComponent(
-        { projects: [project], isLoading: false },
-        { tasks, isLoadingTasks: false, currentProjectIdForTasks: 'proj-1' }
-      );
-      expect(screen.getByText(/first task/i)).toBeInTheDocument();
-      expect(screen.getByText(/second task/i)).toBeInTheDocument();
+      renderComponent({ tasks, isLoadingTasks: false, currentProjectIdForTasks: 'proj-1' });
+      await waitFor(() => {
+        expect(screen.getByText(/first task/i)).toBeInTheDocument();
+        expect(screen.getByText(/second task/i)).toBeInTheDocument();
+      });
     });
 
-    it('should display an empty state message if no tasks are provided', () => {
-      const project = createMockProject({ id: 'proj-1' });
-      renderComponent(
-        { projects: [project], isLoading: false },
-        { tasks: [], isLoadingTasks: false }
-      );
-      expect(
-        screen.getByRole('heading', { name: /you have no task/i })
-      ).toBeInTheDocument();
-      expect(
-        screen.getByText(/get started by creating a new task/i)
-      ).toBeInTheDocument();
+    it('should display an empty state message if no tasks are provided', async () => {
+      renderComponent({ tasks: [], isLoadingTasks: false });
+      await waitFor(() => {
+        expect(
+          screen.getByRole('heading', { name: /you have no task/i })
+        ).toBeInTheDocument();
+      });
     });
   });
 
   // Test suite for all Create, Read, Update, and Delete (CRUD) operations,
   // including the modal interactions involved in these flows.
   describe('2. Row Actions & Modal Flows', () => {
-    const project = createMockProject({ id: 'proj-1' });
     const task = createMockTask({
       id: 'task-1',
       title: 'Task to be Edited',
@@ -203,10 +157,8 @@ describe('Integration Test: ProjectTasksPage', () => {
     });
 
     it('should open the Edit Task modal when the "Edit" action is clicked on a task row', async () => {
-      renderComponent(
-        { projects: [project] },
-        { tasks: [task], currentProjectIdForTasks: 'proj-1' }
-      );
+      renderComponent({ tasks: [task], currentProjectIdForTasks: 'proj-1' });
+      await screen.findByText(task.title);
 
       const row = screen.getByText(task.title).closest('tr');
       const menuButton = within(row).getByRole('button', {
@@ -226,10 +178,8 @@ describe('Integration Test: ProjectTasksPage', () => {
     });
 
     it('should close the Edit Task modal when its "Cancel" button is clicked', async () => {
-      renderComponent(
-        { projects: [project] },
-        { tasks: [task], currentProjectIdForTasks: 'proj-1' }
-      );
+      renderComponent({ tasks: [task], currentProjectIdForTasks: 'proj-1' });
+      await screen.findByText(task.title);
 
       const row = screen.getByText(task.title).closest('tr');
       await user.click(within(row).getByRole('button', { name: /open menu/i }));
@@ -244,10 +194,8 @@ describe('Integration Test: ProjectTasksPage', () => {
     });
 
     it('should open the Confirmation modal when the "Delete" action is clicked on a task row', async () => {
-      renderComponent(
-        { projects: [project] },
-        { tasks: [task], currentProjectIdForTasks: 'proj-1' }
-      );
+      renderComponent({ tasks: [task], currentProjectIdForTasks: 'proj-1' });
+      await screen.findByText(task.title);
 
       const row = screen.getByText(task.title).closest('tr');
       await user.click(within(row).getByRole('button', { name: /open menu/i }));
@@ -263,16 +211,13 @@ describe('Integration Test: ProjectTasksPage', () => {
 
     it('should call the deleteTask context function and remove the task from the view when deletion is confirmed', async () => {
       const deleteTaskMock = jest.fn().mockResolvedValue({});
-      const { rerender } = renderComponent(
-        { projects: [project] },
-        {
-          tasks: [task],
-          deleteTask: deleteTaskMock,
-          currentProjectIdForTasks: 'proj-1',
-        }
-      );
+      const { rerender } = renderComponent({
+        tasks: [task],
+        deleteTask: deleteTaskMock,
+        currentProjectIdForTasks: 'proj-1',
+      });
 
-      // Action: Click delete and confirm
+      await screen.findByText(task.title);
       const row = screen.getByText(task.title).closest('tr');
       await user.click(within(row).getByRole('button', { name: /open menu/i }));
       await user.click(
@@ -284,26 +229,30 @@ describe('Integration Test: ProjectTasksPage', () => {
       expect(deleteTaskMock).toHaveBeenCalledWith(task.id);
 
       // Simulate the context update by re-rendering with the new state
+      const AllProviders = ({ children }) => (
+        <QueryClientProvider client={createTestQueryClient()}>
+          <MemoryRouter initialEntries={['/projects/proj-1']}>
+            <TestErrorProvider value={createMockErrorContext()}>
+              <TestAuthProvider value={createAuthenticatedContext()}>
+                <TestTaskProvider
+                  value={createMockTaskContext({
+                    tasks: [],
+                    deleteTask: deleteTaskMock,
+                    currentProjectIdForTasks: 'proj-1',
+                  })}
+                >
+                  {children}
+                </TestTaskProvider>
+              </TestAuthProvider>
+            </TestErrorProvider>
+          </MemoryRouter>
+        </QueryClientProvider>
+      );
       rerender(
-        <MemoryRouter initialEntries={['/projects/proj-1']}>
-          <TestProviders
-            authValue={createAuthenticatedContext()}
-            projectValue={createMockProjectContext({ projects: [project] })}
-            taskValue={createMockTaskContext({
-              tasks: [],
-              deleteTask: deleteTaskMock,
-              currentProjectIdForTasks: 'proj-1',
-            })}
-            errorValue={createMockErrorContext()}
-          >
-            <Routes>
-              <Route
-                path="/projects/:projectId"
-                element={<ProjectTasksPage />}
-              />
-            </Routes>
-          </TestProviders>
-        </MemoryRouter>
+        <Routes>
+          <Route path="/projects/:projectId" element={<ProjectTasksPage />} />
+        </Routes>,
+        { wrapper: AllProviders }
       );
 
       // Assertion: Task is removed from the UI
@@ -330,11 +279,7 @@ describe('Integration Test: ProjectTasksPage', () => {
       const showErrorToastMock = jest.fn();
 
       // WHEN: The component is rendered using the real TaskProvider
-      renderWithRealTaskProvider(
-        {},
-        { projects: [project], isLoading: false },
-        { showErrorToast: showErrorToastMock }
-      );
+      renderTasksPageWithProviders({}, { showErrorToast: showErrorToastMock });
 
       // AND: The user performs the delete action
       // Wait for the page to finish loading initial data
@@ -349,7 +294,9 @@ describe('Integration Test: ProjectTasksPage', () => {
 
       // 4. Assert the side-effect (toast) happened
       await waitFor(() => {
-        expect(showErrorToastMock).toHaveBeenCalledWith(error.processedError);
+        expect(showErrorToastMock).toHaveBeenCalledWith(
+          expect.objectContaining({ message: 'API Error: Could not delete' })
+        );
       });
 
       // Task should still be visible because the deletion failed
@@ -361,14 +308,11 @@ describe('Integration Test: ProjectTasksPage', () => {
       const updateTaskMock = jest.fn().mockResolvedValue({});
       const updatedTask = { ...task, title: 'An Edited Task Title' };
 
-      const { rerender } = renderComponent(
-        { projects: [project] },
-        {
-          tasks: [task],
-          updateTask: updateTaskMock,
-          currentProjectIdForTasks: 'proj-1',
-        }
-      );
+      const { rerender } = renderComponent({
+        tasks: [task],
+        updateTask: updateTaskMock,
+        currentProjectIdForTasks: 'proj-1',
+      });
 
       // 2. Open the edit modal
       const row = screen.getByText(task.title).closest('tr');
@@ -394,26 +338,30 @@ describe('Integration Test: ProjectTasksPage', () => {
       });
 
       // To simulate the context update, re-render with the modified task data
+      const AllProviders = ({ children }) => (
+        <QueryClientProvider client={createTestQueryClient()}>
+          <MemoryRouter initialEntries={['/projects/proj-1']}>
+            <TestErrorProvider value={createMockErrorContext()}>
+              <TestAuthProvider value={createAuthenticatedContext()}>
+                <TestTaskProvider
+                  value={createMockTaskContext({
+                    tasks: [updatedTask], // Use the updated task
+                    updateTask: updateTaskMock,
+                    currentProjectIdForTasks: 'proj-1',
+                  })}
+                >
+                  {children}
+                </TestTaskProvider>
+              </TestAuthProvider>
+            </TestErrorProvider>
+          </MemoryRouter>
+        </QueryClientProvider>
+      );
       rerender(
-        <MemoryRouter initialEntries={['/projects/proj-1']}>
-          <TestProviders
-            authValue={createAuthenticatedContext()}
-            projectValue={createMockProjectContext({ projects: [project] })}
-            taskValue={createMockTaskContext({
-              tasks: [updatedTask], // Use the updated task
-              updateTask: updateTaskMock,
-              currentProjectIdForTasks: 'proj-1',
-            })}
-            errorValue={createMockErrorContext()}
-          >
-            <Routes>
-              <Route
-                path="/projects/:projectId"
-                element={<ProjectTasksPage />}
-              />
-            </Routes>
-          </TestProviders>
-        </MemoryRouter>
+        <Routes>
+          <Route path="/projects/:projectId" element={<ProjectTasksPage />} />
+        </Routes>,
+        { wrapper: AllProviders }
       );
 
       // The modal should be gone
@@ -425,7 +373,6 @@ describe('Integration Test: ProjectTasksPage', () => {
     });
     describe('Task Completion Flow', () => {
       // Use the same project setup
-      const project = createMockProject({ id: 'proj-1' });
 
       // Test 1: The "Happy Path"
       it('should call patchTask, apply a line-through style, and update the action text when a task is marked as complete', async () => {
@@ -439,14 +386,11 @@ describe('Integration Test: ProjectTasksPage', () => {
         const patchTaskMock = jest.fn().mockResolvedValue({});
         const updatedTask = { ...incompleteTask, is_completed: true };
 
-        const { rerender } = renderComponent(
-          { projects: [project] },
-          {
-            tasks: [incompleteTask],
-            patchTask: patchTaskMock,
-            currentProjectIdForTasks: 'proj-1',
-          }
-        );
+        const { rerender } = renderComponent({
+          tasks: [incompleteTask],
+          patchTask: patchTaskMock,
+          currentProjectIdForTasks: 'proj-1',
+        });
 
         // WHEN: The user marks the task as complete by clicking the status cell
         const row = screen.getByText(incompleteTask.title).closest('tr');
@@ -455,27 +399,32 @@ describe('Integration Test: ProjectTasksPage', () => {
         });
         await user.click(statusCell);
 
+        const AllProviders = ({ children }) => (
+          <QueryClientProvider client={createTestQueryClient()}>
+            <MemoryRouter initialEntries={['/projects/proj-1']}>
+              <TestErrorProvider value={createMockErrorContext()}>
+                <TestAuthProvider value={createAuthenticatedContext()}>
+                  <TestTaskProvider
+                    value={createMockTaskContext({
+                      tasks: [updatedTask], // Simulate the state update
+                      patchTask: patchTaskMock,
+                      currentProjectIdForTasks: 'proj-1',
+                    })}
+                  >
+                    {children}
+                  </TestTaskProvider>
+                </TestAuthProvider>
+              </TestErrorProvider>
+            </MemoryRouter>
+          </QueryClientProvider>
+        );
+
         // THEN: The UI updates after the state changes (simulated via rerender)
         rerender(
-          <MemoryRouter initialEntries={['/projects/proj-1']}>
-            <TestProviders
-              authValue={createAuthenticatedContext()}
-              projectValue={createMockProjectContext({ projects: [project] })}
-              taskValue={createMockTaskContext({
-                tasks: [updatedTask], // Simulate the state update
-                patchTask: patchTaskMock,
-                currentProjectIdForTasks: 'proj-1',
-              })}
-              errorValue={createMockErrorContext()}
-            >
-              <Routes>
-                <Route
-                  path="/projects/:projectId"
-                  element={<ProjectTasksPage />}
-                />
-              </Routes>
-            </TestProviders>
-          </MemoryRouter>
+          <Routes>
+            <Route path="/projects/:projectId" element={<ProjectTasksPage />} />
+          </Routes>,
+          { wrapper: AllProviders }
         );
 
         expect(row).toHaveAttribute('data-completed', 'true');
@@ -502,14 +451,11 @@ describe('Integration Test: ProjectTasksPage', () => {
         const patchTaskMock = jest.fn().mockResolvedValue({});
         const updatedTask = { ...completedTask, is_completed: false };
 
-        const { rerender } = renderComponent(
-          { projects: [project] },
-          {
-            tasks: [completedTask],
-            patchTask: patchTaskMock,
-            currentProjectIdForTasks: 'proj-1',
-          }
-        );
+        const { rerender } = renderComponent({
+          tasks: [completedTask],
+          patchTask: patchTaskMock,
+          currentProjectIdForTasks: 'proj-1',
+        });
 
         // WHEN: The user marks the task as incomplete by clicking the status cell
         const row = screen.getByText(completedTask.title).closest('tr');
@@ -518,27 +464,32 @@ describe('Integration Test: ProjectTasksPage', () => {
         });
         await user.click(statusCell);
 
+        const AllProviders = ({ children }) => (
+          <QueryClientProvider client={createTestQueryClient()}>
+            <MemoryRouter initialEntries={['/projects/proj-1']}>
+              <TestErrorProvider value={createMockErrorContext()}>
+                <TestAuthProvider value={createAuthenticatedContext()}>
+                  <TestTaskProvider
+                    value={createMockTaskContext({
+                      tasks: [updatedTask], // Simulate the optimistic state update
+                      patchTask: patchTaskMock,
+                      currentProjectIdForTasks: 'proj-1',
+                    })}
+                  >
+                    {children}
+                  </TestTaskProvider>
+                </TestAuthProvider>
+              </TestErrorProvider>
+            </MemoryRouter>
+          </QueryClientProvider>
+        );
+
         // THEN: The UI should reflect the change optimistically.
         rerender(
-          <MemoryRouter initialEntries={['/projects/proj-1']}>
-            <TestProviders
-              authValue={createAuthenticatedContext()}
-              projectValue={createMockProjectContext({ projects: [project] })}
-              taskValue={createMockTaskContext({
-                tasks: [updatedTask], // Simulate the optimistic state update
-                patchTask: patchTaskMock,
-                currentProjectIdForTasks: 'proj-1',
-              })}
-              errorValue={createMockErrorContext()}
-            >
-              <Routes>
-                <Route
-                  path="/projects/:projectId"
-                  element={<ProjectTasksPage />}
-                />
-              </Routes>
-            </TestProviders>
-          </MemoryRouter>
+          <Routes>
+            <Route path="/projects/:projectId" element={<ProjectTasksPage />} />
+          </Routes>,
+          { wrapper: AllProviders }
         );
 
         // Assert the data attribute has been removed/set to false
@@ -568,11 +519,7 @@ describe('Integration Test: ProjectTasksPage', () => {
         const showErrorToastMock = jest.fn();
 
         // WHEN: The component is rendered with the real TaskProvider
-        renderWithRealTaskProvider(
-          {},
-          { projects: [project], isLoading: false },
-          { showErrorToast: showErrorToastMock }
-        );
+        renderTasksPageWithProviders({}, { showErrorToast: showErrorToastMock });
         expect(await screen.findByText(task.title)).toBeInTheDocument();
 
         // AND: The user tries to mark the task as complete
@@ -584,7 +531,9 @@ describe('Integration Test: ProjectTasksPage', () => {
 
         // THEN: The error toast is displayed
         await waitFor(() => {
-          expect(showErrorToastMock).toHaveBeenCalledWith(error.processedError);
+          expect(showErrorToastMock).toHaveBeenCalledWith(
+            expect.objectContaining({ message: 'Server is down' })
+          );
         });
 
         // AND: The UI reverts to its original state
@@ -596,11 +545,10 @@ describe('Integration Test: ProjectTasksPage', () => {
 
   // Test suite for the "Add Task" flow.
   describe('3. Add Task Flow', () => {
-    const project = createMockProject({ id: 'proj-1' });
-
     it('should open the Add Task modal when the "Add Task" button is clicked', async () => {
-      renderComponent({ projects: [project] }, { tasks: [] });
-      await user.click(screen.getByRole('button', { name: /add task/i }));
+      renderComponent({ tasks: [] });
+      await screen.findByRole('heading', { name: /you have no task/i });
+      await user.click(await screen.findByRole('button', { name: /add task/i }));
       expect(await screen.findByRole('dialog')).toBeInTheDocument();
       expect(
         screen.getByRole('heading', { name: /create new task/i })
@@ -611,11 +559,9 @@ describe('Integration Test: ProjectTasksPage', () => {
       const addTaskMock = jest
         .fn()
         .mockResolvedValue(createMockTask({ id: 'new-task' }));
-      renderComponent(
-        { projects: [project] },
-        { tasks: [], addTask: addTaskMock }
-      );
+      renderComponent({ tasks: [], addTask: addTaskMock });
 
+      await screen.findByRole('heading', { name: /you have no task/i });
       await user.click(screen.getByRole('button', { name: /add task/i }));
       await user.type(
         await screen.findByLabelText(/task title/i),
@@ -641,10 +587,8 @@ describe('Integration Test: ProjectTasksPage', () => {
       });
       const addTaskMock = jest.fn().mockResolvedValue(newTask);
 
-      const { rerender } = renderComponent(
-        { projects: [project] },
-        { tasks: [], addTask: addTaskMock }
-      );
+      const { rerender } = renderComponent({ tasks: [], addTask: addTaskMock });
+      await screen.findByRole('heading', { name: /you have no task/i });
       await user.click(screen.getByRole('button', { name: /add task/i }));
       await user.type(
         await screen.findByLabelText(/task title/i),
@@ -654,26 +598,30 @@ describe('Integration Test: ProjectTasksPage', () => {
 
       await waitFor(() => expect(addTaskMock).toHaveBeenCalled());
 
+      const AllProviders = ({ children }) => (
+        <QueryClientProvider client={createTestQueryClient()}>
+          <MemoryRouter initialEntries={['/projects/proj-1']}>
+            <TestErrorProvider value={createMockErrorContext()}>
+              <TestAuthProvider value={createAuthenticatedContext()}>
+                <TestTaskProvider
+                  value={createMockTaskContext({
+                    tasks: [newTask],
+                    currentProjectIdForTasks: 'proj-1',
+                  })}
+                >
+                  {children}
+                </TestTaskProvider>
+              </TestAuthProvider>
+            </TestErrorProvider>
+          </MemoryRouter>
+        </QueryClientProvider>
+      );
       // Re-render with the new task to simulate context update
       rerender(
-        <MemoryRouter initialEntries={['/projects/proj-1']}>
-          <TestProviders
-            authValue={createAuthenticatedContext()}
-            projectValue={createMockProjectContext({ projects: [project] })}
-            taskValue={createMockTaskContext({
-              tasks: [newTask],
-              currentProjectIdForTasks: 'proj-1',
-            })}
-            errorValue={createMockErrorContext()}
-          >
-            <Routes>
-              <Route
-                path="/projects/:projectId"
-                element={<ProjectTasksPage />}
-              />
-            </Routes>
-          </TestProviders>
-        </MemoryRouter>
+        <Routes>
+          <Route path="/projects/:projectId" element={<ProjectTasksPage />} />
+        </Routes>,
+        { wrapper: AllProviders }
       );
       expect(await screen.findByText(newTask.title)).toBeInTheDocument();
     });

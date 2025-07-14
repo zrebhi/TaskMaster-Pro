@@ -1,104 +1,73 @@
-// frontend/src/pages/TaskView.integration.test.jsx
-
-import { screen, within, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import '@testing-library/jest-dom';
-import { axe } from 'jest-axe';
-import 'jest-axe/extend-expect';
-
 import {
   createMockProject,
   createMockTask,
-  createMockApiError,
-  setupTest,
+  createMockApiError, // We'll need this for the failure path
 } from '@/__tests__/helpers/test-utils';
 import {
-  renderWithMockContexts,
-  renderWithRealTaskProvider,
-} from '@/__tests__/helpers/ProjectTasksPage.TestSetup';
-
-// Mock the underlying API service to isolate the frontend.
-jest.mock('@/services/taskApiService');
+  setupPageTests,
+  renderTaskPageWithProvider,
+  taskApiService,
+  screen,
+  within,
+  waitFor,
+  axe,
+} from './ProjectTasksPage.TestSetup';
 
 describe('Integration Test: TaskDetailSheet', () => {
   let user;
-  let cleanup;
+  let queryClient;
   let project;
 
-  beforeEach(() => {
-    ({ cleanup } = setupTest());
-    user = userEvent.setup();
-    project = createMockProject({ id: 'proj-1' });
-  });
+  const testState = setupPageTests();
 
-  afterEach(() => {
-    cleanup();
+  beforeEach(() => {
+    user = testState.user;
+    queryClient = testState.queryClient;
+    project = createMockProject({ id: 'proj-1', name: 'Test Project' });
+    jest.clearAllMocks();
   });
 
   describe('1. Read Path: Opening, Closing, and Data Rendering', () => {
-    it('should open with correct data, be accessible, and close properly', async () => {
-      // Arrange: A task with full details
+    it('should fetch tasks, open the sheet with correct data, be accessible, and close properly', async () => {
+      // Arrange
       const task = createMockTask({
         id: 'task-1',
         title: 'Review Final Proposal',
         description: 'Check the budget and timeline sections.',
-        priority: 3, // High
+        priority: 3,
         due_date: '2025-12-25T00:00:00.000Z',
         is_completed: false,
         project_id: 'proj-1',
       });
+      taskApiService.getTasksForProjectAPI.mockResolvedValueOnce([task]);
 
-      const { container } = renderWithMockContexts(
-        { projects: [project], isLoading: false },
-        { tasks: [task], isLoadingTasks: false }
-      );
-
-      // Act: User clicks the task title
-
-      const row = screen.getByText(task.title).closest('tr');
-      const titleButton = within(row).getByRole('button', {
-        name: task.title,
-        exact: true,
+      const { container } = renderTaskPageWithProvider(queryClient, {
+        projects: [project],
+        initialRoute: `/projects/${project.id}`,
       });
 
+      // Act
+      const row = await screen
+        .findByText(task.title)
+        .then((el) => el.closest('tr'));
+      const titleButton = within(row).getByRole('button', { name: task.title });
       await user.click(titleButton);
 
-      // Assert: The sheet (dialog) is open and displays correct data
-      const sheet = await screen.findByRole('dialog', {
-        name: /review final proposal/i,
-      });
+      // Assert
+      const sheet = await screen.findByRole('dialog', { name: task.title });
       expect(sheet).toBeVisible();
-
-      // Assertions for all data fields
       expect(
-        within(sheet).getByRole('heading', { name: /review final proposal/i })
+        within(sheet).getByRole('heading', { name: task.title })
       ).toBeInTheDocument();
       expect(within(sheet).getByText(/to do/i)).toBeInTheDocument();
-      expect(within(sheet).getByText(/high/i)).toBeInTheDocument(); // Priority badge
+      expect(within(sheet).getByText(/high/i)).toBeInTheDocument();
       expect(within(sheet).getByText(/december 25, 2025/i)).toBeInTheDocument();
-      expect(
-        within(sheet).getByText(/check the budget and timeline sections/i)
-      ).toBeInTheDocument();
+      expect(within(sheet).getByText(task.description)).toBeInTheDocument();
 
-      // Assert presence of action buttons
-      expect(
-        within(sheet).getByRole('button', { name: /mark complete/i })
-      ).toBeInTheDocument();
-      expect(
-        within(sheet).getByRole('button', { name: /edit/i })
-      ).toBeInTheDocument();
-      expect(
-        within(sheet).getByRole('button', { name: /delete/i })
-      ).toBeInTheDocument();
-
-      // Accessibility Check
       const results = await axe(container);
       expect(results).toHaveNoViolations();
 
-      // Act: User closes the sheet
       await user.keyboard('{Escape}');
-
-      // Assert: The sheet is closed
       await waitFor(() => {
         expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
       });
@@ -106,132 +75,165 @@ describe('Integration Test: TaskDetailSheet', () => {
   });
 
   describe('2. Success Path: Primary Actions', () => {
-    let task;
-    let patchTaskMock;
-    let handleEditTaskMock;
-    let handleDeleteTaskMock;
+    // Helper function to open the detail sheet for a given task
+    const openTaskSheet = async (taskTitle) => {
+      const row = await screen
+        .findByText(taskTitle)
+        .then((el) => el.closest('tr'));
+      const titleButton = within(row).getByRole('button', { name: taskTitle });
+      await user.click(titleButton);
+      return screen.findByRole('dialog', { name: taskTitle });
+    };
 
-    beforeEach(() => {
-      task = createMockTask({
-        id: 'task-actions',
-        title: 'Task for Actions',
+    it('should mark a task as complete, update the UI, and call the API', async () => {
+      // Arrange
+      const task = createMockTask({
+        id: 'task-complete',
+        title: 'Task to Complete',
+        is_completed: false,
         project_id: 'proj-1',
       });
-      patchTaskMock = jest.fn().mockResolvedValue({});
-      handleEditTaskMock = jest.fn();
-      handleDeleteTaskMock = jest.fn();
+      taskApiService.getTasksForProjectAPI.mockResolvedValueOnce([task]);
+      taskApiService.patchTaskAPI.mockResolvedValue({
+        ...task,
+        is_completed: true,
+      });
 
-      renderWithMockContexts(
-        { projects: [project] },
-        {
-          tasks: [task],
-          patchTask: patchTaskMock,
-          // We override the functions passed to the table's meta prop
-          // by mocking the page's handlers.
-          onEdit: handleEditTaskMock,
-          onDelete: handleDeleteTaskMock,
-        }
-      );
-    });
+      renderTaskPageWithProvider(queryClient, { projects: [project] });
 
-    it('should call patchTask when "Mark Complete" is clicked and keep sheet open', async () => {
       // Act
-      await user.click(screen.getByRole('button', { name: task.title }));
-      const sheet = await screen.findByRole('dialog');
+      const sheet = await openTaskSheet(task.title);
       await user.click(
         within(sheet).getByRole('button', { name: /mark complete/i })
       );
 
       // Assert
-      expect(patchTaskMock).toHaveBeenCalledWith(task.id, {
-        is_completed: true,
+      await waitFor(() => {
+        expect(taskApiService.patchTaskAPI).toHaveBeenCalledWith(task.id, {
+          is_completed: true,
+        });
       });
-      expect(sheet).toBeInTheDocument(); // Sheet remains open
+      expect(
+        await within(sheet).findByRole('button', { name: /mark incomplete/i })
+      ).toBeInTheDocument();
+      expect(within(sheet).getByText(/Done/i)).toBeInTheDocument();
     });
 
-    it('should call the edit handler and close the sheet when "Edit" is clicked', async () => {
-      // This test requires us to simulate the page-level handlers
-      const handleEditClick = (task) => {
-        handleEditTaskMock(task); // The page's handler is called
-        // The page logic would then close the sheet, so we test the result
-      };
+    it('should open the edit form when "Edit" is clicked', async () => {
+      // Arrange
+      const task = createMockTask({
+        id: 'task-edit',
+        title: 'Task to Edit',
+        project_id: 'proj-1',
+      });
+      taskApiService.getTasksForProjectAPI.mockResolvedValueOnce([task]);
+      renderTaskPageWithProvider(queryClient, { projects: [project] });
 
       // Act
-      await user.click(screen.getByRole('button', { name: task.title }));
-      const sheet = await screen.findByRole('dialog');
-
-      const editButton = within(sheet).getByRole('button', { name: /edit/i });
-      // Attach our test-specific handler logic to the mock
-      editButton.onclick = () => handleEditClick(task);
-      await user.click(editButton);
+      const detailSheet = await openTaskSheet(task.title);
+      await user.click(
+        within(detailSheet).getByRole('button', { name: /edit/i })
+      );
 
       // Assert
-      expect(handleEditTaskMock).toHaveBeenCalledWith(task);
+      const editDialog = await screen.findByRole('dialog', {
+        name: /edit task/i,
+      });
+      expect(editDialog).toBeVisible();
+      // Verify the original sheet is gone
+      expect(
+        screen.queryByRole('dialog', { name: task.title })
+      ).not.toBeInTheDocument();
     });
 
-    it('should call the delete handler and close the sheet when "Delete" is clicked', async () => {
-      const handleDeleteClick = (task) => {
-        handleDeleteTaskMock(task);
-      };
+    it('should open the delete confirmation when "Delete" is clicked', async () => {
+      // Arrange
+      const task = createMockTask({
+        id: 'task-delete',
+        title: 'Task to Delete',
+        project_id: 'proj-1',
+      });
+      taskApiService.getTasksForProjectAPI.mockResolvedValueOnce([task]);
+      renderTaskPageWithProvider(queryClient, { projects: [project] });
 
       // Act
-      await user.click(screen.getByRole('button', { name: task.title }));
-      const sheet = await screen.findByRole('dialog');
-
-      const deleteButton = within(sheet).getByRole('button', {
-        name: /delete/i,
-      });
-      deleteButton.onclick = () => handleDeleteClick(task);
-      await user.click(deleteButton);
+      const detailSheet = await openTaskSheet(task.title);
+      await user.click(
+        within(detailSheet).getByRole('button', { name: /delete/i })
+      );
 
       // Assert
-      expect(handleDeleteTaskMock).toHaveBeenCalledWith(task);
+      const deleteDialog = await screen.findByRole('dialog', {
+        name: /delete task/i,
+      });
+      expect(deleteDialog).toBeVisible();
+
+      const expectedMessage = new RegExp(
+        `Are you sure you want to delete the task "${task.title}"\\?`,
+        'i'
+      );
+      expect(
+        within(deleteDialog).getByText(expectedMessage)
+      ).toBeInTheDocument();
     });
   });
 
   describe('3. Failure Path: API Error Handling', () => {
     it('should show an error toast and revert optimistic UI on a failed update', async () => {
-      // Arrange: Mock the API to fail
+      // Arrange
       const task = createMockTask({
         id: 'task-fail',
-        title: 'Will Fail',
+        title: 'Task that Will Fail',
         is_completed: false,
         project_id: 'proj-1',
       });
-      const error = createMockApiError(500, 'Server is down');
-      const {
-        patchTaskAPI,
-        getTasksForProjectAPI,
-      } = require('@/services/taskApiService');
-      patchTaskAPI.mockRejectedValue(error);
-      getTasksForProjectAPI.mockResolvedValue([task]);
+      const apiError = createMockApiError(500, 'The server is on fire!');
+      taskApiService.getTasksForProjectAPI.mockResolvedValueOnce([task]);
+      taskApiService.patchTaskAPI.mockRejectedValue(apiError);
       const showErrorToastMock = jest.fn();
 
-      // Render with the REAL provider to test the internal logic
-      renderWithRealTaskProvider(
-        { projects: [project] },
-        { showErrorToast: showErrorToastMock }
-      );
-
-      // Act: User opens sheet and clicks "Mark Complete"
-      await user.click(await screen.findByRole('button', { name: task.title }));
-      const sheet = await screen.findByRole('dialog');
-      const completeButton = within(sheet).getByRole('button', {
-        name: /mark complete/i,
-      });
-      await user.click(completeButton);
-
-      // Assert: Toast is shown and UI reverts
-      await waitFor(() => {
-        expect(showErrorToastMock).toHaveBeenCalledWith(error.processedError);
+      renderTaskPageWithProvider(queryClient, {
+        projects: [project],
+        errorContext: { showErrorToast: showErrorToastMock },
+        initialRoute: `/projects/${project.id}`,
       });
 
-      // Assert UI reverted. The button text should go back to "Mark Complete".
+      // Act
+      const row = await screen
+        .findByText(task.title)
+        .then((el) => el.closest('tr'));
+      const titleButton = within(row).getByRole('button', { name: task.title });
+      await user.click(titleButton);
+      const sheet = await screen.findByRole('dialog', { name: task.title });
+
+      // Before clicking, verify the initial state
       expect(
         within(sheet).getByRole('button', { name: /mark complete/i })
       ).toBeInTheDocument();
-      // Status should still be "To Do"
+
+      await user.click(
+        within(sheet).getByRole('button', { name: /mark complete/i })
+      );
+
+      // Assert
+      await waitFor(() => {
+        expect(showErrorToastMock).toHaveBeenCalledWith(
+          expect.objectContaining({
+            message: 'The server is on fire!',
+            statusCode: 500,
+          })
+        );
+      });
+
+      // Assert UI reverted. The button text is back to "Mark Complete" and status is "To Do".
+      expect(
+        within(sheet).getByRole('button', { name: /mark complete/i })
+      ).toBeInTheDocument();
       expect(within(sheet).getByText(/to do/i)).toBeInTheDocument();
+      expect(
+        screen.queryByRole('button', { name: /mark incomplete/i })
+      ).not.toBeInTheDocument();
+      expect(within(sheet).queryByText(/Done/i)).not.toBeInTheDocument();
     });
   });
 });

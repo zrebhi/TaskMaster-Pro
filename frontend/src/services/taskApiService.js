@@ -37,7 +37,7 @@ export const createTaskInProjectAPI = async (projectId, taskData) => {
  * @returns {Promise<object>} A promise that resolves with the updated task data.
  * @throws {Error} If the API call fails.
  */
-export const updateTaskDetails = async (taskId, taskData) => {
+export const updateTaskAPI = async (taskId, taskData) => {
   const response = await api.put(`/tasks/${taskId}`, taskData, 'updating task');
   return response.data?.task || response.data;
 };
@@ -48,7 +48,7 @@ export const updateTaskDetails = async (taskId, taskData) => {
  * @returns {Promise<object>} A promise that resolves with the deletion response.
  * @throws {Error} If the API call fails.
  */
-export const deleteTaskById = async (taskId) => {
+export const deleteTaskAPI = async (taskId) => {
   const response = await api.delete(`/tasks/${taskId}`, 'deleting task');
   return response.data;
 };

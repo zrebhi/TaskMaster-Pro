@@ -8,8 +8,8 @@ import {
 import {
   getTasksForProjectAPI,
   createTaskInProjectAPI,
-  updateTaskDetails,
-  deleteTaskById,
+  updateTaskAPI,
+  deleteTaskAPI,
   patchTaskAPI, // Import the new function
 } from '@/services/taskApiService';
 import { useError } from './ErrorContext';
@@ -123,7 +123,7 @@ export const TaskProvider = ({ children }) => {
       // setTaskError(null); // Don't clear page-level errors for this
 
       try {
-        const updatedTask = await updateTaskDetails(taskId, taskData);
+        const updatedTask = await updateTaskAPI(taskId, taskData);
 
         // Update the task in local state
         setTasks((prevTasks) =>
@@ -162,7 +162,7 @@ export const TaskProvider = ({ children }) => {
       setTaskError(null);
 
       try {
-        await deleteTaskById(taskId);
+        await deleteTaskAPI(taskId);
 
         // Remove the task from local state on successful deletion
         setTasks((prevTasks) => prevTasks.filter((task) => task.id !== taskId));
@@ -182,40 +182,42 @@ export const TaskProvider = ({ children }) => {
     },
     [token, isAuthenticated, showErrorToast]
   );
+  // ... other state and hooks
 
   const patchTask = useCallback(
     async (taskId, partialTaskData) => {
       if (!taskId || !partialTaskData) return;
 
       if (!isAuthenticated || !token) {
-        const fallbackMessage = 'Authentication required to update tasks.';
-        showErrorToast({ message: fallbackMessage, severity: 'medium' });
-        // We don't throw here because this is an optimistic update.
-        // The UI will revert, and the user is notified.
         return;
       }
 
-      const originalTasks = JSON.parse(JSON.stringify(tasks));
-      // Optimistic UI Update: Update state immediately
-      setTasks((prevTasks) =>
-        prevTasks.map((task) =>
+      // Use a local variable to hold the original state.
+      let originalTasks;
+
+      // Use the functional form of setTasks to get the current state
+      // without needing `tasks` in the dependency array.
+      setTasks((currentTasks) => {
+        originalTasks = JSON.parse(JSON.stringify(currentTasks));
+        return currentTasks.map((task) =>
           task.id === taskId ? { ...task, ...partialTaskData } : task
-        )
-      );
+        );
+      });
 
       try {
-        // Call the API in the background
-        const updatedTaskFromServer = await patchTaskAPI(taskId, partialTaskData);
-        // Sync with the final state from server to ensure consistency
+        const updatedTaskFromServer = await patchTaskAPI(
+          taskId,
+          partialTaskData
+        );
+        // Sync with the final state from the server
         setTasks((prevTasks) =>
           prevTasks.map((task) =>
             task.id === taskId ? updatedTaskFromServer : task
           )
         );
-        // No success toast here to keep inline edits quiet, but we could add one.
       } catch (err) {
         // On failure, revert to original state and show error
-        setTasks(originalTasks);
+        setTasks(originalTasks); // Use the captured original state
         if (err.processedError) {
           showErrorToast(err.processedError);
         } else {
@@ -224,7 +226,7 @@ export const TaskProvider = ({ children }) => {
         }
       }
     },
-    [showErrorToast, token, isAuthenticated, tasks]
+    [showErrorToast, token, isAuthenticated]
   );
 
   return (

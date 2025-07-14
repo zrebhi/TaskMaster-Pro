@@ -6,8 +6,7 @@ import {
   getFilteredRowModel,
   getSortedRowModel,
 } from '@tanstack/react-table';
-import ProjectContext from '@/context/ProjectContext';
-import { useProjects } from '@/hooks/useProjects';
+import { useProjects, useDeleteProject } from '@/hooks/useProjects';
 import EditProjectModal from '@/components/Projects/EditProjectModal';
 import ConfirmationModal from '@/components/Common/ConfirmationModal';
 import { DataTable } from '@/components/ui/tables/data-table';
@@ -18,14 +17,12 @@ import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
 
 const ProjectListPage = () => {
-  const { deleteProject } = useContext(ProjectContext);
   const navigate = useNavigate();
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [projectToEdit, setProjectToEdit] = useState(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [projectToDelete, setProjectToDelete] = useState(null);
-  const [isDeleting, setIsDeleting] = useState(false);
   const [isAddProjectModalOpen, setIsAddProjectModalOpen] = useState(false);
 
   // State for Tanstack Table
@@ -64,16 +61,15 @@ const ProjectListPage = () => {
     setProjectToDelete(null);
   }, []);
 
+  const { mutate: deleteProject, isPending: isDeleting } = useDeleteProject();
   const handleConfirmDelete = useCallback(async () => {
-    setIsDeleting(true);
-    try {
-      await deleteProject(projectToDelete.id);
-    } catch (err) {
-      console.error('Delete project error:', err);
-    } finally {
-      setIsDeleting(false);
-      handleCloseDeleteModal();
-    }
+    if (!projectToDelete) return;
+
+    deleteProject(projectToDelete.id, {
+      onSuccess: () => {
+        handleCloseDeleteModal();
+      },
+    });
   }, [projectToDelete, deleteProject, handleCloseDeleteModal]);
 
   const table = useReactTable({

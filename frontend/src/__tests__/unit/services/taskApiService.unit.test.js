@@ -104,7 +104,7 @@ describe('taskApiService Unit Tests', () => {
       });
       mockApi.put.mockResolvedValue({ data: updateResponse });
 
-      const result = await taskApiService.updateTaskDetails(taskId, taskData);
+      const result = await taskApiService.updateTaskAPI(taskId, taskData);
 
       expect(mockApi.put).toHaveBeenCalledWith(
         `/tasks/${taskId}`,
@@ -121,7 +121,7 @@ describe('taskApiService Unit Tests', () => {
       }).task;
       mockApi.put.mockResolvedValue({ data: updatedTask });
 
-      const result = await taskApiService.updateTaskDetails(taskId, taskData);
+      const result = await taskApiService.updateTaskAPI(taskId, taskData);
 
       expect(mockApi.put).toHaveBeenCalledWith(
         `/tasks/${taskId}`,
@@ -139,7 +139,7 @@ describe('taskApiService Unit Tests', () => {
       const deleteResponse = taskApiMocks.deleteSuccess();
       mockApi.delete.mockResolvedValue({ data: deleteResponse });
 
-      const result = await taskApiService.deleteTaskById(taskId);
+      const result = await taskApiService.deleteTaskAPI(taskId);
 
       expect(mockApi.delete).toHaveBeenCalledWith(
         `/tasks/${taskId}`,

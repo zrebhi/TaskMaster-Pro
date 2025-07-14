@@ -1,34 +1,46 @@
-// @ts-check
 /**
  * @file Integration tests for filtering and searching on the ProjectTasksPage.
  * This suite focuses on the text search and its interaction with faceted filters.
- * @see {@link ../../../../../TestingGuidingPrinciples.md}
  */
 
-import { screen, waitFor, within } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import '@testing-library/jest-dom';
-
-import { renderWithMockContexts } from '@/__tests__/helpers/ProjectTasksPage.TestSetup';
+import {
+  // Import from our centralized, modern test setup
+  setupPageTests,
+  renderTaskPageWithProvider,
+  taskApiService,
+  screen,
+  waitFor,
+  within,
+} from './ProjectTasksPage.TestSetup';
 import {
   createMockProject,
   createMockTask,
 } from '@/__tests__/helpers/test-utils';
 
-// The service is not directly used by this component (it relies on context),
-// but it's good practice to mock it to ensure isolation.
-jest.mock('@/services/taskApiService');
+// Mocks are now handled by the shared setup file, but we keep this
+// comment to remind ourselves that the API is the boundary.
+// jest.mock('@/services/taskApiService'); is in ProjectTasksPage.TestSetup.jsx
 
 describe('ProjectTasksPage: Filter and Search', () => {
   let user;
-  const project = createMockProject({ id: 'proj-1' });
+  let queryClient;
+  const testState = setupPageTests();
+  const mockProject = createMockProject({ id: 'proj-1' });
 
   beforeEach(() => {
-    user = userEvent.setup();
+    user = testState.user;
+    queryClient = testState.queryClient;
   });
 
+  // Helper to wait for the initial task list to be visible
+  const waitForTasksToLoad = async (taskTitles) => {
+    for (const title of taskTitles) {
+      await screen.findByText(title);
+    }
+  };
+
   it('should filter tasks by title using the text input (Smoke Test)', async () => {
-    // Arrange
+    // ARRANGE: Mock the API to return a specific set of tasks
     const tasks = [
       createMockTask({
         id: 'task-login',
@@ -41,118 +53,119 @@ describe('ProjectTasksPage: Filter and Search', () => {
         project_id: 'proj-1',
       }),
     ];
-    renderWithMockContexts(
-      { projects: [project], isLoading: false },
-      { tasks, isLoadingTasks: false, currentProjectIdForTasks: 'proj-1' }
-    );
+    taskApiService.getTasksForProjectAPI.mockResolvedValue(tasks);
+    renderTaskPageWithProvider(queryClient, { projects: [mockProject] });
+    await waitForTasksToLoad([
+      'Implement login page',
+      'Design database schema',
+    ]);
 
+    // ACT
     const searchInput = screen.getByPlaceholderText('Search by task title...');
-
-    // Act
     await user.type(searchInput, 'database');
 
-    // Assert
+    // ASSERT
     await waitFor(() => {
       expect(screen.getByText('Design database schema')).toBeInTheDocument();
-      expect(
-        screen.queryByText('Implement login page')
-      ).not.toBeInTheDocument();
     });
+    expect(screen.queryByText('Implement login page')).not.toBeInTheDocument();
   });
 
   it('should apply the text search on top of results already filtered by a facet', async () => {
-    // Arrange
+    // ARRANGE: Mock the API with tasks of different statuses
     const tasks = [
       createMockTask({
         id: 'task-dash-impl',
-        title: 'Implement user dashboard',
-        is_completed: false, // Status: To Do
+        title: 'Implement user dashboard', // To Do
+        is_completed: false,
         project_id: 'proj-1',
       }),
       createMockTask({
         id: 'task-dash-review',
-        title: 'Review dashboard design',
-        is_completed: true, // Status: Done
+        title: 'Review dashboard design', // Done
+        is_completed: true,
         project_id: 'proj-1',
       }),
       createMockTask({
         id: 'task-login-fix',
-        title: 'Fix login button',
-        is_completed: true, // Status: Done
+        title: 'Fix login button', // Done
+        is_completed: true,
         project_id: 'proj-1',
       }),
     ];
-    renderWithMockContexts(
-      { projects: [project] },
-      { tasks, currentProjectIdForTasks: 'proj-1' }
-    );
+    taskApiService.getTasksForProjectAPI.mockResolvedValue(tasks);
+    renderTaskPageWithProvider(queryClient, { projects: [mockProject] });
+    await waitForTasksToLoad([
+      'Implement user dashboard',
+      'Review dashboard design',
+      'Fix login button',
+    ]);
     const toolbar = screen.getByRole('toolbar');
 
-    // Act 1: Apply the "Status" facet filter
+    // ACT 1: Apply the "Status" facet filter
     await user.click(within(toolbar).getByRole('button', { name: /status/i }));
     await user.click(await screen.findByRole('option', { name: /done/i }));
 
-    // Assert 1: The list is filtered by the facet
+    // ASSERT 1: The list is filtered by the facet
     await waitFor(() => {
-      expect(screen.getByText('Review dashboard design')).toBeInTheDocument();
-      expect(screen.getByText('Fix login button')).toBeInTheDocument();
       expect(
         screen.queryByText('Implement user dashboard')
       ).not.toBeInTheDocument();
     });
+    expect(screen.getByText('Review dashboard design')).toBeInTheDocument();
+    expect(screen.getByText('Fix login button')).toBeInTheDocument();
 
-    // Act 2: Apply the text search on the filtered results
+    // ACT 2: Apply the text search on the filtered results
     const searchInput = screen.getByPlaceholderText('Search by task title...');
     await user.type(searchInput, 'dashboard');
 
-    // Assert 2: The list is now filtered by both facet and text
+    // ASSERT 2: The list is now filtered by both facet and text
     await waitFor(() => {
-      expect(screen.getByText('Review dashboard design')).toBeInTheDocument();
       expect(screen.queryByText('Fix login button')).not.toBeInTheDocument();
     });
+    expect(screen.getByText('Review dashboard design')).toBeInTheDocument();
   });
 
   it('should clear both text and facet filters when the "Reset" button is clicked', async () => {
-    // Arrange
+    // ARRANGE
     const tasks = [
       createMockTask({
         title: 'Task A',
-        is_completed: true, // Status: Done
+        is_completed: true, // Done
         project_id: 'proj-1',
       }),
       createMockTask({
         title: 'Task B',
-        is_completed: false, // Status: To Do
+        is_completed: false, // To Do
         project_id: 'proj-1',
       }),
     ];
-    renderWithMockContexts(
-      { projects: [project] },
-      { tasks, currentProjectIdForTasks: 'proj-1' }
-    );
+    taskApiService.getTasksForProjectAPI.mockResolvedValue(tasks);
+    renderTaskPageWithProvider(queryClient, { projects: [mockProject] });
+    await waitForTasksToLoad(['Task A', 'Task B']);
     const toolbar = screen.getByRole('toolbar');
 
-    // Act 1: Apply both filters
+    // ACT 1: Apply both filters
     await user.click(within(toolbar).getByRole('button', { name: /status/i }));
     await user.click(await screen.findByRole('option', { name: /done/i }));
     const searchInput = screen.getByPlaceholderText('Search by task title...');
-    await user.type(searchInput, 'Task');
+    await user.type(searchInput, 'Task A'); // Be more specific to ensure filtering
 
-    // Assert 1: The list is filtered
+    // ASSERT 1: The list is filtered
     await waitFor(() => {
-      expect(screen.getByText('Task A')).toBeInTheDocument();
       expect(screen.queryByText('Task B')).not.toBeInTheDocument();
     });
+    expect(screen.getByText('Task A')).toBeInTheDocument();
 
-    // Act 2: Click the "Reset" button
+    // ACT 2: Click the "Reset" button
     const resetButton = within(toolbar).getByRole('button', { name: /reset/i });
     await user.click(resetButton);
 
-    // Assert 2: All filters are cleared and all tasks are visible
+    // ASSERT 2: All filters are cleared and all tasks are visible
     await waitFor(() => {
       expect(searchInput).toHaveValue(''); // The search input is cleared
-      expect(screen.getByText('Task A')).toBeInTheDocument();
-      expect(screen.getByText('Task B')).toBeInTheDocument();
     });
+    expect(screen.getByText('Task A')).toBeInTheDocument();
+    expect(screen.getByText('Task B')).toBeInTheDocument();
   });
 });
