@@ -53,6 +53,10 @@ export const renderProjectListPage = (
             <Routes>
               {/* This path is now correct for the ProjectListPage */}
               <Route path="/" element={<ProjectListPage />} />
+              <Route
+                path="/projects/:projectId"
+                element={<div>Mock Project Tasks Page</div>}
+              />
             </Routes>
           </ErrorContext.Provider>
         </AuthContext.Provider>

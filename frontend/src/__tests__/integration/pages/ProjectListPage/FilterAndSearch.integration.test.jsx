@@ -1,4 +1,3 @@
-// @ts-check
 /**
  * @file Integration tests for the filtering and searching functionality on the ProjectListPage.
  */

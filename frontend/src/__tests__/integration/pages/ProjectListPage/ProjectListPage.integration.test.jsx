@@ -1,4 +1,3 @@
-//@ts-check
 /**
  * @file Integration tests for the ProjectListPage component.
  *
@@ -10,25 +9,18 @@
  * - Story 5: As a user, I want the interface to be accessible.
  */
 
-import { screen, render, waitFor, within } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { screen, waitFor, within } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { axe } from 'jest-axe';
 import 'jest-axe/extend-expect';
-import { QueryClientProvider } from '@tanstack/react-query';
 
-import ProjectListPage from '@/pages/ProjectListPage';
 import {
-  setupTest,
   createMockProject,
   waitForElementToBeRemoved,
-  createTestQueryClient,
 } from '@/__tests__/helpers/test-utils';
+import { renderProjectListPage } from './ProjectListPage.TestSetup';
+import { setupPageTests } from '@/__tests__/helpers/integration-test-utils';
 import {
-  TestAuthProvider,
-  TestErrorProvider,
-  createAuthenticatedContext,
   createMockErrorContext,
 } from '@/__tests__/helpers/mock-providers';
 
@@ -42,61 +34,23 @@ const {
   deleteProjectAPI,
 } = require('@/services/projectApiService');
 
-/**
- * A custom render function for the ProjectListPage component.
- * It wraps the component with all necessary providers for testing with Tanstack Query,
- * removing any dependency on the old ProjectContext.
- *
- * @param {object} [authContextValue] - Optional value for the mock AuthContext.
- * @param {object} [errorContextValue] - Optional value for the mock ErrorContext.
- * @returns {import('@testing-library/react').RenderResult & { user: import('@testing-library/user-event').UserEvent, queryClient: import('@tanstack/react-query').QueryClient }}
- */
-const renderComponent = (
-  authContextValue = createAuthenticatedContext(),
-  errorContextValue = createMockErrorContext()
-) => {
-  const user = userEvent.setup();
-  const queryClient = createTestQueryClient();
-  const renderResult = render(
-    <QueryClientProvider client={queryClient}>
-      <MemoryRouter>
-        <TestErrorProvider value={errorContextValue}>
-          <TestAuthProvider value={authContextValue}>
-            <Routes>
-              <Route path="/" element={<ProjectListPage />} />
-              {/* Add a destination route to handle navigation from project links */}
-              <Route
-                path="/projects/:projectId"
-                element={<div>Mock Project Tasks Page</div>}
-              />
-            </Routes>
-          </TestAuthProvider>
-        </TestErrorProvider>
-      </MemoryRouter>
-    </QueryClientProvider>
-  );
-  return { ...renderResult, user, queryClient };
-};
-
 describe('Integration Test: ProjectListPage', () => {
-  let cleanup;
+  let user;
+  let queryClient;
+
+  // Use the standard setup to manage user events and the query client
+  const testState = setupPageTests();
 
   beforeEach(() => {
-    // setupTest mocks console.error and handles cleanup
-    ({ cleanup } = setupTest());
-    // Reset mocks before each test
-    jest.clearAllMocks();
-  });
-
-  afterEach(() => {
-    cleanup();
+    user = testState.user;
+    queryClient = testState.queryClient;
   });
 
   describe('Story 1: Viewing Projects', () => {
     it('should display a loading indicator while projects are being fetched', () => {
       /** @type {jest.Mock} */
       (getAllProjects).mockReturnValue(new Promise(() => {})); // Pending promise
-      renderComponent();
+      renderProjectListPage(queryClient);
 
       expect(screen.getByText(/loading projects.../i)).toBeInTheDocument();
     });
@@ -106,7 +60,7 @@ describe('Integration Test: ProjectListPage', () => {
       (getAllProjects).mockRejectedValue(
         new Error('Failed to fetch projects.')
       );
-      renderComponent();
+      renderProjectListPage(queryClient);
 
       // The component displays its own error message now.
       expect(
@@ -117,7 +71,7 @@ describe('Integration Test: ProjectListPage', () => {
     it('should display an empty state if I have no projects', async () => {
       /** @type {jest.Mock} */
       (getAllProjects).mockResolvedValue([]); // Mock API returns empty array
-      renderComponent();
+      renderProjectListPage(queryClient);
 
       const heading = await screen.findByRole('heading', {
         name: /you have no projects/i,
@@ -138,10 +92,9 @@ describe('Integration Test: ProjectListPage', () => {
         createMockProject({ id: '1', name: 'Project Alpha' }),
         createMockProject({ id: '2', name: 'Project Beta' }),
       ];
-      /** @type {jest.Mock} */
-      (getAllProjects).mockResolvedValue(projects);
+      getAllProjects.mockResolvedValue(projects);
 
-      renderComponent();
+      renderProjectListPage(queryClient);
 
       const table = await screen.findByRole('table');
       expect(table).toBeInTheDocument();
@@ -164,8 +117,7 @@ describe('Integration Test: ProjectListPage', () => {
       });
       /** @type {jest.Mock} */
       (createProjectAPI).mockResolvedValue(newProject);
-
-      const { user } = renderComponent();
+      renderProjectListPage(queryClient);
 
       // Wait for initial projects to load before interacting.
       await screen.findByText('Existing Project');
@@ -212,8 +164,7 @@ describe('Integration Test: ProjectListPage', () => {
       const updatedProject = { ...projectToEdit, name: 'Updated Project Name' };
       /** @type {jest.Mock} */
       (updateProjectAPI).mockResolvedValue(updatedProject);
-
-      const { user, queryClient } = renderComponent();
+      renderProjectListPage(queryClient);
 
       const row = await screen.findByText(projectToEdit.name);
       await user.click(
@@ -263,8 +214,7 @@ describe('Integration Test: ProjectListPage', () => {
       (getAllProjects).mockResolvedValue([projectToDelete]);
       /** @type {jest.Mock} */
       (deleteProjectAPI).mockResolvedValue({});
-
-      const { user, queryClient } = renderComponent();
+      renderProjectListPage(queryClient);
 
       const row = await screen.findByText(projectToDelete.name);
       await user.click(
@@ -299,21 +249,18 @@ describe('Integration Test: ProjectListPage', () => {
         name: 'Project To Delete',
       });
       const error = new Error('API deletion failed');
-      /** @type {jest.Mock} */
-      (getAllProjects).mockResolvedValue([projectToDelete]);
-      /** @type {jest.Mock} */
-      (deleteProjectAPI).mockRejectedValue(error);
+      getAllProjects.mockResolvedValue([projectToDelete]);
+      deleteProjectAPI.mockRejectedValue(error);
 
+      // FIX: The component must be rendered inside THIS test with the correct context.
       const showErrorToastMock = jest.fn();
       const errorContextValue = createMockErrorContext({
         showErrorToast: showErrorToastMock,
       });
 
-      const { user } = renderComponent(
-        createAuthenticatedContext(),
-        errorContextValue
-      );
+      renderProjectListPage(queryClient, { errorContext: errorContextValue });
 
+      // Now this findByText will succeed because the component has been rendered.
       const row = await screen.findByText(projectToDelete.name);
       await user.click(
         within(row.closest('tr')).getByRole('button', { name: /open menu/i })
@@ -324,8 +271,6 @@ describe('Integration Test: ProjectListPage', () => {
       await user.click(within(dialog).getByRole('button', { name: /delete/i }));
 
       await waitFor(() => {
-        // Corrected assertion: `useDeleteProject`'s `onError` calls `showErrorToast`
-        // with an error object from `handleApiError`, not a raw string.
         const expectedMessage =
           'An unexpected error occurred while deleting the project. Please try again.';
         expect(showErrorToastMock).toHaveBeenCalledWith(
@@ -333,10 +278,10 @@ describe('Integration Test: ProjectListPage', () => {
         );
       });
 
-      // The project should remain in the list because the mutation failed
       expect(screen.getByText(projectToDelete.name)).toBeInTheDocument();
     });
   });
+
   describe('Story 4: Navigating to a Project', () => {
     it('should navigate to the correct project tasks page when a project row is clicked', async () => {
       const project = createMockProject({
@@ -345,7 +290,7 @@ describe('Integration Test: ProjectListPage', () => {
       });
       /** @type {jest.Mock} */
       (getAllProjects).mockResolvedValue([project]);
-      const { user } = renderComponent();
+      renderProjectListPage(queryClient);
 
       const projectRow = await screen.findByRole('row', {
         name: /my test project/i,
@@ -365,25 +310,22 @@ describe('Integration Test: ProjectListPage', () => {
       const projects = [
         createMockProject({ id: '1', name: 'Accessible Project' }),
       ];
-      /** @type {jest.Mock} */
-      (getAllProjects).mockResolvedValue(projects);
-      const { container, user } = renderComponent();
+      getAllProjects.mockResolvedValue(projects);
+      // FIX: Do not destructure `user` from the render result. It's already in scope.
+      const { container } = renderProjectListPage(queryClient);
 
-      // Wait for table to render
       await screen.findByRole('table');
 
-      // 1. Check initial render
       let results = await axe(container);
       expect(results).toHaveNoViolations();
 
-      // 2. Check Add Project modal
+      // The `user` variable from `beforeEach` is correctly used here.
       await user.click(screen.getByRole('button', { name: /add project/i }));
       await screen.findByRole('dialog');
       results = await axe(container);
       expect(results).toHaveNoViolations();
       await user.click(screen.getByRole('button', { name: /close/i }));
 
-      // 3. Check Edit Project modal
       const row = screen.getByText(/accessible project/i).closest('tr');
       await user.click(within(row).getByRole('button', { name: /open menu/i }));
       await user.click(screen.getByRole('menuitem', { name: /edit/i }));
@@ -392,7 +334,6 @@ describe('Integration Test: ProjectListPage', () => {
       expect(results).toHaveNoViolations();
       await user.click(screen.getByRole('button', { name: /cancel/i }));
 
-      // 4. Check Delete confirmation modal
       await user.click(within(row).getByRole('button', { name: /open menu/i }));
       await user.click(screen.getByRole('menuitem', { name: /delete/i }));
       await screen.findByRole('dialog');
