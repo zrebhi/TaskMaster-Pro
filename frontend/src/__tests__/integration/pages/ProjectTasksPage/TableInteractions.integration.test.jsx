@@ -5,7 +5,7 @@
 import {
   // Import from our modern, shared test setup
   setupPageTests,
-  renderTaskPageWithProvider,
+  renderProjectTasksPage,
   taskApiService,
   screen,
   waitFor,
@@ -58,7 +58,7 @@ describe('ProjectTasksPage - Table Interactions', () => {
 
     it('should hide a column when it is deselected from the "View" menu', async () => {
       taskApiService.getTasksForProjectAPI.mockResolvedValue(tasks);
-      renderTaskPageWithProvider(queryClient, { projects: [mockProject] });
+      renderProjectTasksPage(queryClient, { projects: [mockProject] });
       await waitForTableToLoad(tasks);
 
       // ASSERT initial state
@@ -80,12 +80,11 @@ describe('ProjectTasksPage - Table Interactions', () => {
 
     it('should reorder tasks when a sortable column header is clicked', async () => {
       // ARRANGE
-      (taskApiService.getTasksForProjectAPI).mockResolvedValue(tasks);
-      renderTaskPageWithProvider(queryClient, { projects: [mockProject] });
-    
-      
+      taskApiService.getTasksForProjectAPI.mockResolvedValue(tasks);
+      renderProjectTasksPage(queryClient, { projects: [mockProject] });
+
       await waitForTableToLoad(tasks);
-    
+
       /**
        * A resilient helper that queries the DOM every time it's called.
        * This avoids stale closures by not relying on an external `tableContainer` variable.
@@ -96,38 +95,47 @@ describe('ProjectTasksPage - Table Interactions', () => {
         const headers = within(table).getAllByRole('columnheader');
         // Get all rows, and slice off the header row (index 0)
         const dataRows = within(table).getAllByRole('row').slice(1);
-    
-        const titleColumnIndex = headers.findIndex(h => /title/i.test(h.textContent || ''));
+
+        const titleColumnIndex = headers.findIndex((h) =>
+          /title/i.test(h.textContent || '')
+        );
         if (titleColumnIndex === -1) {
           throw new Error('Title column not found');
         }
-    
-        return dataRows.map(row => {
+
+        return dataRows.map((row) => {
           const cells = row.querySelectorAll('td');
           return cells[titleColumnIndex]?.textContent || '';
         });
       };
-    
+
       // ASSERT initial order
-      await waitFor(() => expect(getTitleColumnText()).toEqual(['A Task', 'B Task', 'C Task']));
+      await waitFor(() =>
+        expect(getTitleColumnText()).toEqual(['A Task', 'B Task', 'C Task'])
+      );
 
       // ACT 1: Sort by Priority
-      const priorityHeader = screen.getByRole('columnheader', { name: /priority/i });
+      const priorityHeader = screen.getByRole('columnheader', {
+        name: /priority/i,
+      });
       const priorityHeaderButton = within(priorityHeader).getByRole('button');
       await user.click(priorityHeaderButton);
-      await user.click(await screen.findByText(/desc/i ));
+      await user.click(await screen.findByText(/desc/i));
 
       // ASSERT 1: The `waitFor` block will retry our resilient helper
       // until the DOM update from sorting is complete.
-      await waitFor(() => expect(getTitleColumnText()).toEqual(['B Task', 'C Task', 'A Task']));
+      await waitFor(() =>
+        expect(getTitleColumnText()).toEqual(['B Task', 'C Task', 'A Task'])
+      );
 
       // ACT 2: Click again to sort ascending
       await user.click(priorityHeaderButton);
       await user.click(await screen.findByText(/asc/i));
 
-    
       // ASSERT 2
-      await waitFor(() => expect(getTitleColumnText()).toEqual(['A Task', 'C Task', 'B Task']));
+      await waitFor(() =>
+        expect(getTitleColumnText()).toEqual(['A Task', 'C Task', 'B Task'])
+      );
     });
   });
 
@@ -194,7 +202,7 @@ describe('ProjectTasksPage - Table Interactions', () => {
       taskApiService.getTasksForProjectAPI.mockResolvedValue(tasks);
 
       // ACT: Render the component
-      renderTaskPageWithProvider(queryClient, { projects: [mockProject] });
+      renderProjectTasksPage(queryClient, { projects: [mockProject] });
       await waitForTableToLoad(tasks);
 
       // ASSERT
@@ -213,7 +221,7 @@ describe('ProjectTasksPage - Table Interactions', () => {
       taskApiService.getTasksForProjectAPI.mockResolvedValue(tasks);
 
       // ACT
-      renderTaskPageWithProvider(queryClient, { projects: [mockProject] });
+      renderProjectTasksPage(queryClient, { projects: [mockProject] });
       await waitForTableToLoad(tasks);
 
       // ASSERT
@@ -230,7 +238,7 @@ describe('ProjectTasksPage - Table Interactions', () => {
         configurable: true,
       });
       taskApiService.getTasksForProjectAPI.mockResolvedValue(tasks);
-      const { unmount } = renderTaskPageWithProvider(queryClient, {
+      const { unmount } = renderProjectTasksPage(queryClient, {
         projects: [mockProject],
       });
       await waitForTableToLoad(tasks);
@@ -249,7 +257,7 @@ describe('ProjectTasksPage - Table Interactions', () => {
 
       // ACT 2: "Reload" the component (unmount and re-render)
       unmount();
-      renderTaskPageWithProvider(queryClient, { projects: [mockProject] });
+      renderProjectTasksPage(queryClient, { projects: [mockProject] });
       await waitForTableToLoad(tasks);
 
       // ASSERT: The choice is remembered despite the mobile default
@@ -292,7 +300,7 @@ describe('ProjectTasksPage - Table Interactions', () => {
 
     it('should filter by a single facet value', async () => {
       // ARRANGE
-      renderTaskPageWithProvider(queryClient, { projects: [mockProject] });
+      renderProjectTasksPage(queryClient, { projects: [mockProject] });
       await waitForTableToLoad(tasks);
       const toolbar = screen.getByRole('toolbar');
 
@@ -311,7 +319,7 @@ describe('ProjectTasksPage - Table Interactions', () => {
 
     it('should combine filters from different facets (status and priority)', async () => {
       // ARRANGE
-      renderTaskPageWithProvider(queryClient, { projects: [mockProject] });
+      renderProjectTasksPage(queryClient, { projects: [mockProject] });
       await waitForTableToLoad(tasks);
       const toolbar = screen.getByRole('toolbar');
 
@@ -335,7 +343,7 @@ describe('ProjectTasksPage - Table Interactions', () => {
 
     it('should clear all active filters when the "Reset" button is clicked', async () => {
       // ARRANGE
-      renderTaskPageWithProvider(queryClient, { projects: [mockProject] });
+      renderProjectTasksPage(queryClient, { projects: [mockProject] });
       await waitForTableToLoad(tasks);
       const toolbar = screen.getByRole('toolbar');
 

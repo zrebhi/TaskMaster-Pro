@@ -5,7 +5,7 @@
 import {
   // Import from our modern, shared test setup
   setupPageTests,
-  renderTaskPageWithProvider,
+  renderProjectTasksPage,
   taskApiService,
   screen,
   within,
@@ -41,14 +41,16 @@ describe('Inline Priority Editing', () => {
 
   it('should display the new priority after it has been changed and saved (Success Path)', async () => {
     // ARRANGE: Mock API responses
-    (taskApiService.getTasksForProjectAPI).mockResolvedValue([task]);
-    (taskApiService.patchTaskAPI).mockResolvedValue({
+    taskApiService.getTasksForProjectAPI.mockResolvedValue([task]);
+    taskApiService.patchTaskAPI.mockResolvedValue({
       ...task,
       priority: 3,
     });
 
-    renderTaskPageWithProvider(queryClient, { projects: [mockProject] });
-    const row = await screen.findByText(task.title).then((el) => el.closest('tr'));
+    renderProjectTasksPage(queryClient, { projects: [mockProject] });
+    const row = await screen
+      .findByText(task.title)
+      .then((el) => el.closest('tr'));
     const priorityTrigger = within(row).getByText('Medium');
 
     // ACT
@@ -73,14 +75,16 @@ describe('Inline Priority Editing', () => {
     // ARRANGE
     const error = createMockApiError(500, 'Could not save new priority');
     const showErrorToastMock = jest.fn();
-    (taskApiService.getTasksForProjectAPI).mockResolvedValue([task]);
-    (taskApiService.patchTaskAPI).mockRejectedValue(error);
+    taskApiService.getTasksForProjectAPI.mockResolvedValue([task]);
+    taskApiService.patchTaskAPI.mockRejectedValue(error);
 
-    renderTaskPageWithProvider(queryClient, {
+    renderProjectTasksPage(queryClient, {
       projects: [mockProject],
       errorContext: { showErrorToast: showErrorToastMock },
     });
-    const row = await screen.findByText(task.title).then((el) => el.closest('tr'));
+    const row = await screen
+      .findByText(task.title)
+      .then((el) => el.closest('tr'));
     const priorityTrigger = within(row).getByText('Medium');
 
     // ACT
@@ -98,9 +102,11 @@ describe('Inline Priority Editing', () => {
 
   it('should not save a change and should revert to display mode when Escape is pressed (Reversal Path)', async () => {
     // ARRANGE
-    (taskApiService.getTasksForProjectAPI).mockResolvedValue([task]);
-    renderTaskPageWithProvider(queryClient, { projects: [mockProject] });
-    const row = await screen.findByText(task.title).then((el) => el.closest('tr'));
+    taskApiService.getTasksForProjectAPI.mockResolvedValue([task]);
+    renderProjectTasksPage(queryClient, { projects: [mockProject] });
+    const row = await screen
+      .findByText(task.title)
+      .then((el) => el.closest('tr'));
     const priorityTrigger = within(row).getByText('Medium');
 
     // ACT
@@ -110,7 +116,9 @@ describe('Inline Priority Editing', () => {
 
     // ASSERT
     // The menu should be gone, but the original value remains.
-    expect(screen.queryByRole('option', { name: 'Low' })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('option', { name: 'Low' })
+    ).not.toBeInTheDocument();
     expect(within(row).getByText('Medium')).toBeInTheDocument();
     expect(taskApiService.patchTaskAPI).not.toHaveBeenCalled();
   });
@@ -156,16 +164,18 @@ describe('Inline Due Date Editing', () => {
         due_date: null,
         project_id: 'proj-1',
       });
-      (taskApiService.getTasksForProjectAPI).mockResolvedValue([
-        taskWithoutDate,
-      ]);
-      (taskApiService.patchTaskAPI).mockResolvedValue({
+      taskApiService.getTasksForProjectAPI.mockResolvedValue([taskWithoutDate]);
+      taskApiService.patchTaskAPI.mockResolvedValue({
         ...taskWithoutDate,
         due_date: '2024-06-25T00:00:00.000Z',
       });
-      renderTaskPageWithProvider(queryClient, { projects: [mockProject] });
-      const row = await screen.findByText(taskWithoutDate.title).then((el) => el.closest('tr'));
-      const dateTrigger = within(row).getByRole('button', { name: /current: n\/a/i });
+      renderProjectTasksPage(queryClient, { projects: [mockProject] });
+      const row = await screen
+        .findByText(taskWithoutDate.title)
+        .then((el) => el.closest('tr'));
+      const dateTrigger = within(row).getByRole('button', {
+        name: /current: n\/a/i,
+      });
 
       // ACT
       await user.click(dateTrigger);
@@ -175,30 +185,35 @@ describe('Inline Due Date Editing', () => {
 
       // ASSERT
       await waitFor(() => {
-        expect(taskApiService.patchTaskAPI).toHaveBeenCalledWith(taskWithoutDate.id, {
-          due_date: '2024-06-25',
-        });
+        expect(taskApiService.patchTaskAPI).toHaveBeenCalledWith(
+          taskWithoutDate.id,
+          {
+            due_date: '2024-06-25',
+          }
+        );
       });
       expect(await within(row).findByText('6/25/2024')).toBeInTheDocument();
     });
 
     it('should clear an existing due date', async () => {
-        // ARRANGE
+      // ARRANGE
       const taskWithDate = createMockTask({
         id: 'task-date-2',
         due_date: '2024-06-20T00:00:00.000Z',
         project_id: 'proj-1',
       });
-      (taskApiService.getTasksForProjectAPI).mockResolvedValue([
-        taskWithDate,
-      ]);
-      (taskApiService.patchTaskAPI).mockResolvedValue({
+      taskApiService.getTasksForProjectAPI.mockResolvedValue([taskWithDate]);
+      taskApiService.patchTaskAPI.mockResolvedValue({
         ...taskWithDate,
         due_date: null,
       });
-      renderTaskPageWithProvider(queryClient, { projects: [mockProject] });
-      const row = await screen.findByText(taskWithDate.title).then((el) => el.closest('tr'));
-      const dateTrigger = within(row).getByRole('button', { name: /current: 6\/20\/2024/i });
+      renderProjectTasksPage(queryClient, { projects: [mockProject] });
+      const row = await screen
+        .findByText(taskWithDate.title)
+        .then((el) => el.closest('tr'));
+      const dateTrigger = within(row).getByRole('button', {
+        name: /current: 6\/20\/2024/i,
+      });
 
       // ACT
       await user.click(dateTrigger);
@@ -208,11 +223,16 @@ describe('Inline Due Date Editing', () => {
 
       // ASSERT
       await waitFor(() => {
-        expect(taskApiService.patchTaskAPI).toHaveBeenCalledWith(taskWithDate.id, {
-          due_date: null,
-        });
+        expect(taskApiService.patchTaskAPI).toHaveBeenCalledWith(
+          taskWithDate.id,
+          {
+            due_date: null,
+          }
+        );
       });
-      expect(await within(row).findByRole('button', { name: /current: n\/a/i })).toBeInTheDocument();
+      expect(
+        await within(row).findByRole('button', { name: /current: n\/a/i })
+      ).toBeInTheDocument();
     });
   });
 
@@ -226,15 +246,15 @@ describe('Inline Due Date Editing', () => {
       });
       const error = createMockApiError(500, 'Server is on fire');
       const showErrorToastMock = jest.fn();
-      (taskApiService.getTasksForProjectAPI).mockResolvedValue([
-        taskWithDate,
-      ]);
-      (taskApiService.patchTaskAPI).mockRejectedValue(error);
-      renderTaskPageWithProvider(queryClient, {
+      taskApiService.getTasksForProjectAPI.mockResolvedValue([taskWithDate]);
+      taskApiService.patchTaskAPI.mockRejectedValue(error);
+      renderProjectTasksPage(queryClient, {
         projects: [mockProject],
         errorContext: { showErrorToast: showErrorToastMock },
       });
-      const row = await screen.findByText(taskWithDate.title).then((el) => el.closest('tr'));
+      const row = await screen
+        .findByText(taskWithDate.title)
+        .then((el) => el.closest('tr'));
       const dateTrigger = within(row).getByText('6/20/2024');
 
       // ACT
@@ -252,18 +272,20 @@ describe('Inline Due Date Editing', () => {
     });
 
     it('should show a validation error and not save if a past date is entered', async () => {
-        // ARRANGE
+      // ARRANGE
       const task = createMockTask({
         due_date: '2024-06-20T00:00:00.000Z',
         project_id: 'proj-1',
       });
       const showErrorToastMock = jest.fn();
-      (taskApiService.getTasksForProjectAPI).mockResolvedValue([task]);
-      renderTaskPageWithProvider(queryClient, {
+      taskApiService.getTasksForProjectAPI.mockResolvedValue([task]);
+      renderProjectTasksPage(queryClient, {
         projects: [mockProject],
         errorContext: { showErrorToast: showErrorToastMock },
       });
-      const row = await screen.findByText(task.title).then((el) => el.closest('tr'));
+      const row = await screen
+        .findByText(task.title)
+        .then((el) => el.closest('tr'));
       const dateTrigger = within(row).getByText('6/20/2024');
 
       // ACT
@@ -293,9 +315,11 @@ describe('Inline Due Date Editing', () => {
         due_date: '2024-06-20T00:00:00.000Z',
         project_id: 'proj-1',
       });
-      (taskApiService.getTasksForProjectAPI).mockResolvedValue([task]);
-      renderTaskPageWithProvider(queryClient, { projects: [mockProject] });
-      const row = await screen.findByText(task.title).then((el) => el.closest('tr'));
+      taskApiService.getTasksForProjectAPI.mockResolvedValue([task]);
+      renderProjectTasksPage(queryClient, { projects: [mockProject] });
+      const row = await screen
+        .findByText(task.title)
+        .then((el) => el.closest('tr'));
       const dateTrigger = within(row).getByText('6/20/2024');
 
       // ACT

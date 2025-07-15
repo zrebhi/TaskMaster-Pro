@@ -1,6 +1,6 @@
 import {
   setupPageTests,
-  renderTaskPageWithProvider,
+  renderProjectTasksPage,
   taskApiService,
   screen,
 } from './ProjectTasksPage.TestSetup';
@@ -29,7 +29,7 @@ describe('1. Initial Render & Data States', () => {
     // ARRANGE: Mock the API to be in a pending state by returning a never-resolving promise.
     // This simulates a network request that is still in progress.
     taskApiService.getTasksForProjectAPI.mockReturnValue(new Promise(() => {}));
-    renderTaskPageWithProvider(queryClient, { projects: [mockProject] });
+    renderProjectTasksPage(queryClient, { projects: [mockProject] });
 
     // ASSERT: The user sees a loading message. `findBy` is used to wait for it to appear.
     expect(await screen.findByText(/loading tasks.../i)).toBeInTheDocument();
@@ -42,7 +42,7 @@ describe('1. Initial Render & Data States', () => {
     taskApiService.getTasksForProjectAPI.mockRejectedValue(
       new Error(errorMessage)
     );
-    renderTaskPageWithProvider(queryClient, { projects: [mockProject] });
+    renderProjectTasksPage(queryClient, { projects: [mockProject] });
 
     // ASSERT: The user sees the corresponding error message after the fetch fails.
     expect(
@@ -66,7 +66,7 @@ describe('1. Initial Render & Data States', () => {
       }),
     ];
     taskApiService.getTasksForProjectAPI.mockResolvedValue(tasks);
-    renderTaskPageWithProvider(queryClient, { projects: [mockProject] });
+    renderProjectTasksPage(queryClient, { projects: [mockProject] });
 
     // ASSERT: The user sees the task titles rendered in the document.
     expect(await screen.findByText(/first task/i)).toBeInTheDocument();
@@ -77,7 +77,7 @@ describe('1. Initial Render & Data States', () => {
   it('should display an empty state message if no tasks are returned', async () => {
     // ARRANGE: Mock the API to successfully return an empty array.
     taskApiService.getTasksForProjectAPI.mockResolvedValue([]);
-    renderTaskPageWithProvider(queryClient, { projects: [mockProject] });
+    renderProjectTasksPage(queryClient, { projects: [mockProject] });
 
     // ASSERT: The user sees the "no tasks" empty state heading.
     expect(

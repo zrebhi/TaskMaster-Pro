@@ -5,7 +5,7 @@
  */
 import {
   setupPageTests,
-  renderTaskPageWithProvider,
+  renderProjectTasksPage,
   taskApiService,
   screen,
   within,
@@ -43,7 +43,7 @@ describe('ProjectTasksPage - Accessibility', () => {
   it('should have no accessibility violations on initial render with tasks', async () => {
     // ARRANGE
     taskApiService.getTasksForProjectAPI.mockResolvedValue(tasks);
-    const { container } = renderTaskPageWithProvider(queryClient, {
+    const { container } = renderProjectTasksPage(queryClient, {
       projects: [mockProject],
     });
 
@@ -58,7 +58,7 @@ describe('ProjectTasksPage - Accessibility', () => {
   it('should have no accessibility violations when the "Add Task" modal is open', async () => {
     // ARRANGE: Start with an empty task list for simplicity
     taskApiService.getTasksForProjectAPI.mockResolvedValue([]);
-    const { container } = renderTaskPageWithProvider(queryClient, {
+    const { container } = renderProjectTasksPage(queryClient, {
       projects: [mockProject],
     });
 
@@ -79,7 +79,7 @@ describe('ProjectTasksPage - Accessibility', () => {
   it('should have no accessibility violations when a filter menu is open', async () => {
     // ARRANGE
     taskApiService.getTasksForProjectAPI.mockResolvedValue(tasks);
-    const { container } = renderTaskPageWithProvider(queryClient, {
+    const { container } = renderProjectTasksPage(queryClient, {
       projects: [mockProject],
     });
 

@@ -1,7 +1,7 @@
 import {
   // Import standard tools from the shared setup file
   setupPageTests,
-  renderTaskPageWithProvider,
+  renderProjectTasksPage,
   taskApiService,
   screen,
   within,
@@ -53,7 +53,7 @@ describe('ProjectTasksPage - CRUD Operations', () => {
         project_id: 'proj-1',
       });
       taskApiService.getTasksForProjectAPI.mockResolvedValue([task]);
-      renderTaskPageWithProvider(queryClient, { projects: [mockProject] });
+      renderProjectTasksPage(queryClient, { projects: [mockProject] });
       const row = await screen
         .findByText(task.title)
         .then((el) => el.closest('tr'));
@@ -80,7 +80,7 @@ describe('ProjectTasksPage - CRUD Operations', () => {
         project_id: 'proj-1',
       });
       taskApiService.getTasksForProjectAPI.mockResolvedValue([task]);
-      renderTaskPageWithProvider(queryClient, { projects: [mockProject] });
+      renderProjectTasksPage(queryClient, { projects: [mockProject] });
       const row = await screen
         .findByText(task.title)
         .then((el) => el.closest('tr'));
@@ -115,7 +115,7 @@ describe('ProjectTasksPage - CRUD Operations', () => {
       taskApiService.getTasksForProjectAPI.mockResolvedValue([task]);
       // Mock the update API to return the modified task
       taskApiService.updateTaskAPI.mockResolvedValue(updatedTask);
-      renderTaskPageWithProvider(queryClient, { projects: [mockProject] });
+      renderProjectTasksPage(queryClient, { projects: [mockProject] });
 
       // ACT
       await openRowMenu(task.title);
@@ -145,7 +145,7 @@ describe('ProjectTasksPage - CRUD Operations', () => {
       taskApiService.getTasksForProjectAPI.mockResolvedValue([task]);
       // Mock the delete API to resolve successfully
       taskApiService.deleteTaskAPI.mockResolvedValue({});
-      renderTaskPageWithProvider(queryClient, { projects: [mockProject] });
+      renderProjectTasksPage(queryClient, { projects: [mockProject] });
 
       // ACT
       await openRowMenu(task.title);
@@ -176,7 +176,7 @@ describe('ProjectTasksPage - CRUD Operations', () => {
       const showErrorToastMock = jest.fn();
       taskApiService.getTasksForProjectAPI.mockResolvedValue([task]);
       taskApiService.deleteTaskAPI.mockRejectedValue(apiError);
-      renderTaskPageWithProvider(queryClient, {
+      renderProjectTasksPage(queryClient, {
         projects: [mockProject],
         errorContext: { showErrorToast: showErrorToastMock },
       });
@@ -212,7 +212,7 @@ describe('ProjectTasksPage - CRUD Operations', () => {
         project_id: 'proj-1',
       });
       taskApiService.getTasksForProjectAPI.mockResolvedValue([incompleteTask]);
-      renderTaskPageWithProvider(queryClient, { projects: [mockProject] });
+      renderProjectTasksPage(queryClient, { projects: [mockProject] });
       const row = await screen
         .findByText(incompleteTask.title)
         .then((el) => el.closest('tr'));
@@ -246,7 +246,7 @@ describe('ProjectTasksPage - CRUD Operations', () => {
         project_id: 'proj-1',
       });
       taskApiService.getTasksForProjectAPI.mockResolvedValue([completedTask]);
-      renderTaskPageWithProvider(queryClient, { projects: [mockProject] });
+      renderProjectTasksPage(queryClient, { projects: [mockProject] });
       const row = await screen
         .findByText(completedTask.title)
         .then((el) => el.closest('tr'));
@@ -282,7 +282,7 @@ describe('ProjectTasksPage - CRUD Operations', () => {
       const showErrorToastMock = jest.fn();
 
       taskApiService.getTasksForProjectAPI.mockResolvedValue([taskToFail]);
-      renderTaskPageWithProvider(queryClient, {
+      renderProjectTasksPage(queryClient, {
         projects: [mockProject],
         errorContext: { showErrorToast: showErrorToastMock },
       });
@@ -312,7 +312,7 @@ describe('ProjectTasksPage - CRUD Operations', () => {
     it('should open the Add Task modal when the "Add Task" button is clicked', async () => {
       // ARRANGE
       taskApiService.getTasksForProjectAPI.mockResolvedValue([]);
-      renderTaskPageWithProvider(queryClient, { projects: [mockProject] });
+      renderProjectTasksPage(queryClient, { projects: [mockProject] });
 
       // ACT
       const addTaskButton = await screen.findByRole('button', {
@@ -335,7 +335,7 @@ describe('ProjectTasksPage - CRUD Operations', () => {
         project_id: 'proj-1',
       });
       taskApiService.getTasksForProjectAPI.mockResolvedValue([]);
-      renderTaskPageWithProvider(queryClient, { projects: [mockProject] });
+      renderProjectTasksPage(queryClient, { projects: [mockProject] });
       expect(
         await screen.findByRole('heading', { name: /you have no task/i })
       ).toBeInTheDocument();

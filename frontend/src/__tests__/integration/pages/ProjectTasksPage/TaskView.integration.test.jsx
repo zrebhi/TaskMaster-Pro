@@ -5,7 +5,7 @@ import {
 } from '@/__tests__/helpers/test-utils';
 import {
   setupPageTests,
-  renderTaskPageWithProvider,
+  renderProjectTasksPage,
   taskApiService,
   screen,
   within,
@@ -41,7 +41,7 @@ describe('Integration Test: TaskDetailSheet', () => {
       });
       taskApiService.getTasksForProjectAPI.mockResolvedValueOnce([task]);
 
-      const { container } = renderTaskPageWithProvider(queryClient, {
+      const { container } = renderProjectTasksPage(queryClient, {
         projects: [project],
         initialRoute: `/projects/${project.id}`,
       });
@@ -99,7 +99,7 @@ describe('Integration Test: TaskDetailSheet', () => {
         is_completed: true,
       });
 
-      renderTaskPageWithProvider(queryClient, { projects: [project] });
+      renderProjectTasksPage(queryClient, { projects: [project] });
 
       // Act
       const sheet = await openTaskSheet(task.title);
@@ -127,7 +127,7 @@ describe('Integration Test: TaskDetailSheet', () => {
         project_id: 'proj-1',
       });
       taskApiService.getTasksForProjectAPI.mockResolvedValueOnce([task]);
-      renderTaskPageWithProvider(queryClient, { projects: [project] });
+      renderProjectTasksPage(queryClient, { projects: [project] });
 
       // Act
       const detailSheet = await openTaskSheet(task.title);
@@ -154,7 +154,7 @@ describe('Integration Test: TaskDetailSheet', () => {
         project_id: 'proj-1',
       });
       taskApiService.getTasksForProjectAPI.mockResolvedValueOnce([task]);
-      renderTaskPageWithProvider(queryClient, { projects: [project] });
+      renderProjectTasksPage(queryClient, { projects: [project] });
 
       // Act
       const detailSheet = await openTaskSheet(task.title);
@@ -192,7 +192,7 @@ describe('Integration Test: TaskDetailSheet', () => {
       taskApiService.patchTaskAPI.mockRejectedValue(apiError);
       const showErrorToastMock = jest.fn();
 
-      renderTaskPageWithProvider(queryClient, {
+      renderProjectTasksPage(queryClient, {
         projects: [project],
         errorContext: { showErrorToast: showErrorToastMock },
         initialRoute: `/projects/${project.id}`,

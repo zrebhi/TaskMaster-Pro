@@ -6,7 +6,7 @@
 import {
   // Import from our centralized, modern test setup
   setupPageTests,
-  renderTaskPageWithProvider,
+  renderProjectTasksPage,
   taskApiService,
   screen,
   waitFor,
@@ -54,7 +54,7 @@ describe('ProjectTasksPage: Filter and Search', () => {
       }),
     ];
     taskApiService.getTasksForProjectAPI.mockResolvedValue(tasks);
-    renderTaskPageWithProvider(queryClient, { projects: [mockProject] });
+    renderProjectTasksPage(queryClient, { projects: [mockProject] });
     await waitForTasksToLoad([
       'Implement login page',
       'Design database schema',
@@ -94,7 +94,7 @@ describe('ProjectTasksPage: Filter and Search', () => {
       }),
     ];
     taskApiService.getTasksForProjectAPI.mockResolvedValue(tasks);
-    renderTaskPageWithProvider(queryClient, { projects: [mockProject] });
+    renderProjectTasksPage(queryClient, { projects: [mockProject] });
     await waitForTasksToLoad([
       'Implement user dashboard',
       'Review dashboard design',
@@ -141,7 +141,7 @@ describe('ProjectTasksPage: Filter and Search', () => {
       }),
     ];
     taskApiService.getTasksForProjectAPI.mockResolvedValue(tasks);
-    renderTaskPageWithProvider(queryClient, { projects: [mockProject] });
+    renderProjectTasksPage(queryClient, { projects: [mockProject] });
     await waitForTasksToLoad(['Task A', 'Task B']);
     const toolbar = screen.getByRole('toolbar');
 

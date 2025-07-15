@@ -3,7 +3,13 @@
  * This file exports custom render functions and common test setup logic
  * to be used across all test suites for this page.
  */
-import { screen, render, within, waitFor, fireEvent } from '@testing-library/react';
+import {
+  screen,
+  render,
+  within,
+  waitFor,
+  fireEvent,
+} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
@@ -45,7 +51,7 @@ export {
   setupPageTests,
 };
 
-export const renderTaskPageWithProvider = (
+export const renderProjectTasksPage = (
   queryClient,
   {
     errorContext: errorContextOverrides = {},
