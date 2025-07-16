@@ -7,6 +7,7 @@ import {
   setupPageTests,
   renderProjectTasksPage,
   taskApiService,
+  projectApiService,
   screen,
   within,
   axe,
@@ -16,11 +17,11 @@ import {
   createMockTask,
 } from '@/__tests__/helpers/test-utils';
 
-// Define mock data at the top level for reuse
 const mockProject = createMockProject({
   id: 'proj-1',
   name: 'Accessibility Project',
 });
+projectApiService.getAllProjects.mockResolvedValue([mockProject]);
 
 describe('ProjectTasksPage - Accessibility', () => {
   let user;
@@ -43,9 +44,7 @@ describe('ProjectTasksPage - Accessibility', () => {
   it('should have no accessibility violations on initial render with tasks', async () => {
     // ARRANGE
     taskApiService.getTasksForProjectAPI.mockResolvedValue(tasks);
-    const { container } = renderProjectTasksPage(queryClient, {
-      projects: [mockProject],
-    });
+    const { container } = renderProjectTasksPage(queryClient);
 
     // ACT: Wait for the page to finish loading and display the task
     await screen.findByText('A visible task');
@@ -58,9 +57,7 @@ describe('ProjectTasksPage - Accessibility', () => {
   it('should have no accessibility violations when the "Add Task" modal is open', async () => {
     // ARRANGE: Start with an empty task list for simplicity
     taskApiService.getTasksForProjectAPI.mockResolvedValue([]);
-    const { container } = renderProjectTasksPage(queryClient, {
-      projects: [mockProject],
-    });
+    const { container } = renderProjectTasksPage(queryClient);
 
     // Wait for the page to be ready (e.g., the Add Task button is present)
     const addTaskButton = await screen.findByRole('button', {
@@ -79,9 +76,7 @@ describe('ProjectTasksPage - Accessibility', () => {
   it('should have no accessibility violations when a filter menu is open', async () => {
     // ARRANGE
     taskApiService.getTasksForProjectAPI.mockResolvedValue(tasks);
-    const { container } = renderProjectTasksPage(queryClient, {
-      projects: [mockProject],
-    });
+    const { container } = renderProjectTasksPage(queryClient);
 
     // Wait for the toolbar to be ready
     const toolbar = await screen.findByRole('toolbar');

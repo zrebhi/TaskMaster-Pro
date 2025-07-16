@@ -22,10 +22,7 @@ export const useTasks = (projectId) => {
 
   // Handle query errors
   if (queryResult.error) {
-    const processedError = handleApiError(
-      queryResult.error,
-      'fetching tasks'
-    );
+    const processedError = handleApiError(queryResult.error, 'fetching tasks');
     showErrorToast(processedError);
   }
 
@@ -36,35 +33,39 @@ export const useTasks = (projectId) => {
  * A collection of custom hooks for task mutations
  */
 
+
 export const useAddTask = ({ onMutationSuccess, onMutationError } = {}) => {
   const queryClient = useQueryClient();
   const { showSuccess, showErrorToast } = useError();
 
   return useMutation({
-    mutationFn: ({ projectId, taskData }) => createTaskInProjectAPI(projectId, taskData),
-    onSuccess: (newTask, variables) => {
-      // Update the tasks cache for the specific project
-      queryClient.setQueryData(['tasks', variables.projectId], (oldData) => {
-        const oldTasks = oldData || [];
-        return [...oldTasks, newTask];
-      });
-      
-      // Optionally invalidate to ensure consistency
-      queryClient.invalidateQueries({ queryKey: ['tasks', variables.projectId] });
-      
-      showSuccess('Task created successfully!');
-      
-      if (onMutationSuccess) {
-        onMutationSuccess(newTask);
-      }
+    mutationFn: ({ projectId, taskData }) =>
+      createTaskInProjectAPI(projectId, taskData),
+    onMutate: async ({ projectId, taskData }) => {
+      await queryClient.cancelQueries({ queryKey: ['tasks', projectId] });
+      const previousTasks =
+        queryClient.getQueryData(['tasks', projectId]) || [];
+      const newTask = { ...taskData, id: Date.now(), isOptimistic: true };
+      queryClient.setQueryData(
+        ['tasks', projectId],
+        [...previousTasks, newTask]
+      );
+      return { previousTasks };
     },
-    onError: (error) => {
-      console.error('Error creating task:', error);
+    onError: (error, variables, context) => {
+      queryClient.setQueryData(
+        ['tasks', variables.projectId],
+        context.previousTasks
+      );
       showErrorToast(handleApiError(error, 'creating the task'));
-      
-      if (onMutationError) {
-        onMutationError(error);
-      }
+      if (onMutationError) onMutationError(error);
+    },
+    onSuccess: (data, variables, context) => {
+      showSuccess('Task created successfully!');
+      queryClient.invalidateQueries({
+        queryKey: ['tasks', variables.projectId],
+      });
+      if (onMutationSuccess) onMutationSuccess(data);
     },
   });
 };
@@ -75,31 +76,30 @@ export const useUpdateTask = ({ onMutationSuccess, onMutationError } = {}) => {
 
   return useMutation({
     mutationFn: ({ taskId, taskData }) => updateTaskAPI(taskId, taskData),
-    onSuccess: (updatedTask, variables) => {
-      // Update the task in all relevant caches
-      queryClient.setQueryData(['tasks'], (oldData) => {
-        if (!oldData) return oldData;
-        return oldData.map((task) =>
-          task.id === variables.taskId ? { ...task, ...updatedTask } : task
-        );
-      });
-      
-      // Update specific project caches
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
-      
-      showSuccess('Task updated successfully!');
-      
-      if (onMutationSuccess) {
-        onMutationSuccess(updatedTask);
-      }
+    onMutate: async ({ projectId, taskId, taskData }) => {
+      await queryClient.cancelQueries({ queryKey: ['tasks', projectId] });
+      const previousTasks =
+        queryClient.getQueryData(['tasks', projectId]) || [];
+      const updatedTasks = previousTasks.map((task) =>
+        task.id === taskId ? { ...task, ...taskData } : task
+      );
+      queryClient.setQueryData(['tasks', projectId], updatedTasks);
+      return { previousTasks };
     },
-    onError: (error) => {
-      console.error('Error updating task:', error);
+    onError: (error, variables, context) => {
+      queryClient.setQueryData(
+        ['tasks', variables.projectId],
+        context.previousTasks
+      );
       showErrorToast(handleApiError(error, 'updating the task'));
-      
-      if (onMutationError) {
-        onMutationError(error);
-      }
+      if (onMutationError) onMutationError(error);
+    },
+    onSuccess: (data, variables, context) => {
+      showSuccess('Task updated successfully!');
+      queryClient.invalidateQueries({
+        queryKey: ['tasks', variables.projectId],
+      });
+      if (onMutationSuccess) onMutationSuccess(data);
     },
   });
 };
@@ -109,63 +109,63 @@ export const useDeleteTask = ({ onMutationSuccess, onMutationError } = {}) => {
   const { showSuccess, showErrorToast } = useError();
 
   return useMutation({
-    mutationFn: deleteTaskAPI,
-    onSuccess: (_, variables) => {
-      // Remove the task from all relevant caches
-      queryClient.setQueryData(['tasks'], (oldData) => {
-        if (!oldData) return oldData;
-        return oldData.filter((task) => task.id !== variables);
-      });
-      
-      // Update specific project caches
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
-      
-      showSuccess('Task deleted successfully!');
-      
-      if (onMutationSuccess) {
-        onMutationSuccess();
-      }
+    mutationFn: ({ taskId }) => deleteTaskAPI(taskId),
+    onMutate: async ({ projectId, taskId }) => {
+      await queryClient.cancelQueries({ queryKey: ['tasks', projectId] });
+      const previousTasks =
+        queryClient.getQueryData(['tasks', projectId]) || [];
+      const updatedTasks = previousTasks.filter((task) => task.id !== taskId);
+      queryClient.setQueryData(['tasks', projectId], updatedTasks);
+      return { previousTasks };
     },
-    onError: (error) => {
-      console.error('Error deleting task:', error);
+    onError: (error, variables, context) => {
+      queryClient.setQueryData(
+        ['tasks', variables.projectId],
+        context.previousTasks
+      );
       showErrorToast(handleApiError(error, 'deleting the task'));
-      
-      if (onMutationError) {
-        onMutationError(error);
-      }
+      if (onMutationError) onMutationError(error);
+    },
+    onSuccess: (data, variables, context) => {
+      showSuccess('Task deleted successfully!');
+      queryClient.invalidateQueries({
+        queryKey: ['tasks', variables.projectId],
+      });
+      if (onMutationSuccess) onMutationSuccess();
     },
   });
 };
 
 export const usePatchTask = ({ onMutationSuccess, onMutationError } = {}) => {
   const queryClient = useQueryClient();
-  const { showErrorToast } = useError();
+  const { showErrorToast } = useError(); // We still need error toasts
 
   return useMutation({
-    mutationFn: ({ taskId, partialTaskData }) => patchTaskAPI(taskId, partialTaskData),
-    onSuccess: (updatedTask, variables) => {
-      // Optimistically update the task in all relevant caches
-      queryClient.setQueryData(['tasks'], (oldData) => {
-        if (!oldData) return oldData;
-        return oldData.map((task) =>
-          task.id === variables.taskId ? { ...task, ...updatedTask } : task
-        );
-      });
-      
-      // Update specific project caches
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
-      
-      if (onMutationSuccess) {
-        onMutationSuccess(updatedTask);
-      }
+    mutationFn: ({ taskId, partialTaskData }) =>
+      patchTaskAPI(taskId, partialTaskData),
+    onMutate: async ({ projectId, taskId, partialTaskData }) => {
+      await queryClient.cancelQueries({ queryKey: ['tasks', projectId] });
+      const previousTasks =
+        queryClient.getQueryData(['tasks', projectId]) || [];
+      const updatedTasks = previousTasks.map((task) =>
+        task.id === taskId ? { ...task, ...partialTaskData } : task
+      );
+      queryClient.setQueryData(['tasks', projectId], updatedTasks);
+      return { previousTasks };
     },
-    onError: (error) => {
-      console.error('Error patching task:', error);
-      showErrorToast(handleApiError(error, 'updating the task'));
-      
-      if (onMutationError) {
-        onMutationError(error);
-      }
+    onError: (error, variables, context) => {
+      queryClient.setQueryData(
+        ['tasks', variables.projectId],
+        context.previousTasks
+      );
+      showErrorToast(handleApiError(error, 'patching the task'));
+      if (onMutationError) onMutationError(error);
+    },
+    onSuccess: (data, variables, context) => {
+      queryClient.invalidateQueries({
+        queryKey: ['tasks', variables.projectId],
+      });
+      if (onMutationSuccess) onMutationSuccess(data);
     },
   });
 };

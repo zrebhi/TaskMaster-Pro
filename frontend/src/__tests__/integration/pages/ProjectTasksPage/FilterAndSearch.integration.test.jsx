@@ -8,6 +8,7 @@ import {
   setupPageTests,
   renderProjectTasksPage,
   taskApiService,
+  projectApiService,
   screen,
   waitFor,
   within,
@@ -17,17 +18,17 @@ import {
   createMockTask,
 } from '@/__tests__/helpers/test-utils';
 
-// Mocks are now handled by the shared setup file, but we keep this
-// comment to remind ourselves that the API is the boundary.
-// jest.mock('@/services/taskApiService'); is in ProjectTasksPage.TestSetup.jsx
+
+const mockProject = createMockProject({ id: 'proj-1' });
+projectApiService.getAllProjects.mockResolvedValue([mockProject]);
 
 describe('ProjectTasksPage: Filter and Search', () => {
   let user;
   let queryClient;
   const testState = setupPageTests();
-  const mockProject = createMockProject({ id: 'proj-1' });
 
   beforeEach(() => {
+
     user = testState.user;
     queryClient = testState.queryClient;
   });
@@ -54,7 +55,7 @@ describe('ProjectTasksPage: Filter and Search', () => {
       }),
     ];
     taskApiService.getTasksForProjectAPI.mockResolvedValue(tasks);
-    renderProjectTasksPage(queryClient, { projects: [mockProject] });
+    renderProjectTasksPage(queryClient);
     await waitForTasksToLoad([
       'Implement login page',
       'Design database schema',
@@ -94,7 +95,7 @@ describe('ProjectTasksPage: Filter and Search', () => {
       }),
     ];
     taskApiService.getTasksForProjectAPI.mockResolvedValue(tasks);
-    renderProjectTasksPage(queryClient, { projects: [mockProject] });
+    renderProjectTasksPage(queryClient);
     await waitForTasksToLoad([
       'Implement user dashboard',
       'Review dashboard design',
@@ -141,7 +142,7 @@ describe('ProjectTasksPage: Filter and Search', () => {
       }),
     ];
     taskApiService.getTasksForProjectAPI.mockResolvedValue(tasks);
-    renderProjectTasksPage(queryClient, { projects: [mockProject] });
+    renderProjectTasksPage(queryClient);
     await waitForTasksToLoad(['Task A', 'Task B']);
     const toolbar = screen.getByRole('toolbar');
 

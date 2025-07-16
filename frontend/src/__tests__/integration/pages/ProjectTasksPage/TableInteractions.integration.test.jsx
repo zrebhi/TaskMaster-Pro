@@ -7,6 +7,7 @@ import {
   setupPageTests,
   renderProjectTasksPage,
   taskApiService,
+  projectApiService,
   screen,
   waitFor,
   within,
@@ -20,10 +21,12 @@ describe('ProjectTasksPage - Table Interactions', () => {
   let user;
   let queryClient;
   const testState = setupPageTests();
+  const mockProject = createMockProject({ id: 'proj-1' });
 
   beforeEach(() => {
     user = testState.user;
     queryClient = testState.queryClient;
+    projectApiService.getAllProjects.mockResolvedValue([mockProject]);
   });
 
   // Helper to wait for the initial task list to be visible
@@ -34,7 +37,6 @@ describe('ProjectTasksPage - Table Interactions', () => {
   };
 
   describe('Column Visibility and Sorting', () => {
-    const mockProject = createMockProject({ id: 'proj-1' });
     const tasks = [
       createMockTask({
         id: 'task-a',
@@ -58,7 +60,7 @@ describe('ProjectTasksPage - Table Interactions', () => {
 
     it('should hide a column when it is deselected from the "View" menu', async () => {
       taskApiService.getTasksForProjectAPI.mockResolvedValue(tasks);
-      renderProjectTasksPage(queryClient, { projects: [mockProject] });
+      renderProjectTasksPage(queryClient);
       await waitForTableToLoad(tasks);
 
       // ASSERT initial state
@@ -81,7 +83,7 @@ describe('ProjectTasksPage - Table Interactions', () => {
     it('should reorder tasks when a sortable column header is clicked', async () => {
       // ARRANGE
       taskApiService.getTasksForProjectAPI.mockResolvedValue(tasks);
-      renderProjectTasksPage(queryClient, { projects: [mockProject] });
+      renderProjectTasksPage(queryClient);
 
       await waitForTableToLoad(tasks);
 
@@ -187,7 +189,7 @@ describe('ProjectTasksPage - Table Interactions', () => {
       });
     });
 
-    const mockProject = createMockProject({ id: 'proj-1' });
+    
     const tasks = [
       createMockTask({ id: 'task-1', title: 'A Task', project_id: 'proj-1' }),
     ];
@@ -202,7 +204,7 @@ describe('ProjectTasksPage - Table Interactions', () => {
       taskApiService.getTasksForProjectAPI.mockResolvedValue(tasks);
 
       // ACT: Render the component
-      renderProjectTasksPage(queryClient, { projects: [mockProject] });
+      renderProjectTasksPage(queryClient);
       await waitForTableToLoad(tasks);
 
       // ASSERT
@@ -221,7 +223,7 @@ describe('ProjectTasksPage - Table Interactions', () => {
       taskApiService.getTasksForProjectAPI.mockResolvedValue(tasks);
 
       // ACT
-      renderProjectTasksPage(queryClient, { projects: [mockProject] });
+      renderProjectTasksPage(queryClient);
       await waitForTableToLoad(tasks);
 
       // ASSERT
@@ -238,9 +240,7 @@ describe('ProjectTasksPage - Table Interactions', () => {
         configurable: true,
       });
       taskApiService.getTasksForProjectAPI.mockResolvedValue(tasks);
-      const { unmount } = renderProjectTasksPage(queryClient, {
-        projects: [mockProject],
-      });
+      const { unmount } = renderProjectTasksPage(queryClient);
       await waitForTableToLoad(tasks);
       expect(
         screen.queryByRole('columnheader', { name: /due date/i })
@@ -257,7 +257,7 @@ describe('ProjectTasksPage - Table Interactions', () => {
 
       // ACT 2: "Reload" the component (unmount and re-render)
       unmount();
-      renderProjectTasksPage(queryClient, { projects: [mockProject] });
+      renderProjectTasksPage(queryClient);
       await waitForTableToLoad(tasks);
 
       // ASSERT: The choice is remembered despite the mobile default
@@ -268,7 +268,7 @@ describe('ProjectTasksPage - Table Interactions', () => {
   });
 
   describe('Interactive Filtering', () => {
-    const mockProject = createMockProject({ id: 'proj-1' });
+    
     const tasks = [
       createMockTask({
         id: 'task-1',
@@ -300,7 +300,7 @@ describe('ProjectTasksPage - Table Interactions', () => {
 
     it('should filter by a single facet value', async () => {
       // ARRANGE
-      renderProjectTasksPage(queryClient, { projects: [mockProject] });
+      renderProjectTasksPage(queryClient);
       await waitForTableToLoad(tasks);
       const toolbar = screen.getByRole('toolbar');
 
@@ -319,7 +319,7 @@ describe('ProjectTasksPage - Table Interactions', () => {
 
     it('should combine filters from different facets (status and priority)', async () => {
       // ARRANGE
-      renderProjectTasksPage(queryClient, { projects: [mockProject] });
+      renderProjectTasksPage(queryClient);
       await waitForTableToLoad(tasks);
       const toolbar = screen.getByRole('toolbar');
 
@@ -343,7 +343,7 @@ describe('ProjectTasksPage - Table Interactions', () => {
 
     it('should clear all active filters when the "Reset" button is clicked', async () => {
       // ARRANGE
-      renderProjectTasksPage(queryClient, { projects: [mockProject] });
+      renderProjectTasksPage(queryClient);
       await waitForTableToLoad(tasks);
       const toolbar = screen.getByRole('toolbar');
 

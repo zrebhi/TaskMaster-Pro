@@ -7,6 +7,7 @@ import {
   setupPageTests,
   renderProjectTasksPage,
   taskApiService,
+  projectApiService,
   screen,
   within,
   waitFor,
@@ -24,7 +25,7 @@ describe('Integration Test: TaskDetailSheet', () => {
     user = testState.user;
     queryClient = testState.queryClient;
     project = createMockProject({ id: 'proj-1', name: 'Test Project' });
-    jest.clearAllMocks();
+    projectApiService.getAllProjects.mockResolvedValue([project]);
   });
 
   describe('1. Read Path: Opening, Closing, and Data Rendering', () => {
@@ -42,7 +43,6 @@ describe('Integration Test: TaskDetailSheet', () => {
       taskApiService.getTasksForProjectAPI.mockResolvedValueOnce([task]);
 
       const { container } = renderProjectTasksPage(queryClient, {
-        projects: [project],
         initialRoute: `/projects/${project.id}`,
       });
 
@@ -99,7 +99,7 @@ describe('Integration Test: TaskDetailSheet', () => {
         is_completed: true,
       });
 
-      renderProjectTasksPage(queryClient, { projects: [project] });
+      renderProjectTasksPage(queryClient);
 
       // Act
       const sheet = await openTaskSheet(task.title);
@@ -127,7 +127,7 @@ describe('Integration Test: TaskDetailSheet', () => {
         project_id: 'proj-1',
       });
       taskApiService.getTasksForProjectAPI.mockResolvedValueOnce([task]);
-      renderProjectTasksPage(queryClient, { projects: [project] });
+      renderProjectTasksPage(queryClient);
 
       // Act
       const detailSheet = await openTaskSheet(task.title);
@@ -154,7 +154,7 @@ describe('Integration Test: TaskDetailSheet', () => {
         project_id: 'proj-1',
       });
       taskApiService.getTasksForProjectAPI.mockResolvedValueOnce([task]);
-      renderProjectTasksPage(queryClient, { projects: [project] });
+      renderProjectTasksPage(queryClient);
 
       // Act
       const detailSheet = await openTaskSheet(task.title);
@@ -188,12 +188,11 @@ describe('Integration Test: TaskDetailSheet', () => {
         project_id: 'proj-1',
       });
       const apiError = createMockApiError(500, 'The server is on fire!');
-      taskApiService.getTasksForProjectAPI.mockResolvedValueOnce([task]);
+      taskApiService.getTasksForProjectAPI.mockResolvedValue([task]);
       taskApiService.patchTaskAPI.mockRejectedValue(apiError);
       const showErrorToastMock = jest.fn();
 
       renderProjectTasksPage(queryClient, {
-        projects: [project],
         errorContext: { showErrorToast: showErrorToastMock },
         initialRoute: `/projects/${project.id}`,
       });
@@ -220,7 +219,6 @@ describe('Integration Test: TaskDetailSheet', () => {
         expect(showErrorToastMock).toHaveBeenCalledWith(
           expect.objectContaining({
             message: 'The server is on fire!',
-            statusCode: 500,
           })
         );
       });

@@ -12,8 +12,6 @@ import AuthPage from './pages/AuthPage';
 import ProjectListPage from './pages/ProjectListPage';
 import ProjectTasksPage from './pages/ProjectTasksPage';
 import AuthContext, { AuthProvider } from './context/AuthContext';
-import { ProjectProvider } from './context/ProjectContext';
-import { TaskProvider } from './context/TaskContext';
 import { ErrorProvider } from './context/ErrorContext';
 import ErrorBoundary from './components/Common/ErrorBoundary';
 import Layout from './components/Layout/Layout';
@@ -40,8 +38,6 @@ function App() {
         <ErrorBoundary fallbackComponent="App">
           <Router>
             <AuthProvider>
-              <ProjectProvider>
-                <TaskProvider>
                   <Layout>
                     <Routes>
                       {/* Public Routes */}
@@ -65,8 +61,6 @@ function App() {
                       <Route path="*" element={<Navigate to="/" replace />} />
                     </Routes>
                   </Layout>
-                </TaskProvider>
-              </ProjectProvider>
             </AuthProvider>
             <Toaster />
           </Router>

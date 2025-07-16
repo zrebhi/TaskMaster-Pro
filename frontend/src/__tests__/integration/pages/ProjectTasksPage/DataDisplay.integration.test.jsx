@@ -2,6 +2,7 @@ import {
   setupPageTests,
   renderProjectTasksPage,
   taskApiService,
+  projectApiService,
   screen,
 } from './ProjectTasksPage.TestSetup';
 import {
@@ -14,6 +15,7 @@ const mockProject = createMockProject({
   id: 'proj-1',
   name: 'Test Project Name',
 });
+projectApiService.getAllProjects.mockResolvedValue([mockProject]);
 
 describe('1. Initial Render & Data States', () => {
   // Use the standard setup to manage the query client and other test utilities

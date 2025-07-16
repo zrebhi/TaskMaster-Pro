@@ -1,5 +1,5 @@
-import { useContext } from 'react';
-import TaskContext from '@/context/TaskContext';
+import { useAddTask } from '@/hooks/useTasks';
+
 import {
   Dialog,
   DialogContent,
@@ -10,20 +10,23 @@ import {
 import TaskForm from './TaskForm';
 
 const AddTaskModal = ({ isOpen, onClose, projectId }) => {
-  const { isLoadingTasks, addTask } = useContext(TaskContext);
+  const { mutate: addTask, isPending: isAddingTask } = useAddTask({
+    onMutationSuccess: () => {
+      onClose(); // Close the modal on successful submission
+    },
+  });
 
   const handleAddTask = async (taskData) => {
     if (!projectId) {
       throw new Error('No project selected.');
     }
-    await addTask(projectId, taskData);
-    onClose(); // Close the modal on successful submission
+    addTask({ projectId, taskData });
   };
 
   return (
     <Dialog
       open={isOpen}
-      onOpenChange={(open) => !isLoadingTasks && onClose(open)}
+      onOpenChange={(open) => !isAddingTask && onClose(open)}
     >
       <DialogContent
         className="sm:max-w-[425px] flex flex-col max-h-[90vh]"
@@ -39,7 +42,7 @@ const AddTaskModal = ({ isOpen, onClose, projectId }) => {
         <div className="overflow-y-auto -mr-4 pr-4">
           <TaskForm
             onSubmit={handleAddTask}
-            isLoading={isLoadingTasks}
+            isLoading={isAddingTask}
             submitButtonText="Create Task"
             loadingButtonText="Creating..."
           />

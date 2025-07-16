@@ -1,5 +1,5 @@
 //@ts-check
-import { useState, useEffect, useCallback, useContext, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import {
   useReactTable,
@@ -9,11 +9,12 @@ import {
   getFacetedRowModel,
   getFacetedUniqueValues,
 } from '@tanstack/react-table';
+import { useQueryClient } from '@tanstack/react-query';
 import EditTaskModal from '@/components/Tasks/EditTaskModal';
 import ConfirmationModal from '@/components/Common/ConfirmationModal';
 import AddTaskModal from '@/components/Tasks/AddTaskModal';
 import TaskDetailSheet from '@/components/Tasks/TaskDetailSheet';
-import TaskContext from '@/context/TaskContext';
+import { useTasks, useDeleteTask, usePatchTask } from '@/hooks/useTasks';
 import { useProjects } from '@/hooks/useProjects';
 import { useError } from '@/context/ErrorContext';
 import { handleApiError } from '@/utils/errorHandler';
@@ -25,30 +26,18 @@ import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
 import { priorities, statuses } from '@/data/taskUIData';
 
-/**
- * @typedef {object} TableMeta
- * @property {(task: object) => void} onEdit - Handler to trigger the edit modal.
- * @property {(task: object) => void} onDelete - Handler to trigger the delete confirmation modal.
- * @property {(taskId: string, data: object) => void} onPatchTask - Handler to patch a task with partial data.
- * @property {object | null} editingCell - The currently editing cell's state.
- * @property {React.Dispatch<React.SetStateAction<object | null>>} setEditingCell - Setter for the editing cell state.
- * @property {Array<{columnId: string, title: string, options: Array<{value: string | number, label: string, icon?: React.ComponentType<{className?: string}>}>}>} [filtersConfig] - Configuration for faceted filters.
- * @property {(task: object) => void} [onViewTask] - Handler to trigger viewing a task's details.
- */
-
 const ProjectTasksPage = () => {
   const { projectId } = useParams();
   const { data: projects = [], isLoading: isLoadingProjects } = useProjects();
   const {
-    tasks,
-    isLoadingTasks,
-    taskError,
-    fetchTasks,
-    deleteTask,
-    patchTask,
-    clearTasks,
-  } = useContext(TaskContext);
+    data: tasks = [],
+    isLoading: isLoadingTasks,
+    error: taskError,
+  } = useTasks(projectId);
+  const { mutate: deleteTask } = useDeleteTask();
+  const { mutate: patchTask } = usePatchTask();
   const { showErrorToast } = useError();
+  const queryClient = useQueryClient();
 
   const [isEditTaskModalOpen, setIsEditTaskModalOpen] = useState(false);
   const [taskToEdit, setTaskToEdit] = useState(null);
@@ -57,7 +46,7 @@ const ProjectTasksPage = () => {
   const [isAddTaskModalOpen, setIsAddTaskModalOpen] = useState(false);
   const [isDeletingTask, setIsDeletingTask] = useState(false);
   const [editingCell, setEditingCell] = useState(null); // So that we edit one cell at a time
-  const [selectedTask, setSelectedTask] = useState(null);
+    const [selectedTaskId, setSelectedTaskId] = useState(null);
 
   const VISIBILITY_STORAGE_KEY = 'tasks-table-column-visibility';
 
@@ -98,31 +87,25 @@ const ProjectTasksPage = () => {
   }, [columnVisibility]);
 
   useEffect(() => {
-    if (projectId) {
-      fetchTasks(projectId);
-    }
+    // When the component unmounts, it's crucial to clean up the query data.
+    // This prevents stale data from one project's task page from being shown
+    // on another if the user navigates quickly. It also avoids potential
+    // memory leaks or state updates on unmounted components.
+    // This is the TanStack Query equivalent of your previous context-based cleanup.
     return () => {
-      // Clear tasks when leaving the project page
-      clearTasks();
-    }
-  }, [projectId, fetchTasks, clearTasks]);
+      queryClient.invalidateQueries({ queryKey: ['tasks', projectId], exact: true });
+    };
+  }, [projectId, queryClient]);
 
   const selectedProject = projects.find((p) => p.id.toString() === projectId);
 
   // Effect to sync selectedTask with the main tasks list
-  useEffect(() => {
-    // If a task is selected (i.e., the sheet is open)
-    if (selectedTask) {
-      // Find the latest version of that task from the main tasks array
-      const updatedTask = tasks.find((task) => task.id === selectedTask.id);
+  
+  const selectedTask = useMemo(
+    () => tasks.find((task) => task.id === selectedTaskId),
+    [tasks, selectedTaskId]
+  );
 
-      // If the task still exists and is different from what we have in state, update it.
-      // This prevents an infinite loop.
-      if (updatedTask && JSON.stringify(updatedTask) !== JSON.stringify(selectedTask)) {
-        setSelectedTask(updatedTask);
-      }
-    }
-  }, [tasks, selectedTask]); // This effect runs whenever `tasks` or `selectedTask` changes
 
   const handleEditTask = useCallback((task) => {
     setTaskToEdit(task);
@@ -163,26 +146,29 @@ const ProjectTasksPage = () => {
       return;
     }
     setIsDeletingTask(true);
-    try {
-      await deleteTask(taskToDelete.id);
-    } catch (err) {
-      console.error('Delete task error:', err);
-    } finally {
-      setIsDeletingTask(false);
-      handleCloseDeleteTaskModal();
-    }
-  }, [taskToDelete, deleteTask, handleCloseDeleteTaskModal]);
+
+    deleteTask(
+      { projectId, taskId: taskToDelete.id },
+      {
+        onSettled: () => {
+          setIsDeletingTask(false);
+          handleCloseDeleteTaskModal();
+        },
+      }
+    );
+  }, [taskToDelete, deleteTask, handleCloseDeleteTaskModal, projectId]);
 
   const handlePatchTask = useCallback(
-    async (taskId, data) => {
+    (taskId, data) => {
       try {
-        await patchTask(taskId, data);
+        // Pass projectId to the mutation
+        patchTask({ projectId, taskId, partialTaskData: data });
       } catch (error) {
-        // The context handles showing the error toast, but we can log here if needed.
+        // The mutation hook handles showing the error toast
         console.error('Failed to patch task:', error);
       }
     },
-    [patchTask]
+    [patchTask, projectId] // Add projectId to dependency array
   );
 
   const handleToggleComplete = useCallback(
@@ -195,12 +181,12 @@ const ProjectTasksPage = () => {
 
   const handleEditClick = (task) => {
     handleEditTask(task); // This opens the edit modal
-    setSelectedTask(null); // This closes the detail sheet
+        setSelectedTaskId(null); // This closes the detail sheet
   };
 
   const handleDeleteClick = (task) => {
     handleDeleteTask(task); // This opens the delete modal
-    setSelectedTask(null); // This closes the detail sheet
+        setSelectedTaskId(null); // This closes the detail sheet
   };
 
   // Transform tasks for the DataTable
@@ -226,15 +212,14 @@ const ProjectTasksPage = () => {
       rowSelection,
       columnFilters,
     },
-    /** @type {TableMeta} */
     meta: {
       onEdit: handleEditTask,
       onDelete: handleDeleteTask,
       onPatchTask: handlePatchTask,
       editingCell: editingCell,
       setEditingCell: setEditingCell,
-      onViewTask: (task) => {
-        setSelectedTask(task);
+            onViewTask: (task) => {
+        setSelectedTaskId(task.id);
       },
       filtersConfig: [
         {
@@ -260,6 +245,7 @@ const ProjectTasksPage = () => {
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
   });
+
 
   if (isLoadingProjects) {
     return <p>Loading project details...</p>;
@@ -290,7 +276,9 @@ const ProjectTasksPage = () => {
 
       <div className="flex flex-col flex-1">
         {isLoadingTasks ? <p>Loading tasks...</p> : null}
-        {taskError ? <p className="text-destructive">{taskError}</p> : null}
+        {taskError ? (
+          <p className="text-destructive">{taskError.message}</p>
+        ) : null}
         {!isLoadingTasks &&
           !taskError &&
           !!table &&
@@ -325,9 +313,9 @@ const ProjectTasksPage = () => {
       </div>
 
       <TaskDetailSheet
-        task={selectedTask}
-        isOpen={!!selectedTask}
-        onClose={() => setSelectedTask(null)}
+                task={selectedTask}
+        isOpen={!!selectedTaskId}
+        onClose={() => setSelectedTaskId(null)}
         onEdit={handleEditClick}
         onDelete={handleDeleteClick}
         onToggleComplete={handleToggleComplete}

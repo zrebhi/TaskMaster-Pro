@@ -29,13 +29,14 @@ import {
 } from '@/__tests__/helpers/mock-providers';
 
 // Import the actual providers and contexts needed for integration tests
-import { TaskProvider } from '@/context/TaskContext';
 import AuthContext from '@/context/AuthContext';
 import ErrorContext from '@/context/ErrorContext';
 import * as taskApiService from '@/services/taskApiService';
+import * as projectApiService from '@/services/projectApiService';
 
 // Mock the underlying API service to isolate the frontend.
 jest.mock('@/services/taskApiService');
+jest.mock('@/services/projectApiService');
 
 // Export common libraries so you don't have to import them in every test file
 export {
@@ -48,6 +49,7 @@ export {
   waitForElementToBeRemoved,
   createMockApiError,
   taskApiService,
+  projectApiService,
   setupPageTests,
 };
 
@@ -56,16 +58,11 @@ export const renderProjectTasksPage = (
   {
     errorContext: errorContextOverrides = {},
     authContext: authContextOverrides = {},
-    projects: initialProjects,
     initialRoute = '/projects/proj-1',
   } = {}
 ) => {
   const authValue = createAuthenticatedContext(authContextOverrides);
   const errorValue = createMockErrorContext(errorContextOverrides);
-
-  if (initialProjects) {
-    queryClient.setQueryData(['projects'], initialProjects);
-  }
 
   // The UI now uses the *real* providers, isolated by the mocked API service
   const ui = (
@@ -73,14 +70,12 @@ export const renderProjectTasksPage = (
       <MemoryRouter initialEntries={[initialRoute]}>
         <AuthContext.Provider value={authValue}>
           <ErrorContext.Provider value={errorValue}>
-            <TaskProvider>
-              <Routes>
-                <Route
-                  path="/projects/:projectId"
-                  element={<ProjectTasksPage />}
-                />
-              </Routes>
-            </TaskProvider>
+            <Routes>
+              <Route
+                path="/projects/:projectId"
+                element={<ProjectTasksPage />}
+              />
+            </Routes>
           </ErrorContext.Provider>
         </AuthContext.Provider>
       </MemoryRouter>

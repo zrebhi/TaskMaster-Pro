@@ -1,5 +1,4 @@
-import { useContext } from 'react';
-import TaskContext from '@/context/TaskContext';
+import { useUpdateTask } from '@/hooks/useTasks';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -12,20 +11,28 @@ import {
 import TaskForm from './TaskForm'; // Import the new reusable form
 
 const EditTaskModal = ({ task, isOpen, onClose }) => {
-  const { updateTask, isLoadingTasks } = useContext(TaskContext);
+  const { mutate: updateTask, isPending: isUpdatingTask } = useUpdateTask({
+    onMutationSuccess: () => {
+      onClose(); // Close the modal on successful submission
+    },
+  });
 
   const handleUpdateTask = async (taskData) => {
-    if (!task?.id) {
-      throw new Error('No task selected for update.');
+    if (!task?.id || !task?.project_id) {
+      throw new Error('No task or project_id selected for update.');
     }
-    await updateTask(task.id, taskData);
-    onClose(); // Close the modal on successful submission
+    // Pass projectId along with other data
+    updateTask({
+      taskId: task.id,
+      taskData,
+      projectId: task.project_id.toString(),
+    });
   };
 
   return (
     <Dialog
       open={isOpen}
-      onOpenChange={(open) => !isLoadingTasks && onClose(open)}
+      onOpenChange={(open) => !isUpdatingTask && onClose(open)}
     >
       <DialogContent
         className="sm:max-w-[425px] flex flex-col max-h-[90vh]"
@@ -41,7 +48,7 @@ const EditTaskModal = ({ task, isOpen, onClose }) => {
           <TaskForm
             initialData={task}
             onSubmit={handleUpdateTask}
-            isLoading={isLoadingTasks}
+            isLoading={isUpdatingTask}
             submitButtonText="Save Changes"
             loadingButtonText="Saving..."
           />
@@ -53,7 +60,7 @@ const EditTaskModal = ({ task, isOpen, onClose }) => {
               type="button"
               variant="outline"
               onClick={onClose}
-              disabled={isLoadingTasks}
+              disabled={isUpdatingTask}
               className="w-full"
             >
               Cancel

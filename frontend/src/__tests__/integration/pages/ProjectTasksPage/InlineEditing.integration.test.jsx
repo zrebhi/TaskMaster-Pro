@@ -7,6 +7,7 @@ import {
   setupPageTests,
   renderProjectTasksPage,
   taskApiService,
+  projectApiService,
   screen,
   within,
   waitFor,
@@ -20,11 +21,13 @@ import {
 
 // The API service is mocked in the shared setup file.
 
+const mockProject = createMockProject({ id: 'proj-1' });
+projectApiService.getAllProjects.mockResolvedValue([mockProject]);
+
 describe('Inline Priority Editing', () => {
   let user;
   let queryClient;
   const testState = setupPageTests();
-  const mockProject = createMockProject({ id: 'proj-1' });
   const task = createMockTask({
     id: 'task-prio-1',
     title: 'Task for priority editing',
@@ -41,13 +44,12 @@ describe('Inline Priority Editing', () => {
 
   it('should display the new priority after it has been changed and saved (Success Path)', async () => {
     // ARRANGE: Mock API responses
-    taskApiService.getTasksForProjectAPI.mockResolvedValue([task]);
-    taskApiService.patchTaskAPI.mockResolvedValue({
-      ...task,
-      priority: 3,
-    });
+    taskApiService.getTasksForProjectAPI.mockResolvedValueOnce([task]);
+    const patchedTask = {...task, priority: 3};
+    taskApiService.patchTaskAPI.mockResolvedValue(patchedTask);
+    taskApiService.getTasksForProjectAPI.mockResolvedValueOnce([patchedTask]);
 
-    renderProjectTasksPage(queryClient, { projects: [mockProject] });
+    renderProjectTasksPage(queryClient);
     const row = await screen
       .findByText(task.title)
       .then((el) => el.closest('tr'));
@@ -79,7 +81,6 @@ describe('Inline Priority Editing', () => {
     taskApiService.patchTaskAPI.mockRejectedValue(error);
 
     renderProjectTasksPage(queryClient, {
-      projects: [mockProject],
       errorContext: { showErrorToast: showErrorToastMock },
     });
     const row = await screen
@@ -94,7 +95,9 @@ describe('Inline Priority Editing', () => {
 
     // ASSERT
     await waitFor(() => {
-      expect(showErrorToastMock).toHaveBeenCalledWith(error.processedError);
+      expect(showErrorToastMock).toHaveBeenCalledWith(
+        expect.objectContaining({ message: 'Could not save new priority' })
+      );
     });
     expect(within(row).getByText('Medium')).toBeInTheDocument();
     expect(within(row).queryByText('High')).not.toBeInTheDocument();
@@ -103,7 +106,7 @@ describe('Inline Priority Editing', () => {
   it('should not save a change and should revert to display mode when Escape is pressed (Reversal Path)', async () => {
     // ARRANGE
     taskApiService.getTasksForProjectAPI.mockResolvedValue([task]);
-    renderProjectTasksPage(queryClient, { projects: [mockProject] });
+    renderProjectTasksPage(queryClient);
     const row = await screen
       .findByText(task.title)
       .then((el) => el.closest('tr'));
@@ -164,12 +167,22 @@ describe('Inline Due Date Editing', () => {
         due_date: null,
         project_id: 'proj-1',
       });
-      taskApiService.getTasksForProjectAPI.mockResolvedValue([taskWithoutDate]);
+      const taskWithDate = {
+        ...taskWithoutDate,
+        due_date: '2024-06-25T00:00:00.000Z',
+      };
+
+      taskApiService.getTasksForProjectAPI.mockResolvedValueOnce([
+        taskWithoutDate,
+      ]);
       taskApiService.patchTaskAPI.mockResolvedValue({
         ...taskWithoutDate,
         due_date: '2024-06-25T00:00:00.000Z',
       });
-      renderProjectTasksPage(queryClient, { projects: [mockProject] });
+      taskApiService.getTasksForProjectAPI.mockResolvedValueOnce([
+        taskWithDate,
+      ]);
+      renderProjectTasksPage(queryClient);
       const row = await screen
         .findByText(taskWithoutDate.title)
         .then((el) => el.closest('tr'));
@@ -202,12 +215,23 @@ describe('Inline Due Date Editing', () => {
         due_date: '2024-06-20T00:00:00.000Z',
         project_id: 'proj-1',
       });
-      taskApiService.getTasksForProjectAPI.mockResolvedValue([taskWithDate]);
+      const taskWithoutDate = createMockTask({
+        id: 'task-date-2',
+        due_date: null,
+        project_id: 'proj-1',
+      });
+
+      taskApiService.getTasksForProjectAPI.mockResolvedValueOnce([
+        taskWithDate,
+      ]);
       taskApiService.patchTaskAPI.mockResolvedValue({
         ...taskWithDate,
         due_date: null,
       });
-      renderProjectTasksPage(queryClient, { projects: [mockProject] });
+      taskApiService.getTasksForProjectAPI.mockResolvedValueOnce([
+        taskWithoutDate,
+      ]);
+      renderProjectTasksPage(queryClient);
       const row = await screen
         .findByText(taskWithDate.title)
         .then((el) => el.closest('tr'));
@@ -246,10 +270,10 @@ describe('Inline Due Date Editing', () => {
       });
       const error = createMockApiError(500, 'Server is on fire');
       const showErrorToastMock = jest.fn();
+
       taskApiService.getTasksForProjectAPI.mockResolvedValue([taskWithDate]);
       taskApiService.patchTaskAPI.mockRejectedValue(error);
       renderProjectTasksPage(queryClient, {
-        projects: [mockProject],
         errorContext: { showErrorToast: showErrorToastMock },
       });
       const row = await screen
@@ -265,7 +289,9 @@ describe('Inline Due Date Editing', () => {
 
       // ASSERT
       await waitFor(() => {
-        expect(showErrorToastMock).toHaveBeenCalledWith(error.processedError);
+        expect(showErrorToastMock).toHaveBeenCalledWith(
+          expect.objectContaining({ message: 'Server is on fire' })
+        );
       });
       expect(within(row).getByText('6/20/2024')).toBeInTheDocument();
       expect(screen.queryByLabelText(/edit due date/i)).not.toBeInTheDocument();
@@ -280,7 +306,6 @@ describe('Inline Due Date Editing', () => {
       const showErrorToastMock = jest.fn();
       taskApiService.getTasksForProjectAPI.mockResolvedValue([task]);
       renderProjectTasksPage(queryClient, {
-        projects: [mockProject],
         errorContext: { showErrorToast: showErrorToastMock },
       });
       const row = await screen
@@ -316,7 +341,7 @@ describe('Inline Due Date Editing', () => {
         project_id: 'proj-1',
       });
       taskApiService.getTasksForProjectAPI.mockResolvedValue([task]);
-      renderProjectTasksPage(queryClient, { projects: [mockProject] });
+      renderProjectTasksPage(queryClient);
       const row = await screen
         .findByText(task.title)
         .then((el) => el.closest('tr'));

@@ -3,6 +3,7 @@ import {
   setupPageTests,
   renderProjectTasksPage,
   taskApiService,
+  projectApiService,
   screen,
   within,
   waitFor,
@@ -27,6 +28,7 @@ describe('ProjectTasksPage - CRUD Operations', () => {
   beforeEach(() => {
     user = testState.user;
     queryClient = testState.queryClient;
+    projectApiService.getAllProjects.mockResolvedValue([mockProject]);
   });
 
   describe('2. Row Actions & Modal Flows', () => {
@@ -53,7 +55,7 @@ describe('ProjectTasksPage - CRUD Operations', () => {
         project_id: 'proj-1',
       });
       taskApiService.getTasksForProjectAPI.mockResolvedValue([task]);
-      renderProjectTasksPage(queryClient, { projects: [mockProject] });
+      renderProjectTasksPage(queryClient);
       const row = await screen
         .findByText(task.title)
         .then((el) => el.closest('tr'));
@@ -80,7 +82,7 @@ describe('ProjectTasksPage - CRUD Operations', () => {
         project_id: 'proj-1',
       });
       taskApiService.getTasksForProjectAPI.mockResolvedValue([task]);
-      renderProjectTasksPage(queryClient, { projects: [mockProject] });
+      renderProjectTasksPage(queryClient);
       const row = await screen
         .findByText(task.title)
         .then((el) => el.closest('tr'));
@@ -112,10 +114,19 @@ describe('ProjectTasksPage - CRUD Operations', () => {
       // ARRANGE
       const updatedTitle = 'An Edited Task Title';
       const updatedTask = { ...task, title: updatedTitle };
-      taskApiService.getTasksForProjectAPI.mockResolvedValue([task]);
-      // Mock the update API to return the modified task
+
+      // 1. Mock the INITIAL fetch when the page loads. It returns the original task.
+      taskApiService.getTasksForProjectAPI.mockResolvedValueOnce([task]);
+
+      // 2. Mock the update API call itself. This is what the mutation function will call.
       taskApiService.updateTaskAPI.mockResolvedValue(updatedTask);
-      renderProjectTasksPage(queryClient, { projects: [mockProject] });
+
+      // 3. Mock the SECOND fetch (the refetch) that happens after invalidation.
+      //    It returns the new, updated task data.
+      taskApiService.getTasksForProjectAPI.mockResolvedValueOnce([updatedTask]);
+
+      // Now, render the page. The component will perform the initial fetch.
+      renderProjectTasksPage(queryClient);
 
       // ACT
       await openRowMenu(task.title);
@@ -131,21 +142,31 @@ describe('ProjectTasksPage - CRUD Operations', () => {
 
       // ASSERT
       await waitForElementToBeRemoved(() => screen.queryByRole('dialog'));
+
+      // Verify the mutation was called correctly
       expect(taskApiService.updateTaskAPI).toHaveBeenCalledWith(
         task.id,
         expect.objectContaining({ title: updatedTitle })
       );
-      // Verify the UI updated with the new title
+
+      // Verify the UI updated with the new title from the refetch
       expect(await screen.findByText(updatedTitle)).toBeInTheDocument();
       expect(screen.queryByText(task.title)).not.toBeInTheDocument();
     });
 
     it('should delete the task from the table after a successful confirmation', async () => {
       // ARRANGE
-      taskApiService.getTasksForProjectAPI.mockResolvedValue([task]);
-      // Mock the delete API to resolve successfully
+
+      // 1. Mock the INITIAL fetch. The task exists.
+      taskApiService.getTasksForProjectAPI.mockResolvedValueOnce([task]);
+
+      // 2. Mock the successful delete API call.
       taskApiService.deleteTaskAPI.mockResolvedValue({});
-      renderProjectTasksPage(queryClient, { projects: [mockProject] });
+
+      // 3. Mock the REFETCH that happens after invalidation. Now, the task is gone.
+      taskApiService.getTasksForProjectAPI.mockResolvedValueOnce([]);
+
+      renderProjectTasksPage(queryClient);
 
       // ACT
       await openRowMenu(task.title);
@@ -159,21 +180,25 @@ describe('ProjectTasksPage - CRUD Operations', () => {
       await user.click(within(dialog).getByRole('button', { name: /delete/i }));
 
       // ASSERT
+      // --- FIX ---
+      // The underlying API service `deleteTaskAPI` only ever receives the task ID.
+      // The projectId is used by the hook for invalidation, but not passed to the API function.
       expect(taskApiService.deleteTaskAPI).toHaveBeenCalledWith(task.id);
-      // Verify the task row is removed from the DOM
-      await waitFor(() => {
-        expect(screen.queryByText(task.title)).not.toBeInTheDocument();
-      });
-      // Verify the empty state appears
+
+      // Verify the task row is removed from the DOM by waiting for the empty state.
       expect(
-        screen.getByRole('heading', { name: /you have no task/i })
+        await screen.findByRole('heading', { name: /you have no task/i })
       ).toBeInTheDocument();
+
+      // And confirm the old task title is gone.
+      expect(screen.queryByText(task.title)).not.toBeInTheDocument();
     });
 
     it('should display a toast notification and not remove task if delete fails', async () => {
       // ARRANGE
-      const apiError = createMockApiError(500, 'Could not delete');
+      const apiError = createMockApiError(400, 'Could not delete');
       const showErrorToastMock = jest.fn();
+      projectApiService.getAllProjects.mockResolvedValue([mockProject]);
       taskApiService.getTasksForProjectAPI.mockResolvedValue([task]);
       taskApiService.deleteTaskAPI.mockRejectedValue(apiError);
       renderProjectTasksPage(queryClient, {
@@ -212,7 +237,7 @@ describe('ProjectTasksPage - CRUD Operations', () => {
         project_id: 'proj-1',
       });
       taskApiService.getTasksForProjectAPI.mockResolvedValue([incompleteTask]);
-      renderProjectTasksPage(queryClient, { projects: [mockProject] });
+      renderProjectTasksPage(queryClient);
       const row = await screen
         .findByText(incompleteTask.title)
         .then((el) => el.closest('tr'));
@@ -246,7 +271,7 @@ describe('ProjectTasksPage - CRUD Operations', () => {
         project_id: 'proj-1',
       });
       taskApiService.getTasksForProjectAPI.mockResolvedValue([completedTask]);
-      renderProjectTasksPage(queryClient, { projects: [mockProject] });
+      renderProjectTasksPage(queryClient);
       const row = await screen
         .findByText(completedTask.title)
         .then((el) => el.closest('tr'));
@@ -281,16 +306,18 @@ describe('ProjectTasksPage - CRUD Operations', () => {
       const apiError = createMockApiError(500, 'Server is down');
       const showErrorToastMock = jest.fn();
 
+      // projectApiService.getAllProjects.mockResolvedValue([mockProject]);
       taskApiService.getTasksForProjectAPI.mockResolvedValue([taskToFail]);
       renderProjectTasksPage(queryClient, {
         projects: [mockProject],
         errorContext: { showErrorToast: showErrorToastMock },
       });
+
+      taskApiService.patchTaskAPI.mockRejectedValue(apiError);
+
       const row = await screen
         .findByText(taskToFail.title)
         .then((el) => el.closest('tr'));
-
-      taskApiService.patchTaskAPI.mockRejectedValue(apiError);
 
       // ACT
       await user.click(
@@ -312,7 +339,7 @@ describe('ProjectTasksPage - CRUD Operations', () => {
     it('should open the Add Task modal when the "Add Task" button is clicked', async () => {
       // ARRANGE
       taskApiService.getTasksForProjectAPI.mockResolvedValue([]);
-      renderProjectTasksPage(queryClient, { projects: [mockProject] });
+      renderProjectTasksPage(queryClient);
 
       // ACT
       const addTaskButton = await screen.findByRole('button', {
@@ -335,7 +362,7 @@ describe('ProjectTasksPage - CRUD Operations', () => {
         project_id: 'proj-1',
       });
       taskApiService.getTasksForProjectAPI.mockResolvedValue([]);
-      renderProjectTasksPage(queryClient, { projects: [mockProject] });
+      renderProjectTasksPage(queryClient);
       expect(
         await screen.findByRole('heading', { name: /you have no task/i })
       ).toBeInTheDocument();
