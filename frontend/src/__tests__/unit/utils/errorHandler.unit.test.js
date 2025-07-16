@@ -196,7 +196,7 @@ describe('errorHandler', () => {
     });
 
     it('should return server error message for 5xx errors', () => {
-      const error = createMockApiError(500, 'Internal Server Error');
+      const error = createMockApiError(500, '');
       const message = getErrorMessage(error);
       expect(message).toBe(
         'The server is currently experiencing issues. Please try again in a few moments.'
@@ -374,7 +374,7 @@ describe('errorHandler', () => {
     });
 
     it('should handle server errors correctly', () => {
-      const error = createMockApiError(500, 'Internal Server Error');
+      const error = createMockApiError(500, '');
       const result = handleApiError(error, 'processing request');
 
       expect(result).toEqual({

@@ -55,6 +55,11 @@ export const isClientError = (error) => {
  */
  export const getErrorMessage = (error, context = 'performing this action') => {
    // 1. Handle errors that MUST have a generic frontend message.
+   const apiMessage = error.response?.data?.message;
+   if (apiMessage) {
+     return apiMessage;
+   }
+
    if (isNetworkError(error)) {
      return `Unable to connect to the server. Please check your internet connection and try again.`;
     }
@@ -62,11 +67,6 @@ export const isClientError = (error) => {
       return `The server is currently experiencing issues. Please try again in a few moments.`;
     }
     
-    // 2. For all other errors (Client, Auth), prioritize the specific message from the API.
-    const apiMessage = error.response?.data?.message;
-    if (apiMessage) {
-      return apiMessage;
-    }
     
   // 3. Provide generic fallbacks only if the API fails to provide a specific message.
   // This is now the fallback for a 401 with no message, as required by the test.
