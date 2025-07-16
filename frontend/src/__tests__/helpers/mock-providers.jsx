@@ -243,36 +243,6 @@ export const TestAuthProvider = ({ children, value }) => {
 };
 
 /**
- * Test wrapper for ProjectContext
- * @param {{ children: React.ReactNode, value?: object }} props The component props.
- * @returns {import('react').JSX.Element} AuthContext provider wrapper.
- */
-export const TestProjectProvider = ({ children, value }) => {
-  const ProjectContext = require('@/context/ProjectContext').default;
-  const mockValue = value || createMockProjectContext();
-
-  return (
-    <ProjectContext.Provider value={mockValue}>
-      {children}
-    </ProjectContext.Provider>
-  );
-};
-
-/**
- * Test wrapper for TaskContext
- * @param {{ children: React.ReactNode, value?: object }} props The component props.
- * @returns {import('react').JSX.Element} AuthContext provider wrapper.
- */
-export const TestTaskProvider = ({ children, value }) => {
-  const TaskContext = require('@/context/TaskContext').default;
-  const mockValue = value || createMockTaskContext();
-
-  return (
-    <TaskContext.Provider value={mockValue}>{children}</TaskContext.Provider>
-  );
-};
-
-/**
  * Test wrapper for ErrorContext
  * @param {{ children: React.ReactNode, value?: object }} props The component props.
  * @returns {import('react').JSX.Element} AuthContext provider wrapper.

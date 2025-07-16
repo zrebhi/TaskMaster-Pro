@@ -8,7 +8,6 @@ import {
   getFacetedRowModel,
   getFacetedUniqueValues,
 } from '@tanstack/react-table';
-import { useQueryClient } from '@tanstack/react-query';
 import EditTaskModal from '@/components/Tasks/EditTaskModal';
 import ConfirmationModal from '@/components/Common/ConfirmationModal';
 import AddTaskModal from '@/components/Tasks/AddTaskModal';
@@ -36,7 +35,6 @@ const ProjectTasksPage = () => {
   const { mutate: deleteTask } = useDeleteTask();
   const { mutate: patchTask } = usePatchTask();
   const { showErrorToast } = useError();
-  const queryClient = useQueryClient();
 
   const [isEditTaskModalOpen, setIsEditTaskModalOpen] = useState(false);
   const [taskToEdit, setTaskToEdit] = useState(null);

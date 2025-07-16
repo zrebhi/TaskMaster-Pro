@@ -2,54 +2,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
 import { BrowserRouter } from 'react-router-dom';
-import { AuthProvider } from '@/context/AuthContext';
-import { ProjectProvider } from '@/context/ProjectContext';
-import { ErrorProvider } from '@/context/ErrorContext';
 import { QueryClient } from '@tanstack/react-query';
-
-/**
- * Custom render function that wraps components with all necessary providers
- * @param {React.Component} ui - Component to render
- * @param {Object} options - Render options
- * @param {Object} options.authValue - Custom AuthContext value
- * @param {Object} options.projectValue - Custom ProjectContext value
- * @param {Object} options.errorValue - Custom ErrorContext value
- * @param {boolean} options.withRouter - Whether to wrap with BrowserRouter (default: true)
- * @param {Object} options.renderOptions - Additional options for RTL render
- * @returns {Object} RTL render result with additional utilities
- */
-export const renderWithProviders = (ui, options = {}) => {
-  const {
-    authValue,
-    projectValue,
-    errorValue,
-    withRouter = true,
-    ...renderOptions
-  } = options;
-
-  const AllProviders = ({ children }) => {
-    let wrapped = (
-      <ErrorProvider value={errorValue}>
-        <AuthProvider value={authValue}>
-          <ProjectProvider value={projectValue}>{children}</ProjectProvider>
-        </AuthProvider>
-      </ErrorProvider>
-    );
-
-    if (withRouter) {
-      wrapped = <BrowserRouter>{wrapped}</BrowserRouter>;
-    }
-
-    return wrapped;
-  };
-
-  const renderResult = render(ui, { wrapper: AllProviders, ...renderOptions });
-
-  return {
-    ...renderResult,
-    user: userEvent.setup(),
-  };
-};
 
 /**
  * Render component with minimal providers (useful for isolated unit tests)
