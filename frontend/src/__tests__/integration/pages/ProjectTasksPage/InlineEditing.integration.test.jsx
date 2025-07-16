@@ -131,7 +131,6 @@ describe('Inline Due Date Editing', () => {
   let user;
   let queryClient;
   const testState = setupPageTests();
-  const mockProject = createMockProject({ id: 'proj-1' });
   const originalDate = Date;
 
   beforeEach(() => {

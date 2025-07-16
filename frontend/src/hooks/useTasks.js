@@ -60,7 +60,7 @@ export const useAddTask = ({ onMutationSuccess, onMutationError } = {}) => {
       showErrorToast(handleApiError(error, 'creating the task'));
       if (onMutationError) onMutationError(error);
     },
-    onSuccess: (data, variables, context) => {
+    onSuccess: (data, variables) => {
       showSuccess('Task created successfully!');
       queryClient.invalidateQueries({
         queryKey: ['tasks', variables.projectId],
@@ -94,7 +94,7 @@ export const useUpdateTask = ({ onMutationSuccess, onMutationError } = {}) => {
       showErrorToast(handleApiError(error, 'updating the task'));
       if (onMutationError) onMutationError(error);
     },
-    onSuccess: (data, variables, context) => {
+    onSuccess: (data, variables) => {
       showSuccess('Task updated successfully!');
       queryClient.invalidateQueries({
         queryKey: ['tasks', variables.projectId],
@@ -126,7 +126,7 @@ export const useDeleteTask = ({ onMutationSuccess, onMutationError } = {}) => {
       showErrorToast(handleApiError(error, 'deleting the task'));
       if (onMutationError) onMutationError(error);
     },
-    onSuccess: (data, variables, context) => {
+    onSuccess: (data, variables) => {
       showSuccess('Task deleted successfully!');
       queryClient.invalidateQueries({
         queryKey: ['tasks', variables.projectId],
@@ -161,7 +161,7 @@ export const usePatchTask = ({ onMutationSuccess, onMutationError } = {}) => {
       showErrorToast(handleApiError(error, 'patching the task'));
       if (onMutationError) onMutationError(error);
     },
-    onSuccess: (data, variables, context) => {
+    onSuccess: (data, variables) => {
       queryClient.invalidateQueries({
         queryKey: ['tasks', variables.projectId],
       });
