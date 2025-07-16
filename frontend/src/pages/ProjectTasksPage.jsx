@@ -1,4 +1,3 @@
-//@ts-check
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import {
@@ -86,16 +85,7 @@ const ProjectTasksPage = () => {
     );
   }, [columnVisibility]);
 
-  useEffect(() => {
-    // When the component unmounts, it's crucial to clean up the query data.
-    // This prevents stale data from one project's task page from being shown
-    // on another if the user navigates quickly. It also avoids potential
-    // memory leaks or state updates on unmounted components.
-    // This is the TanStack Query equivalent of your previous context-based cleanup.
-    return () => {
-      queryClient.invalidateQueries({ queryKey: ['tasks', projectId], exact: true });
-    };
-  }, [projectId, queryClient]);
+  
 
   const selectedProject = projects.find((p) => p.id.toString() === projectId);
 
@@ -212,13 +202,14 @@ const ProjectTasksPage = () => {
       rowSelection,
       columnFilters,
     },
+    autoResetPageIndex: false,
     meta: {
       onEdit: handleEditTask,
       onDelete: handleDeleteTask,
       onPatchTask: handlePatchTask,
       editingCell: editingCell,
       setEditingCell: setEditingCell,
-            onViewTask: (task) => {
+      onViewTask: (task) => {
         setSelectedTaskId(task.id);
       },
       filtersConfig: [
@@ -245,7 +236,6 @@ const ProjectTasksPage = () => {
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
   });
-
 
   if (isLoadingProjects) {
     return <p>Loading project details...</p>;
